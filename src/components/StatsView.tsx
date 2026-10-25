@@ -185,9 +185,9 @@ export const StatsView: React.FC<StatsViewProps> = ({
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
       {/* En-tête */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 pb-6 border-b border-[#E8E2D5]">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 pb-6 border-b border-[var(--bd-e8e2d5)]">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-[#28231D] tracking-tight">
+          <h1 className="text-3xl font-serif font-bold text-[var(--fg-28231d)] tracking-tight">
             Analytique & FSRS
           </h1>
          
@@ -198,7 +198,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
               onExportMarkdownMirror();
               showToast('Miroir Markdown exporté avec succès');
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#4A3E31] bg-white border border-[#D5CBBF] rounded-lg hover:bg-[#F3EFE8] transition-colors shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-4a3e31)] bg-[var(--bg-ffffff)] border border-[var(--bd-d5cbbf)] rounded-lg hover:bg-[var(--bg-f3efe8)] transition-colors shadow-xs"
             title="Exporter tous les extraits et cartes en miroir Markdown"
           >
             <Download className="w-3.5 h-3.5" />
@@ -209,7 +209,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
               onExportBackup();
               showToast('Sauvegarde JSON générée avec succès');
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#4A3E31] bg-white border border-[#D5CBBF] rounded-lg hover:bg-[#F3EFE8] transition-colors shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-4a3e31)] bg-[var(--bg-ffffff)] border border-[var(--bd-d5cbbf)] rounded-lg hover:bg-[var(--bg-f3efe8)] transition-colors shadow-xs"
             title="Exporter l'ensemble de la base Gemma en JSON"
           >
             <Download className="w-3.5 h-3.5" />
@@ -220,38 +220,38 @@ export const StatsView: React.FC<StatsViewProps> = ({
 
       {/* Rangée 1 : Cartes métriques principales */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="p-4 bg-white border border-[#E8E2D5] rounded-2xl shadow-xs">
-          <div className="text-[11px] text-[#695F54] uppercase tracking-wider font-semibold">
+        <div className="p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs">
+          <div className="text-[11px] text-[var(--fg-695f54)] uppercase tracking-wider font-semibold">
             Sources & Extraits
           </div>
-          <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[#28231D]">
+          <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[var(--fg-28231d)]">
             {stats.totalDocuments + stats.totalExtracts}
           </div>
-          <div className="mt-1 text-xs text-[#8C8072]">
+          <div className="mt-1 text-xs text-[var(--fg-8c8072)]">
             {stats.totalDocuments} doc{stats.totalDocuments > 1 ? 's' : ''} · {stats.totalExtracts} extrait{stats.totalExtracts > 1 ? 's' : ''}
           </div>
         </div>
 
-        <div className="p-4 bg-white border border-[#E8E2D5] rounded-2xl shadow-xs">
-          <div className="text-[11px] text-[#695F54] uppercase tracking-wider font-semibold">
+        <div className="p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs">
+          <div className="text-[11px] text-[var(--fg-695f54)] uppercase tracking-wider font-semibold">
             Cartes Cloze Actives
           </div>
-          <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[#28231D]">
+          <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[var(--fg-28231d)]">
             {stats.totalClozes}
           </div>
-          <div className="mt-1 text-xs text-[#8C8072]">
+          <div className="mt-1 text-xs text-[var(--fg-8c8072)]">
             Items atomiques (MIP)
           </div>
         </div>
 
-        <div className="p-4 bg-white border border-[#E8E2D5] rounded-2xl shadow-xs">
-          <div className="text-[11px] text-[#695F54] uppercase tracking-wider font-semibold">
+        <div className="p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs">
+          <div className="text-[11px] text-[var(--fg-695f54)] uppercase tracking-wider font-semibold">
             Rétention réelle (30 j)
           </div>
-          <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[#5F8550]">
+          <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[var(--fg-5f8550)]">
             {stats.averageRetention === null ? '—' : `${stats.averageRetention}%`}
           </div>
-          <div className="mt-1 text-xs text-[#8C8072]">
+          <div className="mt-1 text-xs text-[var(--fg-8c8072)]">
             {stats.averageRetention === null
               ? 'Pas encore de cartes révisées'
               : `Cible : ${Math.round(targetRetention * 100)}%`}
@@ -259,14 +259,14 @@ export const StatsView: React.FC<StatsViewProps> = ({
           </div>
         </div>
 
-        <div className="p-4 bg-white border border-[#E8E2D5] rounded-2xl shadow-xs">
-          <div className="text-[11px] text-[#695F54] uppercase tracking-wider font-semibold">
+        <div className="p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs">
+          <div className="text-[11px] text-[var(--fg-695f54)] uppercase tracking-wider font-semibold">
             Révision du jour
           </div>
-          <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[#8C5E32]">
+          <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[var(--fg-8c5e32)]">
             {stats.dueTodayCount}
           </div>
-          <div className="mt-1 text-xs text-[#8C8072]">
+          <div className="mt-1 text-xs text-[var(--fg-8c8072)]">
             {stats.reviewsCompletedToday} terminée{stats.reviewsCompletedToday > 1 ? 's' : ''} aujourd'hui
           </div>
         </div>
@@ -275,15 +275,15 @@ export const StatsView: React.FC<StatsViewProps> = ({
       {/* Rangée 2 : Format unifié pour Pourcentage cible, Prévision, et Stabilité mémorielle */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Carte 1 : Pourcentage cible FSRS */}
-        <div className="p-4 bg-white border border-[#E8E2D5] rounded-2xl shadow-xs flex flex-col justify-between">
+        <div className="p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs flex flex-col justify-between">
           <div>
-            <div className="text-[11px] text-[#695F54] uppercase tracking-wider font-semibold">
+            <div className="text-[11px] text-[var(--fg-695f54)] uppercase tracking-wider font-semibold">
               Pourcentage cible FSRS
             </div>
-            <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[#8C5E32]">
+            <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[var(--fg-8c5e32)]">
               {Math.round(targetRetention * 100)}%
             </div>
-            <label className="mt-1 flex items-center gap-1.5 text-xs text-[#8C8072]">
+            <label className="mt-1 flex items-center gap-1.5 text-xs text-[var(--fg-8c8072)]">
               Limite :
               <input
                 type="number"
@@ -294,12 +294,12 @@ export const StatsView: React.FC<StatsViewProps> = ({
                   const val = parseInt(e.target.value, 10);
                   if (!isNaN(val)) onUpdateDailyLimit(val);
                 }}
-                className="w-16 px-1.5 py-0.5 font-mono text-[#28231D] bg-[#FAF7F2] border border-[#E8E2D5] rounded-md"
+                className="w-16 px-1.5 py-0.5 font-mono text-[var(--fg-28231d)] bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-md"
               />
               cartes différentes par jour
             </label>
           </div>
-          <div className="mt-4 pt-3 border-t border-[#F3EFE8]">
+          <div className="mt-4 pt-3 border-t border-[var(--bd-f3efe8)]">
             <div className="relative w-full">
               <input
                 type="range"
@@ -313,7 +313,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                     onUpdateTargetRetention(val / 100);
                   }
                 }}
-                className="w-full h-2 bg-[#F3EFE8] rounded-lg appearance-none cursor-pointer accent-[#8C5E32] block"
+                className="w-full h-2 bg-[var(--bg-f3efe8)] rounded-lg appearance-none cursor-pointer accent-[var(--fg-8c5e32)] block"
               />
               <div className="relative w-full h-6 mt-1.5 select-none">
                 {[
@@ -336,18 +336,18 @@ export const StatsView: React.FC<StatsViewProps> = ({
                     >
                       <span
                         className={`w-0.5 h-1 mb-0.5 transition-colors ${
-                          isSelected ? 'bg-[#8C5E32]' : 'bg-[#D5CBBF]'
+                          isSelected ? 'bg-[var(--bg-8c5e32)]' : 'bg-[var(--bg-d5cbbf)]'
                         }`}
                       />
                       <button
                         type="button"
                         onClick={() => onUpdateTargetRetention(m.val / 100)}
-                        className={`text-[10px] font-mono transition-colors cursor-pointer hover:text-[#8C5E32] ${
+                        className={`text-[10px] font-mono transition-colors cursor-pointer hover:text-[var(--fg-8c5e32)] ${
                           isSelected
-                            ? 'text-[#8C5E32] font-bold'
+                            ? 'text-[var(--fg-8c5e32)] font-bold'
                             : m.bold
-                            ? 'font-semibold text-[#695F54]'
-                            : 'text-[#8C8072]'
+                            ? 'font-semibold text-[var(--fg-695f54)]'
+                            : 'text-[var(--fg-8c8072)]'
                         }`}
                         title={`Définir la rétention cible à ${m.val}%`}
                       >
@@ -362,15 +362,15 @@ export const StatsView: React.FC<StatsViewProps> = ({
         </div>
 
         {/* Carte 2 : Prévision des révisions à venir */}
-        <div className="p-4 bg-white border border-[#E8E2D5] rounded-2xl shadow-xs flex flex-col justify-between">
+        <div className="p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs flex flex-col justify-between">
           <div>
-            <div className="text-[11px] text-[#695F54] uppercase tracking-wider font-semibold">
+            <div className="text-[11px] text-[var(--fg-695f54)] uppercase tracking-wider font-semibold">
               Prévision des révisions à venir
             </div>
-            <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[#28231D]">
+            <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[var(--fg-28231d)]">
               {totalPeriodReviews}
             </div>
-            <div className="mt-1 text-xs text-[#8C8072]">
+            <div className="mt-1 text-xs text-[var(--fg-8c8072)]">
               {forecastPeriod === '1d'
                 ? 'Prochaines 48h (Auj. + Demain)'
                 : forecastPeriod === '7d'
@@ -378,14 +378,14 @@ export const StatsView: React.FC<StatsViewProps> = ({
                 : 'Sur les 30 prochains jours'}
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-[#F3EFE8] flex gap-1.5">
+          <div className="mt-4 pt-3 border-t border-[var(--bd-f3efe8)] flex gap-1.5">
             <button
               type="button"
               onClick={() => setForecastPeriod('1d')}
               className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
                 forecastPeriod === '1d'
-                  ? 'bg-[#3B3026] text-[#FAF7F2] shadow-xs'
-                  : 'bg-[#F3EFE8] text-[#695F54] hover:bg-[#E8E2D5]'
+                  ? 'bg-[var(--bg-3b3026)] text-[var(--fg-faf7f2)] shadow-xs'
+                  : 'bg-[var(--bg-f3efe8)] text-[var(--fg-695f54)] hover:bg-[var(--bg-e8e2d5)]'
               }`}
             >
               1j
@@ -395,8 +395,8 @@ export const StatsView: React.FC<StatsViewProps> = ({
               onClick={() => setForecastPeriod('7d')}
               className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
                 forecastPeriod === '7d'
-                  ? 'bg-[#3B3026] text-[#FAF7F2] shadow-xs'
-                  : 'bg-[#F3EFE8] text-[#695F54] hover:bg-[#E8E2D5]'
+                  ? 'bg-[var(--bg-3b3026)] text-[var(--fg-faf7f2)] shadow-xs'
+                  : 'bg-[var(--bg-f3efe8)] text-[var(--fg-695f54)] hover:bg-[var(--bg-e8e2d5)]'
               }`}
             >
               7j
@@ -406,8 +406,8 @@ export const StatsView: React.FC<StatsViewProps> = ({
               onClick={() => setForecastPeriod('30d')}
               className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
                 forecastPeriod === '30d'
-                  ? 'bg-[#3B3026] text-[#FAF7F2] shadow-xs'
-                  : 'bg-[#F3EFE8] text-[#695F54] hover:bg-[#E8E2D5]'
+                  ? 'bg-[var(--bg-3b3026)] text-[var(--fg-faf7f2)] shadow-xs'
+                  : 'bg-[var(--bg-f3efe8)] text-[var(--fg-695f54)] hover:bg-[var(--bg-e8e2d5)]'
               }`}
             >
               30j
@@ -416,70 +416,70 @@ export const StatsView: React.FC<StatsViewProps> = ({
         </div>
 
         {/* Carte 3 : Courbe de stabilité mémorielle */}
-        <div className="p-4 bg-white border border-[#E8E2D5] rounded-2xl shadow-xs flex flex-col justify-between">
+        <div className="p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs flex flex-col justify-between">
           <div>
-            <div className="text-[11px] text-[#695F54] uppercase tracking-wider font-semibold">
+            <div className="text-[11px] text-[var(--fg-695f54)] uppercase tracking-wider font-semibold">
               Stabilité mémorielle (FSRS)
             </div>
-            <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[#5F8550]">
+            <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[var(--fg-5f8550)]">
               {stabilityBuckets.pct4}%
             </div>
-            <div className="mt-1 text-xs text-[#8C8072]">
+            <div className="mt-1 text-xs text-[var(--fg-8c8072)]">
               Jours jusqu'à 70% rétention ({stabilityBuckets.b4} items stables &gt;30j)
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-[#F3EFE8] flex flex-col gap-1.5">
-            <div className="w-full h-2.5 bg-[#F3EFE8] rounded-full overflow-hidden flex">
+          <div className="mt-4 pt-3 border-t border-[var(--bd-f3efe8)] flex flex-col gap-1.5">
+            <div className="w-full h-2.5 bg-[var(--bg-f3efe8)] rounded-full overflow-hidden flex">
               <div
                 style={{ width: `${stabilityBuckets.pct1}%` }}
-                className="bg-[#D97706] h-full"
+                className="bg-[var(--bg-d97706)] h-full"
                 title={`< 3 jours : ${stabilityBuckets.b1} items (${stabilityBuckets.pct1}%)`}
               />
               <div
                 style={{ width: `${stabilityBuckets.pct2}%` }}
-                className="bg-[#EAB308] h-full"
+                className="bg-[var(--bg-eab308)] h-full"
                 title={`3-7 jours : ${stabilityBuckets.b2} items (${stabilityBuckets.pct2}%)`}
               />
               <div
                 style={{ width: `${stabilityBuckets.pct3}%` }}
-                className="bg-[#84CC16] h-full"
+                className="bg-[var(--bg-84cc16)] h-full"
                 title={`7-30 jours : ${stabilityBuckets.b3} items (${stabilityBuckets.pct3}%)`}
               />
               <div
                 style={{ width: `${stabilityBuckets.pct4}%` }}
-                className="bg-[#5F8550] h-full"
+                className="bg-[var(--bg-5f8550)] h-full"
                 title={`> 30 jours : ${stabilityBuckets.b4} items (${stabilityBuckets.pct4}%)`}
               />
             </div>
-            <div className="flex justify-between text-[10px] text-[#8C8072] font-mono">
-              <span className="text-[#D97706]">&lt;3j: {stabilityBuckets.b1}</span>
-              <span className="text-[#B45309]">3-7j: {stabilityBuckets.b2}</span>
-              <span className="text-[#4D7C0F]">7-30j: {stabilityBuckets.b3}</span>
-              <span className="text-[#5F8550] font-semibold">&gt;30j: {stabilityBuckets.b4}</span>
+            <div className="flex justify-between text-[10px] text-[var(--fg-8c8072)] font-mono">
+              <span className="text-[var(--fg-d97706)]">&lt;3j: {stabilityBuckets.b1}</span>
+              <span className="text-[var(--fg-b45309)]">3-7j: {stabilityBuckets.b2}</span>
+              <span className="text-[var(--fg-4d7c0f)]">7-30j: {stabilityBuckets.b3}</span>
+              <span className="text-[var(--fg-5f8550)] font-semibold">&gt;30j: {stabilityBuckets.b4}</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Graphique interactif de charge / prévision des révisions */}
-      <div className="p-5 bg-white border border-[#E8E2D5] rounded-2xl shadow-xs mb-6">
+      <div className="p-5 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-[#8C5E32]" />
-            <span className="text-sm font-semibold text-[#28231D]">
+            <BarChart3 className="w-4 h-4 text-[var(--fg-8c5e32)]" />
+            <span className="text-sm font-semibold text-[var(--fg-28231d)]">
               Charge de révision journalière ({forecastPeriod === '1d' ? '48 heures' : forecastPeriod === '7d' ? '7 jours' : '30 jours'})
             </span>
           </div>
 
-          <div className="flex items-center gap-3 text-xs text-[#695F54]">
+          <div className="flex items-center gap-3 text-xs text-[var(--fg-695f54)]">
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-xs bg-[#8C5E32]" /> Clozes
+              <span className="w-2.5 h-2.5 rounded-xs bg-[var(--chart-clozes)]" /> Clozes
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-xs bg-[#C4A882]" /> Extraits
+              <span className="w-2.5 h-2.5 rounded-xs bg-[var(--chart-extracts)]" /> Extraits
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-xs bg-[#E8E2D5]" /> Documents
+              <span className="w-2.5 h-2.5 rounded-xs bg-[var(--chart-docs)]" /> Documents
             </span>
           </div>
         </div>
@@ -488,18 +488,18 @@ export const StatsView: React.FC<StatsViewProps> = ({
         <div className="relative pt-8 pb-2">
           {/* Tooltip au survol */}
           {hoveredDayIndex !== null && forecastData[hoveredDayIndex] && (
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#28231D] text-[#FAF7F2] text-xs rounded-lg shadow-md z-10 pointer-events-none flex items-center gap-3 font-mono">
-              <span className="font-sans font-semibold text-[#E8E2D5]">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 px-3 py-1 bg-[var(--bg-28231d)] text-[var(--fg-faf7f2)] text-xs rounded-lg shadow-md z-10 pointer-events-none flex items-center gap-3 font-mono">
+              <span className="font-sans font-semibold text-[var(--fg-e8e2d5)]">
                 {forecastData[hoveredDayIndex].fullDate}
               </span>
               <span>Total : <strong className="text-white">{forecastData[hoveredDayIndex].total}</strong></span>
-              <span className="text-[#E8D0BA]">Clozes : {forecastData[hoveredDayIndex].clozesCount}</span>
-              <span className="text-[#D5CBBF]">Extraits : {forecastData[hoveredDayIndex].extractsCount}</span>
-              <span className="text-[#A89F91]">Docs : {forecastData[hoveredDayIndex].docsCount}</span>
+              <span className="text-[var(--fg-e8d0ba)]">Clozes : {forecastData[hoveredDayIndex].clozesCount}</span>
+              <span className="text-[var(--fg-d5cbbf)]">Extraits : {forecastData[hoveredDayIndex].extractsCount}</span>
+              <span className="text-[var(--fg-a89f91)]">Docs : {forecastData[hoveredDayIndex].docsCount}</span>
             </div>
           )}
 
-          <div className="h-44 flex items-end gap-1.5 sm:gap-2 px-1 border-b border-[#E8E2D5]">
+          <div className="h-44 flex items-end gap-1.5 sm:gap-2 px-1 border-b border-[var(--bd-e8e2d5)]">
             {forecastData.map((day, idx) => {
               const heightPercent = maxForecastTotal > 0
                 ? Math.max(8, Math.round((day.total / maxForecastTotal) * 100))
@@ -519,8 +519,8 @@ export const StatsView: React.FC<StatsViewProps> = ({
                     className={`text-[10px] font-mono tabular-nums mb-1 transition-opacity ${
                       day.total > 0
                         ? isHovered
-                          ? 'opacity-100 font-bold text-[#8C5E32]'
-                          : 'opacity-70 text-[#695F54]'
+                          ? 'opacity-100 font-bold text-[var(--fg-8c5e32)]'
+                          : 'opacity-70 text-[var(--fg-695f54)]'
                         : 'opacity-0'
                     }`}
                   >
@@ -531,8 +531,8 @@ export const StatsView: React.FC<StatsViewProps> = ({
                   <div
                     style={{ height: `${heightPercent}%` }}
                     className={`w-full max-w-[28px] rounded-t-md transition-all duration-200 flex flex-col-reverse overflow-hidden ${
-                      isHovered ? 'ring-2 ring-[#8C5E32] ring-offset-1' : ''
-                    } ${day.total === 0 ? 'bg-[#F3EFE8]' : 'bg-[#8C5E32]'}`}
+                      isHovered ? 'ring-2 ring-[var(--bd-8c5e32)] ring-offset-1' : ''
+                    } ${day.total === 0 ? 'bg-[var(--bg-f3efe8)]' : 'bg-[var(--bg-8c5e32)]'}`}
                   >
                     {day.total > 0 && (
                       <>
@@ -541,21 +541,21 @@ export const StatsView: React.FC<StatsViewProps> = ({
                           style={{
                             height: `${(day.clozesCount / day.total) * 100}%`,
                           }}
-                          className="w-full bg-[#8C5E32]"
+                          className="w-full bg-[var(--chart-clozes)] border-b border-[var(--bg-ffffff)]"
                         />
                         {/* Extraits */}
                         <div
                           style={{
                             height: `${(day.extractsCount / day.total) * 100}%`,
                           }}
-                          className="w-full bg-[#C4A882]"
+                          className="w-full bg-[var(--chart-extracts)] border-b border-[var(--bg-ffffff)]"
                         />
                         {/* Documents */}
                         <div
                           style={{
                             height: `${(day.docsCount / day.total) * 100}%`,
                           }}
-                          className="w-full bg-[#E8E2D5]"
+                          className="w-full bg-[var(--chart-docs)]"
                         />
                       </>
                     )}
@@ -582,8 +582,8 @@ export const StatsView: React.FC<StatsViewProps> = ({
                   <span
                     className={`text-[10px] block truncate transition-colors ${
                       hoveredDayIndex === idx
-                        ? 'text-[#8C5E32] font-semibold'
-                        : 'text-[#8C8072]'
+                        ? 'text-[var(--fg-8c5e32)] font-semibold'
+                        : 'text-[var(--fg-8c8072)]'
                     }`}
                   >
                     {showLabel ? day.label : '·'}
@@ -596,17 +596,17 @@ export const StatsView: React.FC<StatsViewProps> = ({
       </div>
 
       {/* Maintenance et gestion de la base de données */}
-      <div className="p-5 bg-white border border-[#E8E2D5] rounded-2xl shadow-xs">
+      <div className="p-5 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-sm font-semibold text-[#28231D]">
+            <h2 className="text-sm font-semibold text-[var(--fg-28231d)]">
               Maintenance de la base de données
             </h2>
-            <p className="mt-0.5 text-xs text-[#695F54]">
+            <p className="mt-0.5 text-xs text-[var(--fg-695f54)]">
               Une sauvegarde de sécurité est créée automatiquement avant toute restauration ou réinitialisation.
             </p>
             {dataLocation && (
-              <p className="mt-1 text-[11px] text-[#8C8072]">
+              <p className="mt-1 text-[11px] text-[var(--fg-8c8072)]">
                 Données : <span className="font-mono break-all">{dataLocation}</span> — 7 sauvegardes
                 quotidiennes dans « backups »
               </p>
@@ -618,7 +618,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
               <button
                 type="button"
                 onClick={onOpenDataFolder}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#4A3E31] bg-white border border-[#D5CBBF] rounded-lg hover:bg-[#F3EFE8] transition-colors shadow-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-4a3e31)] bg-[var(--bg-ffffff)] border border-[var(--bd-d5cbbf)] rounded-lg hover:bg-[var(--bg-f3efe8)] transition-colors shadow-xs"
               >
                 <FolderOpen className="w-3.5 h-3.5" />
                 Ouvrir le dossier des données
@@ -639,8 +639,8 @@ export const StatsView: React.FC<StatsViewProps> = ({
               }}
             />
             {pendingRestore ? (
-              <div className="flex items-center gap-2 p-1.5 bg-[#FAF7F2] border border-[#E8E2D5] rounded-xl">
-                <span className="text-xs text-[#A84236] font-medium px-2">
+              <div className="flex items-center gap-2 p-1.5 bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-xl">
+                <span className="text-xs text-[var(--fg-a84236)] font-medium px-2">
                   Remplacer toute la bibliothèque par « {pendingRestore.name} » ?
                 </span>
                 <button
@@ -652,14 +652,14 @@ export const StatsView: React.FC<StatsViewProps> = ({
                     if (result.ok) showToast(result.message);
                     else setRestoreError(result.message);
                   }}
-                  className="px-3 py-1 text-xs font-semibold text-white bg-[#A84236] rounded-lg hover:bg-[#8F352B] transition-colors"
+                  className="px-3 py-1 text-xs font-semibold text-white bg-[var(--bg-a84236)] rounded-lg hover:bg-[var(--bg-8f352b)] transition-colors"
                 >
                   Oui, restaurer
                 </button>
                 <button
                   type="button"
                   onClick={() => setPendingRestore(null)}
-                  className="px-2.5 py-1 text-xs text-[#695F54] hover:bg-[#E8E2D5] rounded-lg transition-colors"
+                  className="px-2.5 py-1 text-xs text-[var(--fg-695f54)] hover:bg-[var(--bg-e8e2d5)] rounded-lg transition-colors"
                 >
                   Annuler
                 </button>
@@ -668,15 +668,15 @@ export const StatsView: React.FC<StatsViewProps> = ({
               <button
                 type="button"
                 onClick={() => restoreInputRef.current?.click()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#4A3E31] bg-white border border-[#D5CBBF] rounded-lg hover:bg-[#F3EFE8] transition-colors shadow-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-4a3e31)] bg-[var(--bg-ffffff)] border border-[var(--bd-d5cbbf)] rounded-lg hover:bg-[var(--bg-f3efe8)] transition-colors shadow-xs"
               >
                 <Upload className="w-3.5 h-3.5" />
                 Restaurer une sauvegarde…
               </button>
             )}
             {confirmReset ? (
-              <div className="flex items-center gap-2 p-1.5 bg-[#FAF7F2] border border-[#E8E2D5] rounded-xl">
-                <span className="text-xs text-[#A84236] font-medium px-2">
+              <div className="flex items-center gap-2 p-1.5 bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-xl">
+                <span className="text-xs text-[var(--fg-a84236)] font-medium px-2">
                   Confirmer la réinitialisation ?
                 </span>
                 <button
@@ -685,14 +685,14 @@ export const StatsView: React.FC<StatsViewProps> = ({
                     setConfirmReset(false);
                     if (await onResetDemo()) showToast('Données de démo réinitialisées');
                   }}
-                  className="px-3 py-1 text-xs font-semibold text-white bg-[#A84236] rounded-lg hover:bg-[#8F352B] transition-colors"
+                  className="px-3 py-1 text-xs font-semibold text-white bg-[var(--bg-a84236)] rounded-lg hover:bg-[var(--bg-8f352b)] transition-colors"
                 >
                   Oui, écraser
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmReset(false)}
-                  className="px-2.5 py-1 text-xs text-[#695F54] hover:bg-[#E8E2D5] rounded-lg transition-colors"
+                  className="px-2.5 py-1 text-xs text-[var(--fg-695f54)] hover:bg-[var(--bg-e8e2d5)] rounded-lg transition-colors"
                 >
                   Annuler
                 </button>
@@ -701,7 +701,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
               <button
                 type="button"
                 onClick={() => setConfirmReset(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#A84236] hover:bg-[#FDF2F0] border border-[#F2D6D3] rounded-lg transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-a84236)] hover:bg-[var(--bg-fdf2f0)] border border-[var(--bd-f2d6d3)] rounded-lg transition-colors"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 Réinitialiser les données de démo
@@ -710,7 +710,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
           </div>
         </div>
         {restoreError && (
-          <p role="alert" className="mt-3 text-xs text-[#A84236]">
+          <p role="alert" className="mt-3 text-xs text-[var(--fg-a84236)]">
             Restauration impossible : {restoreError}
           </p>
         )}
@@ -718,8 +718,8 @@ export const StatsView: React.FC<StatsViewProps> = ({
 
       {/* Toast Notification */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 bg-[#28231D] text-[#FAF7F2] text-xs font-medium rounded-xl shadow-lg border border-[#3B3026] animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <Check className="w-4 h-4 text-[#5F8550]" />
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 bg-[var(--bg-28231d)] text-[var(--fg-faf7f2)] text-xs font-medium rounded-xl shadow-lg border border-[var(--bd-3b3026)] animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <Check className="w-4 h-4 text-[var(--fg-5f8550)]" />
           <span>{toast}</span>
         </div>
       )}

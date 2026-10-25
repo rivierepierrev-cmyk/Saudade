@@ -415,7 +415,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
       parts.push(
         <span
           key={match.index}
-          className="bg-[#F3E6CE] text-[#28231D] font-bold px-1.5 py-0.5 rounded border border-[#DECBB0]"
+          className="bg-[var(--bg-f3e6ce)] text-[var(--fg-28231d)] font-bold px-1.5 py-0.5 rounded border border-[var(--bd-decbb0)]"
         >
           {match[1]}
         </span>
@@ -434,14 +434,14 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   if (isFreePractice && practiceFinished) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-12 text-center">
-        <div className="w-16 h-16 bg-[#F4F7F2] text-[#365A2E] border border-[#C5D9BE] rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <div className="w-16 h-16 bg-[var(--bg-f4f7f2)] text-[var(--fg-365a2e)] border border-[var(--bd-c5d9be)] rounded-2xl flex items-center justify-center mx-auto mb-4">
           <CheckCircle2 className="w-8 h-8" />
         </div>
-        <h2 className="text-2xl font-bold text-[#28231D]">
+        <h2 className="text-2xl font-bold text-[var(--fg-28231d)]">
           Entraînement express réussi !
         </h2>
-        <p className="mt-2 text-sm text-[#695F54] max-w-md mx-auto leading-relaxed">
-          Vous avez maîtrisé vos <strong className="font-semibold text-[#28231D]">{practiceInitialCount} cartes</strong> avec succès. Comme prévu, vos calendriers de répétition espacée FSRS sont restés intacts.
+        <p className="mt-2 text-sm text-[var(--fg-695f54)] max-w-md mx-auto leading-relaxed">
+          Vous avez maîtrisé vos <strong className="font-semibold text-[var(--fg-28231d)]">{practiceInitialCount} cartes</strong> avec succès. Comme prévu, vos calendriers de répétition espacée FSRS sont restés intacts.
         </p>
 
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -450,14 +450,14 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
               setIsFreePractice(false);
               setPracticeFinished(false);
             }}
-            className="w-full sm:w-auto px-5 py-2.5 text-xs font-semibold text-[#FAF7F2] bg-[#3B3026] hover:bg-[#28211A] rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
+            className="w-full sm:w-auto px-5 py-2.5 text-xs font-semibold text-[var(--fg-faf7f2)] bg-[var(--bg-3b3026)] hover:bg-[var(--bg-28211a)] rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Nouvelle session express</span>
           </button>
           <button
             onClick={onClose}
-            className="w-full sm:w-auto px-4 py-2.5 text-xs font-medium text-[#695F54] hover:text-[#28231D] bg-white hover:bg-[#F3EFE8] border border-[#E8E2D5] rounded-lg transition-colors"
+            className="w-full sm:w-auto px-4 py-2.5 text-xs font-medium text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors"
           >
             Retour à la file de lecture
           </button>
@@ -474,16 +474,16 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
       <div className="max-w-2xl mx-auto px-4 py-10">
         {/* Statut session principale */}
         <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-[#F3EFE8] text-[#8C5E32] border border-[#E8E2D5] rounded-2xl flex items-center justify-center mx-auto mb-3">
-            <CheckCircle2 className="w-7 h-7 text-[#5F8550]" />
+          <div className="w-14 h-14 bg-[var(--bg-f3efe8)] text-[var(--fg-8c5e32)] border border-[var(--bd-e8e2d5)] rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <CheckCircle2 className="w-7 h-7 text-[var(--fg-5f8550)]" />
           </div>
-          <h2 className="text-2xl font-bold text-[#28231D]">
+          <h2 className="text-2xl font-bold text-[var(--fg-28231d)]">
             Session de révision du jour terminée !
           </h2>
-          <p className="mt-2 text-xs sm:text-sm text-[#695F54] max-w-md mx-auto leading-relaxed">
+          <p className="mt-2 text-xs sm:text-sm text-[var(--fg-695f54)] max-w-md mx-auto leading-relaxed">
             {sessionCompletedCount > 0 ? (
               <>
-                Vous avez révisé <strong className="font-semibold text-[#28231D]">{sessionCompletedCount} élément{sessionCompletedCount > 1 ? 's' : ''}</strong>. Vos intervalles FSRS ont été mis à jour et espacés dans le futur.
+                Vous avez révisé <strong className="font-semibold text-[var(--fg-28231d)]">{sessionCompletedCount} élément{sessionCompletedCount > 1 ? 's' : ''}</strong>. Vos intervalles FSRS ont été mis à jour et espacés dans le futur.
               </>
             ) : (
               <>
@@ -495,7 +495,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-[#695F54] hover:text-[#28231D] bg-white hover:bg-[#F3EFE8] border border-[#E8E2D5] rounded-lg transition-colors"
+              className="px-4 py-2 text-xs font-medium text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors"
             >
               Retour au lecteur
             </button>
@@ -508,7 +508,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                   setCurrentIndex(0);
                   setReviewAhead(true);
                 }}
-                className="px-4 py-2 text-xs font-medium text-[#695F54] hover:text-[#28231D] bg-white hover:bg-[#F3EFE8] border border-[#E8E2D5] rounded-lg transition-colors flex items-center gap-1.5"
+                className="px-4 py-2 text-xs font-medium text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors flex items-center gap-1.5"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Étude anticipée (FSRS)</span>
@@ -518,20 +518,20 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         </div>
 
         {/* Panneau : Entraînement Express sans reprogrammation */}
-        <div className="bg-white border border-[#E8E2D5] rounded-2xl p-6 sm:p-7 shadow-xs">
-          <div className="flex items-start gap-3.5 pb-4 border-b border-[#F3EFE8]">
-            <div className="w-10 h-10 rounded-xl bg-[#FAF7F2] border border-[#E8E2D5] flex items-center justify-center shrink-0 text-[#8C5E32]">
+        <div className="bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl p-6 sm:p-7 shadow-xs">
+          <div className="flex items-start gap-3.5 pb-4 border-b border-[var(--bd-f3efe8)]">
+            <div className="w-10 h-10 rounded-xl bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] flex items-center justify-center shrink-0 text-[var(--fg-8c5e32)]">
               <Zap className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-semibold text-[#28231D]">
+                <h3 className="text-base font-semibold text-[var(--fg-28231d)]">
                   Entraînement express sans reprogrammation
                 </h3>
               </div>
-              <p className="text-xs text-[#695F54] mt-1 leading-relaxed">
+              <p className="text-xs text-[var(--fg-695f54)] mt-1 leading-relaxed">
                 Révisez librement une sélection aléatoire de vos cartes. 
-                Les cartes notées <strong className="text-[#365A2E]">Bon / Facile</strong> sont retirées dès qu'elles sont maîtrisées. Celles notées <strong className="text-[#8C3A20]">À revoir / Difficile</strong> sont remises dans la file jusqu'à assimilation complète, sans toucher à vos dates FSRS.
+                Les cartes notées <strong className="text-[var(--fg-365a2e)]">Bon / Facile</strong> sont retirées dès qu'elles sont maîtrisées. Celles notées <strong className="text-[var(--fg-8c3a20)]">À revoir / Difficile</strong> sont remises dans la file jusqu'à assimilation complète, sans toucher à vos dates FSRS.
               </p>
             </div>
           </div>
@@ -540,10 +540,10 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
             {/* Nombre de cartes à tirer aléatoirement */}
             <div>
               <div className="flex items-center justify-between text-xs mb-1.5">
-                <label className="font-medium text-[#28231D]">
+                <label className="font-medium text-[var(--fg-28231d)]">
                   Nombre de cartes aléatoires à tirer
                 </label>
-                <span className="text-[#8C8072] font-mono text-[11px]">
+                <span className="text-[var(--fg-8c8072)] font-mono text-[11px]">
                   Disponible : {totalAvailable} élément{totalAvailable > 1 ? 's' : ''}
                 </span>
               </div>
@@ -559,7 +559,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                     if (isNaN(val)) setPracticeCount(1);
                     else setPracticeCount(Math.max(1, Math.min(val, totalAvailable)));
                   }}
-                  className="w-24 px-3 py-2 text-xs font-mono font-semibold bg-[#FAF7F2] border border-[#E8E2D5] rounded-lg text-[#28231D] focus:outline-hidden focus:border-[#8C5E32]"
+                  className="w-24 px-3 py-2 text-xs font-mono font-semibold bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-lg text-[var(--fg-28231d)] focus:outline-hidden focus:border-[var(--bd-8c5e32)]"
                 />
 
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -571,8 +571,8 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                       onClick={() => setPracticeCount(Math.min(preset, totalAvailable))}
                       className={`px-2.5 py-1.5 text-xs rounded-lg border font-mono transition-colors ${
                         practiceCount === preset
-                          ? 'bg-[#3B3026] text-[#FAF7F2] border-[#3B3026]'
-                          : 'bg-white text-[#695F54] border-[#E8E2D5] hover:bg-[#F3EFE8] disabled:opacity-40 disabled:hover:bg-white'
+                          ? 'bg-[var(--bg-3b3026)] text-[var(--fg-faf7f2)] border-[var(--bd-3b3026)]'
+                          : 'bg-[var(--bg-ffffff)] text-[var(--fg-695f54)] border-[var(--bd-e8e2d5)] hover:bg-[var(--bg-f3efe8)] disabled:opacity-40 disabled:hover:bg-[var(--bg-ffffff)]'
                       }`}
                     >
                       {preset}
@@ -585,8 +585,8 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                     onClick={() => setPracticeCount(totalAvailable)}
                     className={`px-2.5 py-1.5 text-xs rounded-lg border font-mono transition-colors ${
                       practiceCount === totalAvailable && totalAvailable > 0
-                        ? 'bg-[#3B3026] text-[#FAF7F2] border-[#3B3026]'
-                        : 'bg-white text-[#695F54] border-[#E8E2D5] hover:bg-[#F3EFE8] disabled:opacity-40'
+                        ? 'bg-[var(--bg-3b3026)] text-[var(--fg-faf7f2)] border-[var(--bd-3b3026)]'
+                        : 'bg-[var(--bg-ffffff)] text-[var(--fg-695f54)] border-[var(--bd-e8e2d5)] hover:bg-[var(--bg-f3efe8)] disabled:opacity-40'
                     }`}
                   >
                     Tout ({totalAvailable})
@@ -601,9 +601,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                 type="button"
                 disabled={totalAvailable === 0}
                 onClick={handleStartFreePractice}
-                className="w-full flex items-center justify-center gap-2 px-5 py-3 text-xs font-semibold text-[#FAF7F2] bg-[#3B3026] hover:bg-[#28211A] disabled:bg-[#D5CEBF] disabled:cursor-not-allowed rounded-xl shadow-xs transition-all cursor-pointer active:scale-[0.99]"
+                className="w-full flex items-center justify-center gap-2 px-5 py-3 text-xs font-semibold text-[var(--fg-faf7f2)] bg-[var(--bg-3b3026)] hover:bg-[var(--bg-28211a)] disabled:bg-[var(--bg-d5cebf)] disabled:cursor-not-allowed rounded-xl shadow-xs transition-all cursor-pointer active:scale-[0.99]"
               >
-                <Shuffle className="w-4 h-4 text-[#DECBB0]" />
+                <Shuffle className="w-4 h-4 text-[var(--fg-decbb0)]" />
                 <span>
                   Lancer l'entraînement express ({Math.min(practiceCount, totalAvailable)} cartes tirées)
                 </span>
@@ -623,10 +623,10 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
       {/* En-tête de session */}
       {isFreePractice ? (
         <div>
-          <div className="flex items-center justify-between text-xs text-[#695F54] mb-3 pb-3 border-b border-[#E8E2D5]">
+          <div className="flex items-center justify-between text-xs text-[var(--fg-695f54)] mb-3 pb-3 border-b border-[var(--bd-e8e2d5)]">
             <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-[#8C5E32]" />
-              <span className="font-semibold text-[#28231D]">
+              <Zap className="w-4 h-4 text-[var(--fg-8c5e32)]" />
+              <span className="font-semibold text-[var(--fg-28231d)]">
                 Entraînement Express (sans reprogrammation)
               </span>
               <span aria-hidden="true">·</span>
@@ -636,7 +636,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
             </div>
 
             <div className="flex items-center gap-3">
-              <span className="text-[11px] bg-[#F3EFE8] text-[#8C5E32] px-2 py-0.5 rounded font-medium border border-[#E8E2D5]">
+              <span className="text-[11px] bg-[var(--bg-f3efe8)] text-[var(--fg-8c5e32)] px-2 py-0.5 rounded font-medium border border-[var(--bd-e8e2d5)]">
                 FSRS préservé
               </span>
               <button
@@ -644,7 +644,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                   setIsFreePractice(false);
                   setPracticeFinished(false);
                 }}
-                className="text-[#8C8072] hover:text-[#28231D] text-xs transition-colors cursor-pointer"
+                className="text-[var(--fg-8c8072)] hover:text-[var(--fg-28231d)] text-xs transition-colors cursor-pointer"
               >
                 Quitter l'entraînement
               </button>
@@ -652,9 +652,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           </div>
 
           {/* Barre de progression de maîtrise de la session */}
-          <div className="w-full bg-[#EAE4D9] h-1.5 rounded-full overflow-hidden mb-6">
+          <div className="w-full bg-[var(--bg-eae4d9)] h-1.5 rounded-full overflow-hidden mb-6">
             <div
-              className="bg-[#8C5E32] h-full transition-all duration-300 rounded-full"
+              className="bg-[var(--bg-8c5e32)] h-full transition-all duration-300 rounded-full"
               style={{
                 width: `${Math.round(
                   (practiceCompletedCount / Math.max(1, practiceInitialCount)) * 100
@@ -664,10 +664,10 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-between text-xs text-[#695F54] mb-6 pb-4 border-b border-[#E8E2D5]">
+        <div className="flex items-center justify-between text-xs text-[var(--fg-695f54)] mb-6 pb-4 border-b border-[var(--bd-e8e2d5)]">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#8C5E32]" />
-            <span className="font-semibold text-[#28231D]">
+            <Sparkles className="w-4 h-4 text-[var(--fg-8c5e32)]" />
+            <span className="font-semibold text-[var(--fg-28231d)]">
               Révision du jour
             </span>
             <span aria-hidden="true">·</span>
@@ -677,7 +677,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="font-mono tabular-nums text-[#8C8072]">
+            <span className="font-mono tabular-nums text-[var(--fg-8c8072)]">
               {isCloze
                 ? currentEntry.fsrs.reps === 0 || currentEntry.fsrs.phase === 'new'
                   ? 'Nouvelle carte'
@@ -686,7 +686,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
             </span>
             <button
               onClick={onClose}
-              className="text-[#8C8072] hover:text-[#28231D] text-xs transition-colors cursor-pointer"
+              className="text-[var(--fg-8c8072)] hover:text-[var(--fg-28231d)] text-xs transition-colors cursor-pointer"
             >
               Quitter
             </button>
@@ -695,12 +695,12 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
       )}
 
       {/* Carte active en blanc et beige */}
-      <div className="p-8 sm:p-12 bg-white border border-[#E8E2D5] rounded-2xl shadow-xs min-h-[340px] flex flex-col justify-between transition-all">
+      <div className="p-8 sm:p-12 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs min-h-[340px] flex flex-col justify-between transition-all">
         <div>
           {/* Métadonnées de l'élément (Zero-pill) */}
-          <div className="flex items-center justify-between text-xs text-[#8C8072] mb-3">
+          <div className="flex items-center justify-between text-xs text-[var(--fg-8c8072)] mb-3">
             <div className="flex items-center gap-2">
-              <span className="text-[11px] uppercase tracking-wider font-semibold text-[#695F54]">
+              <span className="text-[11px] uppercase tracking-wider font-semibold text-[var(--fg-695f54)]">
                 {isCloze ? 'Carte à trou' : 'Extrait à relire'}
               </span>
               <span aria-hidden="true">·</span>
@@ -711,13 +711,13 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                     onClose();
                     onNavigateToDocument(currentEntry.documentId!);
                   }}
-                  className="truncate max-w-[220px] text-[#28231D] font-medium hover:underline text-left cursor-pointer"
+                  className="truncate max-w-[220px] text-[var(--fg-28231d)] font-medium hover:underline text-left cursor-pointer"
                   title="Ouvrir dans le lecteur"
                 >
                   {currentEntry.documentTitle}
                 </button>
               ) : (
-                <span className="truncate max-w-[220px] text-[#28231D] font-medium">
+                <span className="truncate max-w-[220px] text-[var(--fg-28231d)] font-medium">
                   {currentEntry.documentTitle}
                 </span>
               )}
@@ -727,7 +727,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 
           {/* Énoncé de la carte */}
           {isCloze ? (
-            <div className="text-xl sm:text-2xl font-serif-reading text-[#28231D] leading-relaxed font-normal">
+            <div className="text-xl sm:text-2xl font-serif-reading text-[var(--fg-28231d)] leading-relaxed font-normal">
               {renderClozeContent(currentEntry.text, isAnswerRevealed)}
             </div>
           ) : (
@@ -738,7 +738,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                   const sel = getBlockSelection(extractTextRef.current);
                   setExtractSelection(sel && sel.text.trim().length > 1 ? sel : null);
                 }}
-                className="text-lg sm:text-xl font-serif-reading text-[#28231D] leading-relaxed whitespace-pre-line select-text"
+                className="text-lg sm:text-xl font-serif-reading text-[var(--fg-28231d)] leading-relaxed whitespace-pre-line select-text"
               >
                 {currentEntry.text}
               </div>
@@ -746,23 +746,23 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                 <button
                   onClick={handleSubExtract}
                   disabled={!extractSelection}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#3B3026] bg-[#F3EFE8] hover:bg-[#EAE4D9] border border-[#E8E2D5] rounded-lg transition-colors disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[var(--fg-3b3026)] bg-[var(--bg-f3efe8)] hover:bg-[var(--bg-eae4d9)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer"
                   title="Extraire la sélection dans un nouvel extrait plus court (Alt+X)"
                 >
-                  <Scissors className="w-3.5 h-3.5 text-[#8C5E32]" />
+                  <Scissors className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
                   <span>Extraire la sélection</span>
                 </button>
                 <button
                   onClick={handleClozeFromSelection}
                   disabled={!extractSelection}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#3B3026] bg-[#F3EFE8] hover:bg-[#EAE4D9] border border-[#E8E2D5] rounded-lg transition-colors disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[var(--fg-3b3026)] bg-[var(--bg-f3efe8)] hover:bg-[var(--bg-eae4d9)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer"
                   title="Masquer la sélection dans une carte à trou ; la phrase autour sert de contexte (Alt+C)"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-[#8C5E32]" />
+                  <Sparkles className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
                   <span>Carte à trou</span>
                 </button>
                 {!extractSelection && (
-                  <span className="text-[11px] text-[#8C8072]">
+                  <span className="text-[11px] text-[var(--fg-8c8072)]">
                     Sélectionnez un passage (à extraire) ou un mot (à masquer).
                   </span>
                 )}
@@ -772,33 +772,33 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 
           {/* Note révélée */}
           {isCloze && isAnswerRevealed && currentEntry.note && (
-            <div className="mt-6 pt-4 border-t border-[#F3EFE8] text-xs text-[#695F54] leading-relaxed">
-              <span className="font-semibold text-[#28231D]">Note de formulation :</span>{' '}
+            <div className="mt-6 pt-4 border-t border-[var(--bd-f3efe8)] text-xs text-[var(--fg-695f54)] leading-relaxed">
+              <span className="font-semibold text-[var(--fg-28231d)]">Note de formulation :</span>{' '}
               {currentEntry.note}
             </div>
           )}
         </div>
 
         {/* Pied de carte : Révélation ou 4 évaluations en beige/blanc */}
-        <div className="mt-12 pt-6 border-t border-[#F3EFE8]">
+        <div className="mt-12 pt-6 border-t border-[var(--bd-f3efe8)]">
           {!isCloze ? (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-              <span className="text-xs text-[#8C8072] hidden sm:inline">
-                <kbd className="px-1.5 py-0.5 bg-[#F3EFE8] border border-[#E8E2D5] rounded font-mono text-[10px]">Entrée</kbd> pour passer à la suite
+              <span className="text-xs text-[var(--fg-8c8072)] hidden sm:inline">
+                <kbd className="px-1.5 py-0.5 bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded font-mono text-[10px]">Entrée</kbd> pour passer à la suite
               </span>
               <div className="flex flex-wrap items-center justify-end gap-2">
                 {confirmRetire ? (
                   <span className="flex items-center gap-1.5 text-xs">
-                    <span className="text-[#695F54]">Retirer cet extrait de la file ?</span>
+                    <span className="text-[var(--fg-695f54)]">Retirer cet extrait de la file ?</span>
                     <button
                       onClick={handleRetireExtract}
-                      className="px-3 py-2 font-semibold text-white bg-[#5F8550] hover:bg-[#4E7042] rounded-lg cursor-pointer"
+                      className="px-3 py-2 font-semibold text-white bg-[var(--bg-5f8550)] hover:bg-[var(--bg-4e7042)] rounded-lg cursor-pointer"
                     >
                       Oui, terminé
                     </button>
                     <button
                       onClick={() => setConfirmRetire(false)}
-                      className="px-2.5 py-2 text-[#695F54] hover:bg-[#F3EFE8] rounded-lg cursor-pointer"
+                      className="px-2.5 py-2 text-[var(--fg-695f54)] hover:bg-[var(--bg-f3efe8)] rounded-lg cursor-pointer"
                     >
                       Annuler
                     </button>
@@ -806,7 +806,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                 ) : (
                   <button
                     onClick={() => setConfirmRetire(true)}
-                    className="px-3.5 py-2 text-xs text-[#695F54] hover:text-[#28231D] bg-white hover:bg-[#F3EFE8] border border-[#E8E2D5] rounded-lg transition-colors cursor-pointer"
+                    className="px-3.5 py-2 text-xs text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors cursor-pointer"
                     title="Extrait entièrement traité (ses cartes restent)"
                   >
                     Terminer cet extrait
@@ -814,7 +814,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                 )}
                 <button
                   onClick={handleExtractNext}
-                  className="flex items-center gap-2 px-5 py-2.5 text-xs font-semibold text-[#FAF7F2] bg-[#3B3026] hover:bg-[#28211A] rounded-lg shadow-xs transition-colors cursor-pointer"
+                  className="flex items-center gap-2 px-5 py-2.5 text-xs font-semibold text-[var(--fg-faf7f2)] bg-[var(--bg-3b3026)] hover:bg-[var(--bg-28211a)] rounded-lg shadow-xs transition-colors cursor-pointer"
                 >
                   <span>
                     Suivant · revoir dans {formatInterval(nextTopicInterval(currentEntry.fsrs, currentEntry.priority))}
@@ -825,12 +825,12 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
             </div>
           ) : !isAnswerRevealed ? (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-              <span className="text-xs text-[#8C8072] hidden sm:inline">
-                Appuyez sur <kbd className="px-1.5 py-0.5 bg-[#F3EFE8] border border-[#E8E2D5] rounded font-mono text-[10px]">Espace</kbd> pour afficher la réponse
+              <span className="text-xs text-[var(--fg-8c8072)] hidden sm:inline">
+                Appuyez sur <kbd className="px-1.5 py-0.5 bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded font-mono text-[10px]">Espace</kbd> pour afficher la réponse
               </span>
               <button
                 onClick={() => setIsAnswerRevealed(true)}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-semibold text-[#FAF7F2] bg-[#3B3026] hover:bg-[#28211A] rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-semibold text-[var(--fg-faf7f2)] bg-[var(--bg-3b3026)] hover:bg-[var(--bg-28211a)] rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
               >
                 <Eye className="w-4 h-4" />
                 <span>Afficher la réponse</span>
@@ -838,7 +838,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
             </div>
           ) : (
             <div>
-              <div className="text-center text-xs text-[#8C8072] mb-3 font-mono">
+              <div className="text-center text-xs text-[var(--fg-8c8072)] mb-3 font-mono">
                 {isFreePractice
                   ? 'Évaluez (1 et 2 remettent dans la file, 3 et 4 retirent la carte maîtrisée) :'
                   : 'Évaluez la difficulté de rappel FSRS (1 à 4 au clavier) :'}
@@ -850,7 +850,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                   {/* 1: À revoir -> Remis dans la file */}
                   <button
                     onClick={() => handleRate(1)}
-                    className="flex flex-col items-center justify-center py-2.5 px-3 bg-[#FDF3EE] hover:bg-[#F9E5DC] border border-[#E9C5B7] text-[#8C3A20] rounded-xl transition-all cursor-pointer active:scale-95"
+                    className="flex flex-col items-center justify-center py-2.5 px-3 bg-[var(--bg-fdf3ee)] hover:bg-[var(--bg-f9e5dc)] border border-[var(--bd-e9c5b7)] text-[var(--fg-8c3a20)] rounded-xl transition-all cursor-pointer active:scale-95"
                     title="Remis dans la liste d'entraînement"
                   >
                     <span className="text-xs font-semibold">1 · À revoir</span>
@@ -862,7 +862,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                   {/* 2: Difficile -> Remis en fin de file */}
                   <button
                     onClick={() => handleRate(2)}
-                    className="flex flex-col items-center justify-center py-2.5 px-3 bg-[#FCF7EB] hover:bg-[#F8EED1] border border-[#E4D1A0] text-[#7A5415] rounded-xl transition-all cursor-pointer active:scale-95"
+                    className="flex flex-col items-center justify-center py-2.5 px-3 bg-[var(--bg-fcf7eb)] hover:bg-[var(--bg-f8eed1)] border border-[var(--bd-e4d1a0)] text-[var(--fg-7a5415)] rounded-xl transition-all cursor-pointer active:scale-95"
                     title="Remis en fin de file d'entraînement"
                   >
                     <span className="text-xs font-semibold">2 · Difficile</span>
@@ -874,7 +874,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                   {/* 3: Bon -> Disparaît de la liste */}
                   <button
                     onClick={() => handleRate(3)}
-                    className="flex flex-col items-center justify-center py-2.5 px-3 bg-[#F4F7F2] hover:bg-[#E8F0E4] border border-[#C5D9BE] text-[#365A2E] rounded-xl transition-all cursor-pointer active:scale-95"
+                    className="flex flex-col items-center justify-center py-2.5 px-3 bg-[var(--bg-f4f7f2)] hover:bg-[var(--bg-e8f0e4)] border border-[var(--bd-c5d9be)] text-[var(--fg-365a2e)] rounded-xl transition-all cursor-pointer active:scale-95"
                     title="Maîtrisé : sort de la liste"
                   >
                     <span className="text-xs font-semibold">3 · Bon</span>
@@ -886,7 +886,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                   {/* 4: Facile -> Disparaît de la liste */}
                   <button
                     onClick={() => handleRate(4)}
-                    className="flex flex-col items-center justify-center py-2.5 px-3 bg-[#F3EFE8] hover:bg-[#EAE4D7] border border-[#DFD6C5] text-[#3B3026] rounded-xl transition-all cursor-pointer active:scale-95"
+                    className="flex flex-col items-center justify-center py-2.5 px-3 bg-[var(--bg-f3efe8)] hover:bg-[var(--bg-eae4d7)] border border-[var(--bd-dfd6c5)] text-[var(--fg-3b3026)] rounded-xl transition-all cursor-pointer active:scale-95"
                     title="Très facile : sort de la liste"
                   >
                     <span className="text-xs font-semibold">4 · Très facile</span>
@@ -901,7 +901,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                   {/* 1: À revoir */}
                   <button
                     onClick={() => handleRate(1)}
-                    className="flex flex-col items-center justify-center py-2.5 px-3 bg-[#FDF3EE] hover:bg-[#F9E5DC] border border-[#E9C5B7] text-[#8C3A20] rounded-xl transition-all cursor-pointer"
+                    className="flex flex-col items-center justify-center py-2.5 px-3 bg-[var(--bg-fdf3ee)] hover:bg-[var(--bg-f9e5dc)] border border-[var(--bd-e9c5b7)] text-[var(--fg-8c3a20)] rounded-xl transition-all cursor-pointer"
                   >
                     <span className="text-xs font-semibold">1 · À revoir</span>
                     <span className="text-[11px] font-mono opacity-80 mt-0.5">
@@ -912,7 +912,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                   {/* 2: Difficile */}
                   <button
                     onClick={() => handleRate(2)}
-                    className="flex flex-col items-center justify-center py-2.5 px-3 bg-[#FCF7EB] hover:bg-[#F8EED1] border border-[#E4D1A0] text-[#7A5415] rounded-xl transition-all cursor-pointer"
+                    className="flex flex-col items-center justify-center py-2.5 px-3 bg-[var(--bg-fcf7eb)] hover:bg-[var(--bg-f8eed1)] border border-[var(--bd-e4d1a0)] text-[var(--fg-7a5415)] rounded-xl transition-all cursor-pointer"
                   >
                     <span className="text-xs font-semibold">2 · Difficile</span>
                     <span className="text-[11px] font-mono opacity-80 mt-0.5">
@@ -923,7 +923,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                   {/* 3: Bon */}
                   <button
                     onClick={() => handleRate(3)}
-                    className="flex flex-col items-center justify-center py-2.5 px-3 bg-[#F4F7F2] hover:bg-[#E8F0E4] border border-[#C5D9BE] text-[#365A2E] rounded-xl transition-all cursor-pointer"
+                    className="flex flex-col items-center justify-center py-2.5 px-3 bg-[var(--bg-f4f7f2)] hover:bg-[var(--bg-e8f0e4)] border border-[var(--bd-c5d9be)] text-[var(--fg-365a2e)] rounded-xl transition-all cursor-pointer"
                   >
                     <span className="text-xs font-semibold">3 · Bon</span>
                     <span className="text-[11px] font-mono opacity-80 mt-0.5">
@@ -934,7 +934,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                   {/* 4: Facile */}
                   <button
                     onClick={() => handleRate(4)}
-                    className="flex flex-col items-center justify-center py-2.5 px-3 bg-[#F3EFE8] hover:bg-[#EAE4D7] border border-[#DFD6C5] text-[#3B3026] rounded-xl transition-all cursor-pointer"
+                    className="flex flex-col items-center justify-center py-2.5 px-3 bg-[var(--bg-f3efe8)] hover:bg-[var(--bg-eae4d7)] border border-[var(--bd-dfd6c5)] text-[var(--fg-3b3026)] rounded-xl transition-all cursor-pointer"
                   >
                     <span className="text-xs font-semibold">4 · Facile</span>
                     <span className="text-[11px] font-mono opacity-80 mt-0.5">
@@ -952,11 +952,11 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           role={toast.error ? 'alert' : 'status'}
           className={`fixed bottom-6 right-6 z-50 max-w-sm flex items-start gap-2 px-4 py-2.5 rounded-xl shadow-lg text-xs font-medium border ${
             toast.error
-              ? 'bg-[#FDF2F0] text-[#8F352B] border-[#F2D6D3]'
-              : 'bg-[#28231D] text-[#FAF7F2] border-[#3E3831]'
+              ? 'bg-[var(--bg-fdf2f0)] text-[var(--fg-8f352b)] border-[var(--bd-f2d6d3)]'
+              : 'bg-[var(--bg-28231d)] text-[var(--fg-faf7f2)] border-[var(--bd-3e3831)]'
           }`}
         >
-          {!toast.error && <Check className="w-4 h-4 shrink-0 text-[#8EB87D]" />}
+          {!toast.error && <Check className="w-4 h-4 shrink-0 text-[var(--fg-8eb87d)]" />}
           <span>{toast.message}</span>
         </div>
       )}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { DocumentItem, ExtractItem, ClozeItem } from '../types/gemma';
+import { matchesQuery } from '../lib/search';
 import {
   Search,
   BookOpen,
@@ -82,13 +83,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   const filteredDocs = documents.filter((doc) => {
     if (selectedTag !== 'all' && !doc.tags.includes(selectedTag)) return false;
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return (
-        doc.title.toLowerCase().includes(q) ||
-        (doc.author && doc.author.toLowerCase().includes(q)) ||
-        doc.tags.some((t) => t.toLowerCase().includes(q)) ||
-        doc.content.toLowerCase().includes(q)
-      );
+      return matchesQuery(searchQuery, [doc.title, doc.author, ...doc.tags, doc.content]);
     }
     return true;
   });
@@ -96,12 +91,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   const filteredExtracts = extracts.filter((ext) => {
     if (selectedTag !== 'all' && !ext.tags.includes(selectedTag)) return false;
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return (
-        ext.text.toLowerCase().includes(q) ||
-        ext.documentTitle.toLowerCase().includes(q) ||
-        ext.tags.some((t) => t.toLowerCase().includes(q))
-      );
+      return matchesQuery(searchQuery, [ext.text, ext.note, ext.documentTitle, ...ext.tags]);
     }
     return true;
   });
@@ -109,12 +99,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   const filteredClozes = clozes.filter((clz) => {
     if (selectedTag !== 'all' && !clz.tags.includes(selectedTag)) return false;
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return (
-        clz.text.toLowerCase().includes(q) ||
-        (clz.documentTitle && clz.documentTitle.toLowerCase().includes(q)) ||
-        clz.tags.some((t) => t.toLowerCase().includes(q))
-      );
+      return matchesQuery(searchQuery, [clz.text, clz.note, clz.documentTitle, ...clz.tags]);
     }
     return true;
   });
@@ -122,27 +107,24 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   const handleDeleteDocConfirm = (docId: string) => {
     onDeleteDocument(docId);
     setPendingDeleteId(null);
-    showToast('Document et fiches associées supprimés de la bibliothèque et de la file !');
   };
 
   const handleDeleteExtractConfirm = (extId: string) => {
     onDeleteExtract(extId);
     setPendingDeleteId(null);
-    showToast('Extrait supprimé de la bibliothèque et de la file de lecture !');
   };
 
   const handleDeleteClozeConfirm = (clzId: string) => {
     onDeleteCloze(clzId);
     setPendingDeleteId(null);
-    showToast('Carte cloze supprimée de la bibliothèque et de la file de révision !');
   };
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
       {/* En-tête */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 pb-6 border-b border-[#E8E2D5]">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 pb-6 border-b border-[var(--bd-e8e2d5)]">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#28231D]">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--fg-28231d)]">
             Bibliothèque de connaissances
           </h1>
         </div>
@@ -151,7 +133,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           <button
             onClick={handleSimulateIndex}
             disabled={simulatedIndexing}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#695F54] hover:text-[#28231D] bg-white hover:bg-[#F3EFE8] border border-[#E8E2D5] rounded-lg transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors cursor-pointer"
             title="Indexer un dossier ou vault local"
           >
             <FolderSync className={`w-3.5 h-3.5 ${simulatedIndexing ? 'animate-spin' : ''}`} />
@@ -160,7 +142,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
           <button
             onClick={onExportBackup}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#695F54] hover:text-[#28231D] bg-white hover:bg-[#F3EFE8] border border-[#E8E2D5] rounded-lg transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors cursor-pointer"
             title="Exporter la sauvegarde JSON"
           >
             <Download className="w-3.5 h-3.5" />
@@ -169,7 +151,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
           <button
             onClick={onOpenImport}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-[#8C5E32] hover:bg-[#774D27] rounded-lg shadow-xs transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg shadow-xs transition-all cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Importer un document</span>
@@ -178,18 +160,18 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
       </div>
 
       {/* Sélecteur de mode de vue : Arborescence des dossiers VS Vue Fiches */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#E8E2D5]">
-        <div className="flex items-center gap-1.5 p-1 bg-[#F3EFE8] border border-[#E8E2D5] rounded-xl text-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[var(--bd-e8e2d5)]">
+        <div className="flex items-center gap-1.5 p-1 bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-xl text-xs">
           <button
             type="button"
             onClick={() => setLibraryViewMode('tree')}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
               libraryViewMode === 'tree'
-                ? 'bg-white text-[#28231D] font-semibold shadow-xs'
-                : 'text-[#695F54] hover:text-[#28231D]'
+                ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] font-semibold shadow-xs'
+                : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
             }`}
           >
-            <FolderTree className="w-3.5 h-3.5 text-[#8C5E32]" />
+            <FolderTree className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
             <span>Arborescence des dossiers</span>
           </button>
 
@@ -198,16 +180,16 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             onClick={() => setLibraryViewMode('grid')}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
               libraryViewMode === 'grid'
-                ? 'bg-white text-[#28231D] font-semibold shadow-xs'
-                : 'text-[#695F54] hover:text-[#28231D]'
+                ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] font-semibold shadow-xs'
+                : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
             }`}
           >
-            <LayoutGrid className="w-3.5 h-3.5 text-[#8C5E32]" />
+            <LayoutGrid className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
             <span>Vue Fiches & Grille</span>
           </button>
         </div>
 
-        <p className="text-xs text-[#8C8072]">
+        <p className="text-xs text-[var(--fg-8c8072)]">
           {libraryViewMode === 'tree'
             ? 'Explorateur hiérarchique : Dossiers > Documents > Extraits > Clozes FSRS'
             : 'Affichage des objets par typologie'}
@@ -232,7 +214,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
       ) : (
         <>
           {/* Onglets des types d'objets (Documents, Extraits, Clozes) */}
-          <div className="flex items-center gap-2 mb-6 border-b border-[#E8E2D5] pb-3 overflow-x-auto">
+          <div className="flex items-center gap-2 mb-6 border-b border-[var(--bd-e8e2d5)] pb-3 overflow-x-auto">
         <button
           onClick={() => {
             setObjectTab('documents');
@@ -240,8 +222,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           }}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
             objectTab === 'documents'
-              ? 'bg-[#3B3026] text-[#FAF7F2] font-semibold shadow-xs'
-              : 'bg-white border border-[#E8E2D5] text-[#695F54] hover:bg-[#F3EFE8]'
+              ? 'bg-[var(--bg-3b3026)] text-[var(--fg-faf7f2)] font-semibold shadow-xs'
+              : 'bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] text-[var(--fg-695f54)] hover:bg-[var(--bg-f3efe8)]'
           }`}
         >
           <BookOpen className="w-3.5 h-3.5" />
@@ -255,8 +237,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           }}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
             objectTab === 'extracts'
-              ? 'bg-[#3B3026] text-[#FAF7F2] font-semibold shadow-xs'
-              : 'bg-white border border-[#E8E2D5] text-[#695F54] hover:bg-[#F3EFE8]'
+              ? 'bg-[var(--bg-3b3026)] text-[var(--fg-faf7f2)] font-semibold shadow-xs'
+              : 'bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] text-[var(--fg-695f54)] hover:bg-[var(--bg-f3efe8)]'
           }`}
         >
           <FileText className="w-3.5 h-3.5" />
@@ -270,8 +252,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           }}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
             objectTab === 'clozes'
-              ? 'bg-[#3B3026] text-[#FAF7F2] font-semibold shadow-xs'
-              : 'bg-white border border-[#E8E2D5] text-[#695F54] hover:bg-[#F3EFE8]'
+              ? 'bg-[var(--bg-3b3026)] text-[var(--fg-faf7f2)] font-semibold shadow-xs'
+              : 'bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] text-[var(--fg-695f54)] hover:bg-[var(--bg-f3efe8)]'
           }`}
         >
           <Sparkles className="w-3.5 h-3.5" />
@@ -281,13 +263,13 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
       {/* Barre de filtres et recherche */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-1 p-1 bg-[#F3EFE8] border border-[#E8E2D5] rounded-lg overflow-x-auto text-xs">
+        <div className="flex items-center gap-1 p-1 bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg overflow-x-auto text-xs">
           <button
             onClick={() => setSelectedTag('all')}
             className={`px-3 py-1 rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
               selectedTag === 'all'
-                ? 'bg-white text-[#28231D] font-semibold shadow-xs'
-                : 'text-[#695F54] hover:text-[#28231D]'
+                ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] font-semibold shadow-xs'
+                : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
             }`}
           >
             Tous les tags ({allTags.length})
@@ -298,8 +280,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
               onClick={() => setSelectedTag(t)}
               className={`px-3 py-1 rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 selectedTag === t
-                  ? 'bg-white text-[#28231D] font-semibold shadow-xs'
-                  : 'text-[#695F54] hover:text-[#28231D]'
+                  ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] font-semibold shadow-xs'
+                  : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
               }`}
             >
               {t}
@@ -308,13 +290,13 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
         </div>
 
         <div className="relative w-full sm:w-64">
-          <Search className="w-4 h-4 text-[#8C8072] absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-[var(--fg-8c8072)] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Rechercher par mot-clé..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-[#E8E2D5] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#8C5E32] text-[#28231D] placeholder-[#8C8072]"
+            className="w-full pl-9 pr-3 py-1.5 text-xs bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--bd-8c5e32)] text-[var(--fg-28231d)] placeholder-[var(--fg-8c8072)]"
           />
         </div>
       </div>
@@ -323,12 +305,12 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
       {objectTab === 'documents' && (
         <div>
           {filteredDocs.length === 0 ? (
-            <div className="p-12 text-center border border-dashed border-[#DDD6C8] rounded-xl bg-white/60">
-              <Layers className="w-10 h-10 mx-auto text-[#9E9385] mb-3" />
-              <h3 className="text-base font-semibold text-[#28231D]">
+            <div className="p-12 text-center border border-dashed border-[var(--bd-ddd6c8)] rounded-xl bg-[var(--bg-ffffff)]/60">
+              <Layers className="w-10 h-10 mx-auto text-[var(--fg-9e9385)] mb-3" />
+              <h3 className="text-base font-semibold text-[var(--fg-28231d)]">
                 Aucun document correspondant
               </h3>
-              <p className="text-xs text-[#695F54] max-w-sm mx-auto mt-1 mb-4">
+              <p className="text-xs text-[var(--fg-695f54)] max-w-sm mx-auto mt-1 mb-4">
                 Importez un article ou réinitialisez votre recherche.
               </p>
             </div>
@@ -337,11 +319,11 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
               {filteredDocs.map((doc) => (
                 <div
                   key={doc.id}
-                  className="p-5 bg-white border border-[#E8E2D5] rounded-2xl hover:border-[#D6CDBC] transition-all flex flex-col justify-between shadow-xs"
+                  className="p-5 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl hover:border-[var(--bd-d6cdbc)] transition-all flex flex-col justify-between shadow-xs"
                 >
                   <div>
-                    <div className="flex items-center justify-between text-xs text-[#8C8072] mb-2">
-                      <span className="font-semibold text-[#8C5E32] uppercase tracking-wider text-[10px]">
+                    <div className="flex items-center justify-between text-xs text-[var(--fg-8c8072)] mb-2">
+                      <span className="font-semibold text-[var(--fg-8c5e32)] uppercase tracking-wider text-[10px]">
                         {doc.format}
                       </span>
                       <span className="font-mono tabular-nums">Priorité : {doc.priority}%</span>
@@ -349,30 +331,30 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
                     <h3
                       onClick={() => onSelectDocument(doc)}
-                      className="text-base font-semibold text-[#28231D] hover:text-[#8C5E32] cursor-pointer line-clamp-2 transition-colors font-serif-reading"
+                      className="text-base font-semibold text-[var(--fg-28231d)] hover:text-[var(--fg-8c5e32)] cursor-pointer line-clamp-2 transition-colors font-serif-reading"
                     >
                       {doc.title}
                     </h3>
 
                     {doc.author && (
-                      <div className="text-xs text-[#695F54] mt-1">
+                      <div className="text-xs text-[var(--fg-695f54)] mt-1">
                         Par {doc.author}
                       </div>
                     )}
 
-                    <p className="mt-2 text-xs text-[#695F54] line-clamp-3 leading-relaxed">
+                    <p className="mt-2 text-xs text-[var(--fg-695f54)] line-clamp-3 leading-relaxed">
                       {doc.content.slice(0, 150).replace(/[#*`_]/g, '')}...
                     </p>
                   </div>
 
-                  <div className="mt-6 pt-4 border-t border-[#F3EFE8]">
-                    <div className="flex items-center justify-between text-[11px] text-[#8C8072] mb-1.5">
+                  <div className="mt-6 pt-4 border-t border-[var(--bd-f3efe8)]">
+                    <div className="flex items-center justify-between text-[11px] text-[var(--fg-8c8072)] mb-1.5">
                       <span>Progression de lecture</span>
                       <span className="font-mono tabular-nums">{doc.readingProgress || 0}%</span>
                     </div>
-                    <div className="w-full bg-[#F3EFE8] h-1 rounded-full overflow-hidden mb-4">
+                    <div className="w-full bg-[var(--bg-f3efe8)] h-1 rounded-full overflow-hidden mb-4">
                       <div
-                        className="bg-[#8C5E32] h-1 rounded-full"
+                        className="bg-[var(--bg-8c5e32)] h-1 rounded-full"
                         style={{ width: `${doc.readingProgress || 0}%` }}
                       />
                     </div>
@@ -380,7 +362,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                     <div className="flex items-center justify-between">
                       <button
                         onClick={() => onSelectDocument(doc)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#8C5E32] hover:bg-[#774D27] rounded-lg transition-colors cursor-pointer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg transition-colors cursor-pointer"
                       >
                         <BookOpen className="w-3.5 h-3.5" />
                         <span>Lire</span>
@@ -393,7 +375,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                             target="_blank"
                             rel="noreferrer"
                             title="Ouvrir le lien source"
-                            className="p-1.5 text-[#8C8072] hover:text-[#28231D] rounded"
+                            className="p-1.5 text-[var(--fg-8c8072)] hover:text-[var(--fg-28231d)] rounded"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>
@@ -403,7 +385,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                           <button
                             onClick={() => setDocumentToEdit(doc)}
                             title="Modifier ce document (texte, tags, auteur, priorité)"
-                            className="p-1.5 text-[#8C8072] hover:text-[#8C5E32] rounded transition-colors cursor-pointer"
+                            className="p-1.5 text-[var(--fg-8c8072)] hover:text-[var(--fg-8c5e32)] rounded transition-colors cursor-pointer"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
@@ -420,7 +402,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                             </button>
                             <button
                               onClick={() => setPendingDeleteId(null)}
-                              className="px-2 py-1 text-[10px] text-[#695F54] hover:text-[#28231D] rounded cursor-pointer"
+                              className="px-2 py-1 text-[10px] text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] rounded cursor-pointer"
                             >
                               Annuler
                             </button>
@@ -429,7 +411,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                           <button
                             onClick={() => setPendingDeleteId(doc.id)}
                             title="Supprimer ce document et retirer ses éléments de la file de lecture"
-                            className="p-1.5 text-[#8C8072] hover:text-red-600 rounded transition-colors cursor-pointer"
+                            className="p-1.5 text-[var(--fg-8c8072)] hover:text-red-600 rounded transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -448,12 +430,12 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
       {objectTab === 'extracts' && (
         <div>
           {filteredExtracts.length === 0 ? (
-            <div className="p-12 text-center border border-dashed border-[#DDD6C8] rounded-xl bg-white/60">
-              <FileText className="w-10 h-10 mx-auto text-[#9E9385] mb-3" />
-              <h3 className="text-base font-semibold text-[#28231D]">
+            <div className="p-12 text-center border border-dashed border-[var(--bd-ddd6c8)] rounded-xl bg-[var(--bg-ffffff)]/60">
+              <FileText className="w-10 h-10 mx-auto text-[var(--fg-9e9385)] mb-3" />
+              <h3 className="text-base font-semibold text-[var(--fg-28231d)]">
                 Aucun extrait enregistré
               </h3>
-              <p className="text-xs text-[#695F54] max-w-sm mx-auto mt-1 mb-4">
+              <p className="text-xs text-[var(--fg-695f54)] max-w-sm mx-auto mt-1 mb-4">
                 Surlignez du texte dans le lecteur pour extraire des passages clés dans votre file.
               </p>
             </div>
@@ -465,36 +447,36 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 return (
                   <div
                     key={ext.id}
-                    className="p-5 bg-white border border-[#E8E2D5] rounded-2xl hover:border-[#D6CDBC] transition-all flex flex-col justify-between shadow-xs"
+                    className="p-5 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl hover:border-[var(--bd-d6cdbc)] transition-all flex flex-col justify-between shadow-xs"
                   >
                     <div>
-                      <div className="flex items-center justify-between text-xs text-[#8C8072] mb-2">
-                        <span className="font-semibold text-[#8C5E32] uppercase tracking-wider text-[10px]">
+                      <div className="flex items-center justify-between text-xs text-[var(--fg-8c8072)] mb-2">
+                        <span className="font-semibold text-[var(--fg-8c5e32)] uppercase tracking-wider text-[10px]">
                           Extrait Incrémental
                         </span>
                         <span className="font-mono tabular-nums">Prio : {ext.priority}%</span>
                       </div>
 
-                      <div className="text-xs text-[#695F54] mb-2 font-medium">
+                      <div className="text-xs text-[var(--fg-695f54)] mb-2 font-medium">
                         Document source : {ext.documentTitle}
                       </div>
 
-                      <p className="text-xs sm:text-sm text-[#28231D] italic leading-relaxed line-clamp-4 font-serif-reading">
+                      <p className="text-xs sm:text-sm text-[var(--fg-28231d)] italic leading-relaxed line-clamp-4 font-serif-reading">
                         « {ext.text} »
                       </p>
                     </div>
 
-                    <div className="mt-6 pt-4 border-t border-[#F3EFE8] flex items-center justify-between">
+                    <div className="mt-6 pt-4 border-t border-[var(--bd-f3efe8)] flex items-center justify-between">
                       {parentDoc ? (
                         <button
                           onClick={() => onSelectDocument(parentDoc)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#3B3026] bg-[#F3EFE8] hover:bg-[#EAE4D9] border border-[#E8E2D5] rounded-lg transition-colors cursor-pointer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[var(--fg-3b3026)] bg-[var(--bg-f3efe8)] hover:bg-[var(--bg-eae4d9)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors cursor-pointer"
                         >
-                          <BookOpen className="w-3.5 h-3.5 text-[#8C5E32]" />
+                          <BookOpen className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
                           <span>Voir dans le document</span>
                         </button>
                       ) : (
-                        <span className="text-[11px] text-[#8C8072]">Fiche autonome</span>
+                        <span className="text-[11px] text-[var(--fg-8c8072)]">Fiche autonome</span>
                       )}
 
                       <div>
@@ -509,7 +491,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                             </button>
                             <button
                               onClick={() => setPendingDeleteId(null)}
-                              className="px-2 py-1 text-[10px] text-[#695F54] hover:text-[#28231D] rounded cursor-pointer"
+                              className="px-2 py-1 text-[10px] text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] rounded cursor-pointer"
                             >
                               Annuler
                             </button>
@@ -518,7 +500,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                           <button
                             onClick={() => setPendingDeleteId(ext.id)}
                             title="Supprimer cet extrait et le retirer de la file"
-                            className="p-1.5 text-[#8C8072] hover:text-red-600 rounded transition-colors cursor-pointer"
+                            className="p-1.5 text-[var(--fg-8c8072)] hover:text-red-600 rounded transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -537,12 +519,12 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
       {objectTab === 'clozes' && (
         <div>
           {filteredClozes.length === 0 ? (
-            <div className="p-12 text-center border border-dashed border-[#DDD6C8] rounded-xl bg-white/60">
-              <Sparkles className="w-10 h-10 mx-auto text-[#9E9385] mb-3" />
-              <h3 className="text-base font-semibold text-[#28231D]">
+            <div className="p-12 text-center border border-dashed border-[var(--bd-ddd6c8)] rounded-xl bg-[var(--bg-ffffff)]/60">
+              <Sparkles className="w-10 h-10 mx-auto text-[var(--fg-9e9385)] mb-3" />
+              <h3 className="text-base font-semibold text-[var(--fg-28231d)]">
                 Aucune carte cloze enregistrée
               </h3>
-              <p className="text-xs text-[#695F54] max-w-sm mx-auto mt-1 mb-4">
+              <p className="text-xs text-[var(--fg-695f54)] max-w-sm mx-auto mt-1 mb-4">
                 Créez des cartes à trou depuis le lecteur ou vos extraits pour alimenter vos révisions FSRS.
               </p>
             </div>
@@ -554,44 +536,44 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 return (
                   <div
                     key={clz.id}
-                    className="p-5 bg-white border border-[#E8E2D5] rounded-2xl hover:border-[#D6CDBC] transition-all flex flex-col justify-between shadow-xs"
+                    className="p-5 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl hover:border-[var(--bd-d6cdbc)] transition-all flex flex-col justify-between shadow-xs"
                   >
                     <div>
-                      <div className="flex items-center justify-between text-xs text-[#8C8072] mb-2">
-                        <span className="font-semibold text-[#8C5E32] uppercase tracking-wider text-[10px]">
+                      <div className="flex items-center justify-between text-xs text-[var(--fg-8c8072)] mb-2">
+                        <span className="font-semibold text-[var(--fg-8c5e32)] uppercase tracking-wider text-[10px]">
                           Carte Cloze (FSRS)
                         </span>
                         <span className="font-mono tabular-nums">Prio : {clz.priority}%</span>
                       </div>
 
                       {clz.documentTitle && (
-                        <div className="text-xs text-[#695F54] mb-2 font-medium">
+                        <div className="text-xs text-[var(--fg-695f54)] mb-2 font-medium">
                           Source : {clz.documentTitle}
                         </div>
                       )}
 
-                      <p className="text-xs sm:text-sm text-[#28231D] leading-relaxed line-clamp-4 font-serif-reading font-medium">
+                      <p className="text-xs sm:text-sm text-[var(--fg-28231d)] leading-relaxed line-clamp-4 font-serif-reading font-medium">
                         {clz.text}
                       </p>
 
                       {clz.note && (
-                        <p className="text-[11px] text-[#8C8072] mt-2 italic">
+                        <p className="text-[11px] text-[var(--fg-8c8072)] mt-2 italic">
                           Note : {clz.note}
                         </p>
                       )}
                     </div>
 
-                    <div className="mt-6 pt-4 border-t border-[#F3EFE8] flex items-center justify-between">
+                    <div className="mt-6 pt-4 border-t border-[var(--bd-f3efe8)] flex items-center justify-between">
                       {parentDoc ? (
                         <button
                           onClick={() => onSelectDocument(parentDoc)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#3B3026] bg-[#F3EFE8] hover:bg-[#EAE4D9] border border-[#E8E2D5] rounded-lg transition-colors cursor-pointer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[var(--fg-3b3026)] bg-[var(--bg-f3efe8)] hover:bg-[var(--bg-eae4d9)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors cursor-pointer"
                         >
-                          <BookOpen className="w-3.5 h-3.5 text-[#8C5E32]" />
+                          <BookOpen className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
                           <span>Voir dans le document</span>
                         </button>
                       ) : (
-                        <span className="text-[11px] text-[#8C8072]">Item FSRS atomique</span>
+                        <span className="text-[11px] text-[var(--fg-8c8072)]">Item FSRS atomique</span>
                       )}
 
                       <div>
@@ -606,7 +588,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                             </button>
                             <button
                               onClick={() => setPendingDeleteId(null)}
-                              className="px-2 py-1 text-[10px] text-[#695F54] hover:text-[#28231D] rounded cursor-pointer"
+                              className="px-2 py-1 text-[10px] text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] rounded cursor-pointer"
                             >
                               Annuler
                             </button>
@@ -615,7 +597,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                           <button
                             onClick={() => setPendingDeleteId(clz.id)}
                             title="Supprimer cette carte cloze et la retirer de la file"
-                            className="p-1.5 text-[#8C8072] hover:text-red-600 rounded transition-colors cursor-pointer"
+                            className="p-1.5 text-[var(--fg-8c8072)] hover:text-red-600 rounded transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -634,8 +616,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
       {/* Toast in-app */}
       {inAppToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 bg-[#28231D] text-[#FAF7F2] rounded-xl shadow-lg text-xs font-medium border border-[#3E3831] animate-in slide-in-from-bottom-2">
-          <Check className="w-4 h-4 text-[#8EB87D]" />
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 bg-[var(--bg-28231d)] text-[var(--fg-faf7f2)] rounded-xl shadow-lg text-xs font-medium border border-[var(--bd-3e3831)] animate-in slide-in-from-bottom-2">
+          <Check className="w-4 h-4 text-[var(--fg-8eb87d)]" />
           <span>{inAppToast}</span>
         </div>
       )}

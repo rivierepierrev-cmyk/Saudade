@@ -15,6 +15,7 @@ import {
   FSRSRecord,
 } from './types/gemma';
 import { GemmaStorage, AppSettings } from './lib/storage';
+import { applyTheme } from './lib/theme';
 import { onStorageError, isDesktop, dataLocation, takeSnapshot, openDataFolder } from './lib/kv';
 import { createInitialFSRSRecord, applyCardReview, applyTopicReview, firstTopicInterval } from './lib/fsrs';
 import { TopNav } from './components/TopNav';
@@ -290,54 +291,90 @@ export default function App() {
     }
   };
 
+  // Undo for deletions and retirements: a short notice with an "Annuler" button.
+  const [undoAction, setUndoAction] = useState<{ message: string; undo: () => void } | null>(null);
+  const undoTimer = useRef<number | undefined>(undefined);
+  const offerUndo = (message: string, undo: () => void) => {
+    window.clearTimeout(undoTimer.current);
+    setUndoAction({ message, undo });
+    undoTimer.current = window.setTimeout(() => setUndoAction(null), 10000);
+  };
+  const runUndo = () => {
+    if (!undoAction) return;
+    window.clearTimeout(undoTimer.current);
+    undoAction.undo();
+    setUndoAction(null);
+  };
+
+  type Removed<T> = Array<[number, T]>;
+  const takeOut = <T,>(list: T[], match: (item: T) => boolean): Removed<T> =>
+    list.flatMap((item, index) => (match(item) ? [[index, item] as [number, T]] : []));
+  // Puts removed items back at their former position, keeping later changes.
+  const putBack = <T extends { id: string }>(list: T[], removed: Removed<T>): T[] => {
+    const next = [...list];
+    for (const [index, item] of removed) {
+      if (!next.some((i) => i.id === item.id)) next.splice(Math.min(index, next.length), 0, item);
+    }
+    return next;
+  };
+
+  const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
+
   // Handler: Delete Document (with cascade delete of associated extracts and clozes)
   const handleDeleteDocument = (docId: string) => {
-    const updatedDocs = documents.filter((d) => d.id !== docId);
-    updateDocuments(updatedDocs);
-
-    // Supprimer également tous les extraits issus de ce document
-    const updatedExtracts = extracts.filter((e) => e.documentId !== docId);
-    updateExtracts(updatedExtracts);
-
-    // Supprimer également toutes les cartes cloze issues de ce document
-    const updatedClozes = clozes.filter((c) => c.documentId !== docId);
-    updateClozes(updatedClozes);
+    const doc = documentsRef.current.find((d) => d.id === docId);
+    if (!doc) return;
+    const removedDocs = takeOut(documentsRef.current, (d) => d.id === docId);
+    const removedExts = takeOut(extractsRef.current, (e) => e.documentId === docId);
+    const removedClozes = takeOut(clozesRef.current, (c) => c.documentId === docId);
+    updateDocuments((prev) => prev.filter((d) => d.id !== docId));
+    updateExtracts((prev) => prev.filter((e) => e.documentId !== docId));
+    updateClozes((prev) => prev.filter((c) => c.documentId !== docId));
 
     if (currentDocumentId === docId) {
-      setCurrentDocumentId(updatedDocs.length > 0 ? updatedDocs[0].id : '');
+      setCurrentDocumentId(documentsRef.current[0]?.id ?? '');
     }
+    const extras = [
+      removedExts.length ? plural(removedExts.length, 'extrait') : '',
+      removedClozes.length ? plural(removedClozes.length, 'carte') : '',
+    ].filter(Boolean);
+    offerUndo(`« ${doc.title} » supprimé${extras.length ? ` avec ${extras.join(' et ')}` : ''}`, () => {
+      updateDocuments((prev) => putBack(prev, removedDocs));
+      updateExtracts((prev) => putBack(prev, removedExts));
+      updateClozes((prev) => putBack(prev, removedClozes));
+    });
   };
 
   // Handler: Update Document (Content, Title, Author, Tags, Priority, Format, etc.)
   const handleUpdateDocument = (updatedDoc: DocumentItem) => {
-    const oldDoc = documents.find((d) => d.id === updatedDoc.id);
-    const newDocs = documents.map((d) => (d.id === updatedDoc.id ? updatedDoc : d));
-    updateDocuments(newDocs);
+    const oldDoc = documentsRef.current.find((d) => d.id === updatedDoc.id);
+    updateDocuments((prev) => prev.map((d) => (d.id === updatedDoc.id ? updatedDoc : d)));
 
     // Synchroniser le titre sur les extraits et clozes associés si le titre a changé
     if (oldDoc && oldDoc.title !== updatedDoc.title) {
-      const newExtracts = extracts.map((e) =>
-        e.documentId === updatedDoc.id ? { ...e, documentTitle: updatedDoc.title } : e
+      updateExtracts((prev) =>
+        prev.map((e) => (e.documentId === updatedDoc.id ? { ...e, documentTitle: updatedDoc.title } : e))
       );
-      updateExtracts(newExtracts);
-
-      const newClozes = clozes.map((c) =>
-        c.documentId === updatedDoc.id ? { ...c, documentTitle: updatedDoc.title } : c
+      updateClozes((prev) =>
+        prev.map((c) => (c.documentId === updatedDoc.id ? { ...c, documentTitle: updatedDoc.title } : c))
       );
-      updateClozes(newClozes);
     }
   };
 
   // Handler: Delete Extract
   const handleDeleteExtract = (extractId: string) => {
-    const updatedExtracts = extracts.filter((e) => e.id !== extractId);
-    updateExtracts(updatedExtracts);
+    const removed = takeOut(extractsRef.current, (e) => e.id === extractId);
+    if (removed.length === 0) return;
+    updateExtracts((prev) => prev.filter((e) => e.id !== extractId));
+    offerUndo('Extrait supprimé', () => updateExtracts((prev) => putBack(prev, removed)));
   };
 
   // Handler: Delete Cloze
   const handleDeleteCloze = (clozeId: string) => {
-    const updatedClozes = clozes.filter((c) => c.id !== clozeId);
-    updateClozes(updatedClozes);
+    const removed = takeOut(clozesRef.current, (c) => c.id === clozeId);
+    if (removed.length === 0) return;
+    updateClozes((prev) => prev.filter((c) => c.id !== clozeId));
+    offerUndo('Carte supprimée', () => updateClozes((prev) => putBack(prev, removed)));
   };
 
   // Handler: Delete Any Item (Document, Extrait ou Cloze)
@@ -351,22 +388,40 @@ export default function App() {
     }
   };
 
-  // Handler: Dismiss Item
+  // Handler: Dismiss Item ("Terminer": leaves the queue, can be undone)
   const handleDismissItem = (type: ItemType, id: string) => {
-    if (type === 'document') {
-      updateDocuments((prev) =>
-        prev.map((d) => (d.id === id ? { ...d, state: 'dismissed' } : d))
-      );
-    } else if (type === 'extract') {
-      updateExtracts((prev) =>
-        prev.map((e) => (e.id === id ? { ...e, state: 'dismissed' } : e))
-      );
-    } else if (type === 'cloze') {
-      updateClozes((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, state: 'dismissed' } : c))
-      );
-    }
+    const setState = (state: (prev: ItemState) => ItemState) => {
+      if (type === 'document') {
+        updateDocuments((prev) => prev.map((d) => (d.id === id ? { ...d, state: state(d.state) } : d)));
+      } else if (type === 'extract') {
+        updateExtracts((prev) => prev.map((e) => (e.id === id ? { ...e, state: state(e.state) } : e)));
+      } else {
+        updateClozes((prev) => prev.map((c) => (c.id === id ? { ...c, state: state(c.state) } : c)));
+      }
+    };
+    const list: Array<{ id: string; state: ItemState }> =
+      type === 'document' ? documentsRef.current : type === 'extract' ? extractsRef.current : clozesRef.current;
+    const previous = list.find((i) => i.id === id)?.state;
+    if (!previous || previous === 'dismissed') return;
+    setState(() => 'dismissed');
+    const label = type === 'document' ? 'Texte terminé' : type === 'extract' ? 'Extrait terminé' : 'Carte retirée';
+    offerUndo(`${label} : retiré de la file`, () => setState(() => previous));
   };
+
+  // Ctrl+Z undoes the last deletion while its notice is visible.
+  useEffect(() => {
+    if (!undoAction) return;
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('input, textarea, [contenteditable="true"]')) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        runUndo();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
 
   // Handler: Update Reading Progress (called debounced by the reader)
   const handleUpdateProgress = useCallback((docId: string, progress: number, offset: number) => {
@@ -428,7 +483,9 @@ export default function App() {
     setDocuments(docs);
     setExtracts(exts);
     setClozes(clzs);
-    setSettings(GemmaStorage.getSettings());
+    const restoredSettings = GemmaStorage.getSettings();
+    setSettings(restoredSettings);
+    applyTheme(restoredSettings.theme);
     setCurrentDocumentId(docs[0]?.id ?? '');
   };
 
@@ -473,7 +530,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF7F2] text-[#28231D] flex flex-col selection:bg-[#EBE2D3] selection:text-[#28231D]">
+    <div className="min-h-screen bg-[var(--bg-faf7f2)] text-[var(--fg-28231d)] flex flex-col selection:bg-[var(--bg-ebe2d3)] selection:text-[var(--fg-28231d)]">
       {/* 3-Zone Top Navigation Contract */}
       <TopNav
         activeTab={activeTab}
@@ -483,10 +540,17 @@ export default function App() {
         }}
         dueCount={stats.dueTodayCount}
         onOpenImport={() => setIsImportOpen(true)}
+        theme={settings.theme}
+        onChangeTheme={(theme) => {
+          const newSettings: AppSettings = { ...settings, theme };
+          setSettings(newSettings);
+          GemmaStorage.saveSettings(newSettings);
+          applyTheme(theme);
+        }}
       />
 
       {storageErrors.length > 0 && (
-        <div role="alert" className="bg-[#FDF2F0] border-b border-[#F2D6D3] text-[#8F352B] text-xs">
+        <div role="alert" className="bg-[var(--bg-fdf2f0)] border-b border-[var(--bd-f2d6d3)] text-[var(--fg-8f352b)] text-xs">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex items-start justify-between gap-4">
             <ul className="space-y-1">
               {storageErrors.map((msg) => (
@@ -496,7 +560,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setStorageErrors([])}
-              className="shrink-0 px-2 py-0.5 rounded-md hover:bg-[#F2D6D3] font-medium"
+              className="shrink-0 px-2 py-0.5 rounded-md hover:bg-[var(--bg-f2d6d3)] font-medium"
             >
               Masquer
             </button>
@@ -649,6 +713,23 @@ export default function App() {
           />
         )}
       </main>
+
+      {undoAction && (
+        <div
+          role="status"
+          className="fixed bottom-6 left-6 z-50 flex items-center gap-3 pl-4 pr-2 py-2 bg-[var(--bg-28231d)] text-[var(--fg-faf7f2)] text-xs font-medium rounded-xl shadow-lg border border-[var(--bd-3e3831)]"
+        >
+          <span className="max-w-xs truncate">{undoAction.message}</span>
+          <button
+            type="button"
+            onClick={runUndo}
+            className="px-2.5 py-1 rounded-lg font-semibold text-[var(--fg-e6c280)] hover:bg-[var(--bg-3e3831)] cursor-pointer"
+            title="Annuler (Ctrl+Z)"
+          >
+            Annuler
+          </button>
+        </div>
+      )}
 
       {/* Source Import Modal */}
       <ImportModal

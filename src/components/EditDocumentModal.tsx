@@ -124,25 +124,25 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white border border-[#E8E2D5] rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden">
+      <div className="bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden">
         {/* En-tête */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E8E2D5] bg-[#FAF7F2]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--bd-e8e2d5)] bg-[var(--bg-faf7f2)]">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-[#F3EFE8] text-[#8C5E32] border border-[#E8E2D5]">
+            <div className="p-2 rounded-xl bg-[var(--bg-f3efe8)] text-[var(--fg-8c5e32)] border border-[var(--bd-e8e2d5)]">
               <FileEdit className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-[#28231D]">
+              <h2 className="text-base font-bold text-[var(--fg-28231d)]">
                 Modifier l'article & ses métadonnées
               </h2>
-              <p className="text-xs text-[#695F54]">
+              <p className="text-xs text-[var(--fg-695f54)]">
                 Ajustez le texte, les tags, l'auteur, le dossier et la priorité de ce document de lecture.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-[#8C8072] hover:text-[#28231D] rounded-lg hover:bg-[#E8E2D5] transition-colors cursor-pointer"
+            className="p-1.5 text-[var(--fg-8c8072)] hover:text-[var(--fg-28231d)] rounded-lg hover:bg-[var(--bg-e8e2d5)] transition-colors cursor-pointer"
             title="Fermer sans enregistrer"
           >
             <X className="w-4 h-4" />
@@ -155,8 +155,8 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Titre */}
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-[#4A3E31] mb-1.5">
-                Titre du document <span className="text-[#A84236]">*</span>
+              <label className="block text-xs font-semibold text-[var(--fg-4a3e31)] mb-1.5">
+                Titre du document <span className="text-[var(--fg-a84236)]">*</span>
               </label>
               <input
                 type="text"
@@ -164,13 +164,13 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="ex. Les mécanismes de la mémoire synaptique"
-                className="w-full text-sm font-medium px-3.5 py-2.5 bg-[#FAF7F2] border border-[#D5CBBF] rounded-xl text-[#28231D] focus:outline-none focus:ring-2 focus:ring-[#8C5E32] focus:bg-white transition-all"
+                className="w-full text-sm font-medium px-3.5 py-2.5 bg-[var(--bg-faf7f2)] border border-[var(--bd-d5cbbf)] rounded-xl text-[var(--fg-28231d)] focus:outline-none focus:ring-2 focus:ring-[var(--bd-8c5e32)] focus:bg-[var(--bg-ffffff)] transition-all"
               />
             </div>
 
             {/* Auteur */}
             <div>
-              <label className="block text-xs font-semibold text-[#4A3E31] mb-1.5">
+              <label className="block text-xs font-semibold text-[var(--fg-4a3e31)] mb-1.5">
                 Auteur(s) / Source
               </label>
               <input
@@ -178,14 +178,14 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                 value={author}
                 onChange={(e) => setAuthor(e.target.value)}
                 placeholder="ex. Piotr Woźniak, Stanislas Dehaene"
-                className="w-full text-sm px-3.5 py-2 bg-[#FAF7F2] border border-[#D5CBBF] rounded-xl text-[#28231D] focus:outline-none focus:ring-2 focus:ring-[#8C5E32] focus:bg-white transition-all"
+                className="w-full text-sm px-3.5 py-2 bg-[var(--bg-faf7f2)] border border-[var(--bd-d5cbbf)] rounded-xl text-[var(--fg-28231d)] focus:outline-none focus:ring-2 focus:ring-[var(--bd-8c5e32)] focus:bg-[var(--bg-ffffff)] transition-all"
               />
             </div>
 
             {/* Dossier de classement */}
             <div>
-              <label className="block text-xs font-semibold text-[#4A3E31] mb-1.5 flex items-center gap-1.5">
-                <Folder className="w-3.5 h-3.5 text-[#8C5E32]" />
+              <label className="block text-xs font-semibold text-[var(--fg-4a3e31)] mb-1.5 flex items-center gap-1.5">
+                <Folder className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
                 <span>Dossier de classement</span>
               </label>
               <input
@@ -193,20 +193,20 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                 value={folder}
                 onChange={(e) => setFolder(e.target.value)}
                 placeholder="ex. Sciences/Neurobiologie ou Général"
-                className="w-full text-sm px-3.5 py-2 bg-[#FAF7F2] border border-[#D5CBBF] rounded-xl text-[#28231D] focus:outline-none focus:ring-2 focus:ring-[#8C5E32] focus:bg-white transition-all font-mono"
+                className="w-full text-sm px-3.5 py-2 bg-[var(--bg-faf7f2)] border border-[var(--bd-d5cbbf)] rounded-xl text-[var(--fg-28231d)] focus:outline-none focus:ring-2 focus:ring-[var(--bd-8c5e32)] focus:bg-[var(--bg-ffffff)] transition-all font-mono"
               />
             </div>
 
             {/* Format & Priorité */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-[#4A3E31] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--fg-4a3e31)] mb-1.5">
                   Format
                 </label>
                 <select
                   value={format}
                   onChange={(e) => setFormat(e.target.value as DocumentItem['format'])}
-                  className="w-full text-xs font-medium px-3 py-2 bg-[#FAF7F2] border border-[#D5CBBF] rounded-xl text-[#28231D] focus:outline-none focus:ring-2 focus:ring-[#8C5E32]"
+                  className="w-full text-xs font-medium px-3 py-2 bg-[var(--bg-faf7f2)] border border-[var(--bd-d5cbbf)] rounded-xl text-[var(--fg-28231d)] focus:outline-none focus:ring-2 focus:ring-[var(--bd-8c5e32)]"
                 >
                   <option value="article">Article web</option>
                   <option value="markdown">Markdown</option>
@@ -218,10 +218,10 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold text-[#4A3E31]">
+                  <label className="text-xs font-semibold text-[var(--fg-4a3e31)]">
                     Priorité
                   </label>
-                  <span className="text-xs font-mono font-bold text-[#8C5E32] tabular-nums">
+                  <span className="text-xs font-mono font-bold text-[var(--fg-8c5e32)] tabular-nums">
                     {priority}%
                   </span>
                 </div>
@@ -231,14 +231,14 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                   max={100}
                   value={priority}
                   onChange={(e) => setPriority(parseInt(e.target.value, 10))}
-                  className="w-full h-2 bg-[#F3EFE8] rounded-lg appearance-none cursor-pointer accent-[#8C5E32]"
+                  className="w-full h-2 bg-[var(--bg-f3efe8)] rounded-lg appearance-none cursor-pointer accent-[var(--fg-8c5e32)]"
                 />
               </div>
             </div>
 
             {/* URL Source */}
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-[#4A3E31] mb-1.5">
+              <label className="block text-xs font-semibold text-[var(--fg-4a3e31)] mb-1.5">
                 URL Source originale
               </label>
               <div className="flex items-center gap-2">
@@ -247,14 +247,14 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                   value={sourceUrl}
                   onChange={(e) => setSourceUrl(e.target.value)}
                   placeholder="https://fr.wikipedia.org/wiki/..."
-                  className="flex-1 text-xs px-3.5 py-2 bg-[#FAF7F2] border border-[#D5CBBF] rounded-xl text-[#28231D] focus:outline-none focus:ring-2 focus:ring-[#8C5E32] focus:bg-white transition-all"
+                  className="flex-1 text-xs px-3.5 py-2 bg-[var(--bg-faf7f2)] border border-[var(--bd-d5cbbf)] rounded-xl text-[var(--fg-28231d)] focus:outline-none focus:ring-2 focus:ring-[var(--bd-8c5e32)] focus:bg-[var(--bg-ffffff)] transition-all"
                 />
                 {sourceUrl && (
                   <a
                     href={sourceUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="p-2 text-[#695F54] hover:text-[#8C5E32] bg-[#F3EFE8] hover:bg-[#E8E2D5] rounded-xl border border-[#E8E2D5] transition-colors"
+                    className="p-2 text-[var(--fg-695f54)] hover:text-[var(--fg-8c5e32)] bg-[var(--bg-f3efe8)] hover:bg-[var(--bg-e8e2d5)] rounded-xl border border-[var(--bd-e8e2d5)] transition-colors"
                     title="Ouvrir le lien source"
                   >
                     <ExternalLink className="w-4 h-4" />
@@ -266,21 +266,21 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
 
           {/* Gestion des Tags */}
           <div>
-            <label className="block text-xs font-semibold text-[#4A3E31] mb-1.5">
+            <label className="block text-xs font-semibold text-[var(--fg-4a3e31)] mb-1.5">
               Tags & Catégories thématiques
             </label>
-            <div className="flex flex-wrap items-center gap-1.5 mb-2 p-2.5 bg-[#FAF7F2] border border-[#D5CBBF] rounded-xl min-h-[44px]">
+            <div className="flex flex-wrap items-center gap-1.5 mb-2 p-2.5 bg-[var(--bg-faf7f2)] border border-[var(--bd-d5cbbf)] rounded-xl min-h-[44px]">
               {tags.map((t) => (
                 <span
                   key={t}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-white text-[#4A3E31] border border-[#D5CBBF] rounded-lg shadow-2xs"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-[var(--bg-ffffff)] text-[var(--fg-4a3e31)] border border-[var(--bd-d5cbbf)] rounded-lg shadow-2xs"
                 >
-                  <Tag className="w-3 h-3 text-[#8C5E32]" />
+                  <Tag className="w-3 h-3 text-[var(--fg-8c5e32)]" />
                   <span>{t}</span>
                   <button
                     type="button"
                     onClick={() => handleRemoveTag(t)}
-                    className="hover:text-[#A84236] p-0.5 rounded cursor-pointer"
+                    className="hover:text-[var(--fg-a84236)] p-0.5 rounded cursor-pointer"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -299,12 +299,12 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                     }
                   }}
                   placeholder="Nouveau tag..."
-                  className="text-xs px-2.5 py-1 bg-white border border-[#D5CBBF] rounded-lg text-[#28231D] focus:outline-none focus:ring-1 focus:ring-[#8C5E32] w-28 sm:w-36"
+                  className="text-xs px-2.5 py-1 bg-[var(--bg-ffffff)] border border-[var(--bd-d5cbbf)] rounded-lg text-[var(--fg-28231d)] focus:outline-none focus:ring-1 focus:ring-[var(--bd-8c5e32)] w-28 sm:w-36"
                 />
                 <button
                   type="button"
                   onClick={() => handleAddTag()}
-                  className="p-1 bg-[#8C5E32] hover:bg-[#774D27] text-white rounded-lg transition-colors cursor-pointer"
+                  className="p-1 bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] text-white rounded-lg transition-colors cursor-pointer"
                   title="Ajouter ce tag"
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -314,8 +314,8 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
 
             {/* Suggestions de tags existants */}
             {allAvailableTags.length > 0 && (
-              <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-[#695F54]">
-                <span className="text-[#8C8072]">Suggestions :</span>
+              <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-[var(--fg-695f54)]">
+                <span className="text-[var(--fg-8c8072)]">Suggestions :</span>
                 {allAvailableTags
                   .filter((t) => !tags.includes(t))
                   .slice(0, 6)
@@ -324,7 +324,7 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                       key={tag}
                       type="button"
                       onClick={() => handleAddTag(tag)}
-                      className="px-2 py-0.5 bg-[#F3EFE8] hover:bg-[#E8E2D5] border border-[#E8E2D5] rounded-md transition-colors cursor-pointer"
+                      className="px-2 py-0.5 bg-[var(--bg-f3efe8)] hover:bg-[var(--bg-e8e2d5)] border border-[var(--bd-e8e2d5)] rounded-md transition-colors cursor-pointer"
                     >
                       + {tag}
                     </button>
@@ -334,17 +334,17 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
           </div>
 
           {/* Édition du contenu texte et images (Markdown) */}
-          <div className="border border-[#D5CBBF] rounded-xl overflow-hidden bg-white">
+          <div className="border border-[var(--bd-d5cbbf)] rounded-xl overflow-hidden bg-[var(--bg-ffffff)]">
             {/* Barre d'onglets et outils d'insertion */}
-            <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-[#FAF7F2] border-b border-[#D5CBBF]">
-              <div className="flex items-center gap-1 bg-[#F3EFE8] p-0.5 rounded-lg">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-[var(--bg-faf7f2)] border-b border-[var(--bd-d5cbbf)]">
+              <div className="flex items-center gap-1 bg-[var(--bg-f3efe8)] p-0.5 rounded-lg">
                 <button
                   type="button"
                   onClick={() => setActiveTab('edit')}
                   className={`flex items-center gap-1.5 px-3 py-1 text-xs rounded-md font-medium transition-colors cursor-pointer ${
                     activeTab === 'edit'
-                      ? 'bg-white text-[#28231D] shadow-2xs font-semibold'
-                      : 'text-[#695F54] hover:text-[#28231D]'
+                      ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] shadow-2xs font-semibold'
+                      : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
                   }`}
                 >
                   <Edit3 className="w-3.5 h-3.5" />
@@ -355,8 +355,8 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                   onClick={() => setActiveTab('preview')}
                   className={`flex items-center gap-1.5 px-3 py-1 text-xs rounded-md font-medium transition-colors cursor-pointer ${
                     activeTab === 'preview'
-                      ? 'bg-white text-[#28231D] shadow-2xs font-semibold'
-                      : 'text-[#695F54] hover:text-[#28231D]'
+                      ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] shadow-2xs font-semibold'
+                      : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
                   }`}
                 >
                   <Eye className="w-3.5 h-3.5" />
@@ -369,7 +369,7 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleInsertHelper('## ')}
-                    className="p-1.5 text-[#695F54] hover:text-[#28231D] hover:bg-[#E8E2D5] rounded-md transition-colors"
+                    className="p-1.5 text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-e8e2d5)] rounded-md transition-colors"
                     title="Insérer un titre (##)"
                   >
                     <Heading2 className="w-3.5 h-3.5" />
@@ -377,7 +377,7 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleInsertHelper('****', 2)}
-                    className="p-1.5 text-[#695F54] hover:text-[#28231D] hover:bg-[#E8E2D5] rounded-md transition-colors"
+                    className="p-1.5 text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-e8e2d5)] rounded-md transition-colors"
                     title="Gras (**texte**)"
                   >
                     <Bold className="w-3.5 h-3.5" />
@@ -385,7 +385,7 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleInsertHelper('**', 1)}
-                    className="p-1.5 text-[#695F54] hover:text-[#28231D] hover:bg-[#E8E2D5] rounded-md transition-colors"
+                    className="p-1.5 text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-e8e2d5)] rounded-md transition-colors"
                     title="Italique (*texte*)"
                   >
                     <Italic className="w-3.5 h-3.5" />
@@ -393,7 +393,7 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleInsertHelper('> ')}
-                    className="p-1.5 text-[#695F54] hover:text-[#28231D] hover:bg-[#E8E2D5] rounded-md transition-colors"
+                    className="p-1.5 text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-e8e2d5)] rounded-md transition-colors"
                     title="Citation (> texte)"
                   >
                     <Quote className="w-3.5 h-3.5" />
@@ -401,18 +401,18 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleInsertHelper('![Description](https://url-image.jpg)\n*Légende*', 10)}
-                    className="p-1.5 text-[#695F54] hover:text-[#28231D] hover:bg-[#E8E2D5] rounded-md transition-colors"
+                    className="p-1.5 text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-e8e2d5)] rounded-md transition-colors"
                     title="Insérer une image (![alt](url))"
                   >
-                    <ImageIcon className="w-3.5 h-3.5 text-[#8C5E32]" />
+                    <ImageIcon className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
                   </button>
                   <button
                     type="button"
                     onClick={() => handleInsertHelper('{{c1::terme à mémoriser}}', 2)}
-                    className="p-1.5 text-[#695F54] hover:text-[#28231D] hover:bg-[#E8E2D5] rounded-md transition-colors"
+                    className="p-1.5 text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-e8e2d5)] rounded-md transition-colors"
                     title="Insérer une carte à trou ({{c1::...}})"
                   >
-                    <HelpCircle className="w-3.5 h-3.5 text-[#5F8550]" />
+                    <HelpCircle className="w-3.5 h-3.5 text-[var(--fg-5f8550)]" />
                   </button>
                 </div>
               )}
@@ -427,15 +427,15 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                   onChange={(e) => setContent(e.target.value)}
                   rows={16}
                   placeholder="Contenu complet du texte ou de l'article en Markdown..."
-                  className="w-full p-4 text-sm font-mono text-[#28231D] bg-white leading-relaxed focus:outline-none resize-y"
+                  className="w-full p-4 text-sm font-mono text-[var(--fg-28231d)] bg-[var(--bg-ffffff)] leading-relaxed focus:outline-none resize-y"
                 />
-                <div className="flex items-center justify-between px-4 py-2 border-t border-[#F3EFE8] text-[11px] font-mono text-[#8C8072] bg-[#FAF7F2]">
+                <div className="flex items-center justify-between px-4 py-2 border-t border-[var(--bd-f3efe8)] text-[11px] font-mono text-[var(--fg-8c8072)] bg-[var(--bg-faf7f2)]">
                   <span>Markdown supporté (titres, images, listes, clozes)</span>
                   <span>{wordCount} mots · {charCount} caractères</span>
                 </div>
               </div>
             ) : (
-              <div className="p-6 max-h-[460px] overflow-y-auto prose max-w-none text-[#28231D] font-serif leading-relaxed">
+              <div className="p-6 max-h-[460px] overflow-y-auto prose max-w-none text-[var(--fg-28231d)] font-serif leading-relaxed">
                 <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
               </div>
             )}
@@ -443,8 +443,8 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
         </form>
 
         {/* Pied de page modal */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-[#E8E2D5] bg-[#FAF7F2]">
-          <span className="text-xs text-[#695F54]">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-[var(--bd-e8e2d5)] bg-[var(--bg-faf7f2)]">
+          <span className="text-xs text-[var(--fg-695f54)]">
             Dernière mise à jour : {new Date(document.updatedAt || document.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
           </span>
 
@@ -452,14 +452,14 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-[#695F54] hover:text-[#28231D] hover:bg-[#E8E2D5] rounded-xl transition-colors cursor-pointer"
+              className="px-4 py-2 text-xs font-semibold text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-e8e2d5)] rounded-xl transition-colors cursor-pointer"
             >
               Annuler
             </button>
             <button
               type="button"
               onClick={handleSubmit}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#8C5E32] hover:bg-[#774D27] rounded-xl shadow-xs transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-xl shadow-xs transition-colors cursor-pointer"
             >
               <Check className="w-4 h-4" />
               <span>Enregistrer les modifications</span>

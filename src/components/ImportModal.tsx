@@ -157,33 +157,33 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white border border-[#E8E2D5] rounded-2xl shadow-xl max-w-lg w-full overflow-hidden">
+      <div className="bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xl max-w-lg w-full overflow-hidden">
         {/* En-tête */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E8E2D5]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--bd-e8e2d5)]">
           <div>
-            <h3 className="text-base font-bold text-[#28231D]">
+            <h3 className="text-base font-bold text-[var(--fg-28231d)]">
               Ajouter une source de connaissance
             </h3>
-            <p className="text-xs text-[#695F54]">
+            <p className="text-xs text-[var(--fg-695f54)]">
               Importez des textes longs, des articles ou des notes dans votre file de lecture.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-[#8C8072] hover:text-[#28231D] rounded-lg hover:bg-[#F3EFE8] transition-colors cursor-pointer"
+            className="p-1.5 text-[var(--fg-8c8072)] hover:text-[var(--fg-28231d)] rounded-lg hover:bg-[var(--bg-f3efe8)] transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Sélecteur de mode en beige et blanc */}
-        <div className="flex border-b border-[#E8E2D5] bg-[#F3EFE8] text-xs font-medium">
+        <div className="flex border-b border-[var(--bd-e8e2d5)] bg-[var(--bg-f3efe8)] text-xs font-medium">
           <button
             onClick={() => setImportMode('url')}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 transition-colors cursor-pointer ${
               importMode === 'url'
-                ? 'bg-white text-[#28231D] border-b-2 border-[#8C5E32] font-semibold'
-                : 'text-[#695F54] hover:text-[#28231D]'
+                ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] border-b-2 border-[var(--bd-8c5e32)] font-semibold'
+                : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
             }`}
           >
             <Globe className="w-3.5 h-3.5" />
@@ -194,8 +194,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
             onClick={() => setImportMode('paste')}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 transition-colors cursor-pointer ${
               importMode === 'paste'
-                ? 'bg-white text-[#28231D] border-b-2 border-[#8C5E32] font-semibold'
-                : 'text-[#695F54] hover:text-[#28231D]'
+                ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] border-b-2 border-[var(--bd-8c5e32)] font-semibold'
+                : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
             }`}
           >
             <FileText className="w-3.5 h-3.5" />
@@ -206,8 +206,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
             onClick={() => setImportMode('file')}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 transition-colors cursor-pointer ${
               importMode === 'file'
-                ? 'bg-white text-[#28231D] border-b-2 border-[#8C5E32] font-semibold'
-                : 'text-[#695F54] hover:text-[#28231D]'
+                ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] border-b-2 border-[var(--bd-8c5e32)] font-semibold'
+                : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
             }`}
           >
             <Upload className="w-3.5 h-3.5" />
@@ -217,8 +217,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
 
         {/* Dossier de destination global pour l'import */}
         <div className="px-6 pt-4 pb-0 flex items-center justify-between gap-3">
-          <label className="text-xs font-semibold text-[#4A3E31] flex items-center gap-1.5 shrink-0">
-            <Folder className="w-3.5 h-3.5 text-[#8C5E32]" />
+          <label className="text-xs font-semibold text-[var(--fg-4a3e31)] flex items-center gap-1.5 shrink-0">
+            <Folder className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
             <span>Dossier cible :</span>
           </label>
           <input
@@ -226,7 +226,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
             value={targetFolder}
             onChange={(e) => setTargetFolder(e.target.value)}
             placeholder="ex. Sciences/Neurobiologie ou Général"
-            className="flex-1 text-xs px-2.5 py-1 bg-[#FAF7F2] border border-[#D5CBBF] rounded-lg text-[#28231D] font-mono focus:outline-none focus:ring-1 focus:ring-[#8C5E32]"
+            className="flex-1 text-xs px-2.5 py-1 bg-[var(--bg-faf7f2)] border border-[var(--bd-d5cbbf)] rounded-lg text-[var(--fg-28231d)] font-mono focus:outline-none focus:ring-1 focus:ring-[var(--bd-8c5e32)]"
           />
         </div>
 
@@ -234,7 +234,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
         {importMode === 'url' && (
           <form onSubmit={handleClipUrl} className="p-6 pt-3 space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-[#28231D] mb-1">
+              <label className="block text-xs font-semibold text-[var(--fg-28231d)] mb-1">
                 URL de l'article ou de la page web
               </label>
               <input
@@ -244,9 +244,9 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
                 placeholder="https://fr.wikipedia.org/wiki/Répétition_espacée"
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-[#FAF7F2] border border-[#E8E2D5] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#8C5E32] text-[#28231D] font-mono placeholder-[#8C8072]"
+                className="w-full px-3 py-2 text-xs bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--bd-8c5e32)] text-[var(--fg-28231d)] font-mono placeholder-[var(--fg-8c8072)]"
               />
-              <p className="mt-1 text-[11px] text-[#695F54]">
+              <p className="mt-1 text-[11px] text-[var(--fg-695f54)]">
                 L'application extrait automatiquement le texte, les titres et les images (ex. Wikipédia, articles, blogs) pour la lecture incrémentale.
               </p>
             </div>
@@ -262,14 +262,14 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-xs text-[#695F54] hover:text-[#28231D] rounded-lg cursor-pointer"
+                className="px-4 py-2 text-xs text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] rounded-lg cursor-pointer"
               >
                 Annuler
               </button>
               <button
                 type="submit"
                 disabled={isClipping || !urlInput.trim()}
-                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#8C5E32] hover:bg-[#774D27] rounded-lg shadow-xs disabled:opacity-50 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg shadow-xs disabled:opacity-50 transition-all cursor-pointer"
               >
                 {isClipping ? (
                   <>
@@ -291,7 +291,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
         {importMode === 'paste' && (
           <form onSubmit={handleSavePaste} className="p-6 space-y-3">
             <div>
-              <label className="block text-xs font-semibold text-[#28231D] mb-1">
+              <label className="block text-xs font-semibold text-[var(--fg-28231d)] mb-1">
                 Titre du document
               </label>
               <input
@@ -300,13 +300,13 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
                 placeholder="ex. La Théorie de la Charge Cognitive"
                 value={pasteTitle}
                 onChange={(e) => setPasteTitle(e.target.value)}
-                className="w-full px-3 py-1.5 text-xs bg-[#FAF7F2] border border-[#E8E2D5] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#8C5E32] text-[#28231D] placeholder-[#8C8072]"
+                className="w-full px-3 py-1.5 text-xs bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--bd-8c5e32)] text-[var(--fg-28231d)] placeholder-[var(--fg-8c8072)]"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-[#28231D] mb-1">
+                <label className="block text-xs font-semibold text-[var(--fg-28231d)] mb-1">
                   Auteur (facultatif)
                 </label>
                 <input
@@ -314,12 +314,12 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
                   placeholder="ex. John Sweller"
                   value={pasteAuthor}
                   onChange={(e) => setPasteAuthor(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs bg-[#FAF7F2] border border-[#E8E2D5] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#8C5E32] text-[#28231D] placeholder-[#8C8072]"
+                  className="w-full px-3 py-1.5 text-xs bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--bd-8c5e32)] text-[var(--fg-28231d)] placeholder-[var(--fg-8c8072)]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#28231D] mb-1">
+                <label className="block text-xs font-semibold text-[var(--fg-28231d)] mb-1">
                   Tags (séparés par des virgules)
                 </label>
                 <input
@@ -327,13 +327,13 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
                   placeholder="Psychologie, Apprentissage"
                   value={pasteTags}
                   onChange={(e) => setPasteTags(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs bg-[#FAF7F2] border border-[#E8E2D5] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#8C5E32] text-[#28231D] placeholder-[#8C8072]"
+                  className="w-full px-3 py-1.5 text-xs bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--bd-8c5e32)] text-[var(--fg-28231d)] placeholder-[var(--fg-8c8072)]"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#28231D] mb-1">
+              <label className="block text-xs font-semibold text-[var(--fg-28231d)] mb-1">
                 Contenu (Markdown ou texte brut)
               </label>
               <textarea
@@ -342,7 +342,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
                 placeholder="Collez le texte de l'article, vos notes ou un chapitre de livre ici..."
                 value={pasteContent}
                 onChange={(e) => setPasteContent(e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-[#FAF7F2] border border-[#E8E2D5] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#8C5E32] text-[#28231D] font-mono placeholder-[#8C8072]"
+                className="w-full px-3 py-2 text-xs bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--bd-8c5e32)] text-[var(--fg-28231d)] font-mono placeholder-[var(--fg-8c8072)]"
               />
             </div>
 
@@ -350,13 +350,13 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-xs text-[#695F54] hover:text-[#28231D] rounded-lg cursor-pointer"
+                className="px-4 py-2 text-xs text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] rounded-lg cursor-pointer"
               >
                 Annuler
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-xs font-semibold text-white bg-[#8C5E32] hover:bg-[#774D27] rounded-lg shadow-xs cursor-pointer"
+                className="px-4 py-2 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg shadow-xs cursor-pointer"
               >
                 Ajouter à la file
               </button>
@@ -367,16 +367,16 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
         {/* Mode 3 : Fichier local */}
         {importMode === 'file' && (
           <div className="p-8 text-center">
-            <div className="border-2 border-dashed border-[#E8E2D5] rounded-2xl p-8 hover:border-[#8C5E32] transition-colors bg-[#FAF7F2]">
-              <Upload className="w-8 h-8 text-[#8C8072] mx-auto mb-2" />
-              <p className="text-xs font-semibold text-[#28231D] mb-1">
+            <div className="border-2 border-dashed border-[var(--bd-e8e2d5)] rounded-2xl p-8 hover:border-[var(--bd-8c5e32)] transition-colors bg-[var(--bg-faf7f2)]">
+              <Upload className="w-8 h-8 text-[var(--fg-8c8072)] mx-auto mb-2" />
+              <p className="text-xs font-semibold text-[var(--fg-28231d)] mb-1">
                 Choisissez un livre, un PDF, une page HTML ou des notes
               </p>
-              <p className="text-[11px] text-[#8C8072] mb-4">
+              <p className="text-[11px] text-[var(--fg-8c8072)] mb-4">
                 Formats acceptés : .epub (un document par chapitre), .pdf (texte), .html, .md, .txt
               </p>
               <label
-                className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#8C5E32] hover:bg-[#774D27] rounded-lg shadow-xs ${
+                className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg shadow-xs ${
                   isClipping ? 'opacity-60 pointer-events-none' : 'cursor-pointer'
                 }`}
               >

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DocumentItem, ExtractItem, ClozeItem, ItemType } from '../types/gemma';
 import { formatInterval } from '../lib/fsrs';
+import { matchesQuery } from '../lib/search';
 import {
   BookOpen,
   FileText,
@@ -141,11 +142,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
         return false;
       }
       if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        const matchesTitle = item.title.toLowerCase().includes(query);
-        const matchesPreview = item.preview.toLowerCase().includes(query);
-        const matchesTags = item.tags.some((t) => t.toLowerCase().includes(query));
-        return matchesTitle || matchesPreview || matchesTags;
+        return matchesQuery(searchQuery, [item.title, item.preview, ...item.tags]);
       }
       return true;
     })
@@ -163,9 +160,9 @@ export const QueueView: React.FC<QueueViewProps> = ({
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
       {/* En-tête */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 pb-6 border-b border-[#E8E2D5]">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 pb-6 border-b border-[var(--bd-e8e2d5)]">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#28231D]">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--fg-28231d)]">
             File de lecture incrémentale
           </h1>
         </div>
@@ -175,22 +172,22 @@ export const QueueView: React.FC<QueueViewProps> = ({
           {dueCount > 0 ? (
             <button
               onClick={() => onStartReview()}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[#8C5E32] hover:bg-[#774D27] rounded-lg shadow-xs transition-all"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg shadow-xs transition-all"
             >
               <Sparkles className="w-4 h-4" />
               <span>Révision du jour ({dueCount})</span>
             </button>
           ) : (
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 text-xs text-[#5F8550]">
+              <div className="flex items-center gap-1.5 text-xs text-[var(--fg-5f8550)]">
                 <CheckCircle2 className="w-4 h-4" />
                 <span>À jour</span>
               </div>
               <button
                 onClick={() => onStartReview()}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#695F54] hover:text-[#28231D] bg-white hover:bg-[#F3EFE8] border border-[#E8E2D5] rounded-lg transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors cursor-pointer"
               >
-                <Sparkles className="w-3.5 h-3.5 text-[#8C5E32]" />
+                <Sparkles className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
                 <span>Révision du jour</span>
               </button>
             </div>
@@ -201,13 +198,13 @@ export const QueueView: React.FC<QueueViewProps> = ({
       {/* Barre de filtres et recherche */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-6">
         {/* Contrôle segmenté de filtrage en blanc et beige */}
-        <div className="flex items-center gap-1 p-1 bg-[#F3EFE8] border border-[#E8E2D5] rounded-lg overflow-x-auto">
+        <div className="flex items-center gap-1 p-1 bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg overflow-x-auto">
           <button
             onClick={() => setFilterType('all')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
               filterType === 'all'
-                ? 'bg-white text-[#28231D] shadow-xs font-semibold'
-                : 'text-[#695F54] hover:text-[#28231D]'
+                ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] shadow-xs font-semibold'
+                : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
             }`}
           >
             Tout le flux ({queueItems.length})
@@ -216,8 +213,8 @@ export const QueueView: React.FC<QueueViewProps> = ({
             onClick={() => setFilterType('due')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
               filterType === 'due'
-                ? 'bg-white text-[#28231D] shadow-xs font-semibold'
-                : 'text-[#695F54] hover:text-[#28231D]'
+                ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] shadow-xs font-semibold'
+                : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
             }`}
           >
             Du jour ({dueCount})
@@ -226,8 +223,8 @@ export const QueueView: React.FC<QueueViewProps> = ({
             onClick={() => setFilterType('document')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
               filterType === 'document'
-                ? 'bg-white text-[#28231D] shadow-xs font-semibold'
-                : 'text-[#695F54] hover:text-[#28231D]'
+                ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] shadow-xs font-semibold'
+                : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
             }`}
           >
             Documents ({documents.length})
@@ -236,8 +233,8 @@ export const QueueView: React.FC<QueueViewProps> = ({
             onClick={() => setFilterType('extract')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
               filterType === 'extract'
-                ? 'bg-white text-[#28231D] shadow-xs font-semibold'
-                : 'text-[#695F54] hover:text-[#28231D]'
+                ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] shadow-xs font-semibold'
+                : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
             }`}
           >
             Extraits ({extracts.length})
@@ -246,8 +243,8 @@ export const QueueView: React.FC<QueueViewProps> = ({
             onClick={() => setFilterType('cloze')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
               filterType === 'cloze'
-                ? 'bg-white text-[#28231D] shadow-xs font-semibold'
-                : 'text-[#695F54] hover:text-[#28231D]'
+                ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] shadow-xs font-semibold'
+                : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
             }`}
           >
             Cartes Cloze ({clozes.length})
@@ -256,12 +253,12 @@ export const QueueView: React.FC<QueueViewProps> = ({
 
         {/* Filtre par dossier d'arborescence */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F3EFE8] border border-[#E8E2D5] rounded-lg text-xs text-[#4A3E31]">
-            <Folder className="w-3.5 h-3.5 text-[#8C5E32] shrink-0" />
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg text-xs text-[var(--fg-4a3e31)]">
+            <Folder className="w-3.5 h-3.5 text-[var(--fg-8c5e32)] shrink-0" />
             <select
               value={selectedFolder}
               onChange={(e) => setSelectedFolder(e.target.value)}
-              className="bg-transparent text-xs font-medium text-[#28231D] focus:outline-none cursor-pointer"
+              className="bg-transparent text-xs font-medium text-[var(--fg-28231d)] focus:outline-none cursor-pointer"
             >
               <option value="all">Tous les dossiers</option>
               {Array.from(new Set(documents.map((d) => d.folder || 'Général')))
@@ -277,30 +274,30 @@ export const QueueView: React.FC<QueueViewProps> = ({
 
         {/* Champ de recherche */}
         <div className="relative w-full sm:w-64">
-          <Search className="w-4 h-4 text-[#9E9385] absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-[var(--fg-9e9385)] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Rechercher des éléments, tags..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-[#E8E2D5] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#8C5E32] text-[#28231D] placeholder:text-[#9E9385]"
+            className="w-full pl-9 pr-3 py-1.5 text-xs bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--bd-8c5e32)] text-[var(--fg-28231d)] placeholder:text-[var(--fg-9e9385)]"
           />
         </div>
       </div>
 
       {/* Liste des cartes en blanc avec bordures beige */}
       {filteredItems.length === 0 ? (
-        <div className="p-12 text-center border border-dashed border-[#DDD6C8] rounded-xl bg-white/60">
-          <Layers className="w-10 h-10 mx-auto text-[#9E9385] mb-3" />
-          <h3 className="text-base font-semibold text-[#28231D]">
+        <div className="p-12 text-center border border-dashed border-[var(--bd-ddd6c8)] rounded-xl bg-[var(--bg-ffffff)]/60">
+          <Layers className="w-10 h-10 mx-auto text-[var(--fg-9e9385)] mb-3" />
+          <h3 className="text-base font-semibold text-[var(--fg-28231d)]">
             Aucun élément dans cette vue
           </h3>
-          <p className="text-xs text-[#695F54] max-w-sm mx-auto mt-1 mb-4">
+          <p className="text-xs text-[var(--fg-695f54)] max-w-sm mx-auto mt-1 mb-4">
             Importez un article ou une note markdown pour débuter la lecture incrémentale et extraire des connaissances.
           </p>
           <button
             onClick={onOpenImport}
-            className="px-4 py-2 text-xs font-semibold text-[#FAF7F2] bg-[#3B3026] hover:bg-[#28211A] rounded-lg shadow-xs"
+            className="px-4 py-2 text-xs font-semibold text-[var(--fg-faf7f2)] bg-[var(--bg-3b3026)] hover:bg-[var(--bg-28211a)] rounded-lg shadow-xs"
           >
             Importer un document
           </button>
@@ -316,33 +313,47 @@ export const QueueView: React.FC<QueueViewProps> = ({
             return (
               <div
                 key={`${item.type}-${item.id}`}
-                className={`p-4 bg-white border rounded-xl transition-all duration-150 ${
+                className={`p-4 bg-[var(--bg-ffffff)] border rounded-xl transition-all duration-150 ${
                   isDue
-                    ? 'border-[#C29E6B] shadow-xs'
-                    : 'border-[#E8E2D5] hover:border-[#D0C6B3]'
+                    ? 'border-[var(--bd-c29e6b)] shadow-xs'
+                    : 'border-[var(--bd-e8e2d5)] hover:border-[var(--bd-d0c6b3)]'
                 }`}
               >
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                   {/* Zone de contenu gauche */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 text-xs text-[#695F54] mb-1.5 flex-wrap">
-                      <span className="font-semibold text-[#3B3026] uppercase tracking-wider text-[10px]">
+                    <div className="flex items-center gap-2 text-xs text-[var(--fg-695f54)] mb-1.5 flex-wrap">
+                      <span className="font-semibold text-[var(--fg-3b3026)] uppercase tracking-wider text-[10px]">
                         {isDoc ? 'Document' : isExtract ? 'Extrait' : 'Carte Cloze'}
                       </span>
                       <span aria-hidden="true">·</span>
-                      <span className="font-mono text-[10px] bg-[#FAF7F2] px-1.5 py-0.5 rounded border border-[#E8E2D5]">
+                      <span className="font-mono text-[10px] bg-[var(--bg-faf7f2)] px-1.5 py-0.5 rounded border border-[var(--bd-e8e2d5)]">
                         📁 {item.folder || 'Général'}
                       </span>
                       <span aria-hidden="true">·</span>
                       <span className="font-mono tabular-nums">Prio : {item.priority}%</span>
                       <span aria-hidden="true">·</span>
-                      <span className="font-mono tabular-nums">Stabilité : {item.stability} j</span>
-                      <span aria-hidden="true">·</span>
-                      <span className="font-mono tabular-nums">Répétitions : {item.reps}</span>
+                      {item.type === 'cloze' ? (
+                        <>
+                          <span className="font-mono tabular-nums">
+                            Stabilité : {item.reps === 0 ? '—' : formatInterval(item.stability)}
+                          </span>
+                          <span aria-hidden="true">·</span>
+                          <span className="font-mono tabular-nums">Répétitions : {item.reps}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="font-mono tabular-nums">
+                            Intervalle : {item.reps === 0 ? '—' : formatInterval(item.originalItem.fsrs.interval)}
+                          </span>
+                          <span aria-hidden="true">·</span>
+                          <span className="font-mono tabular-nums">Lectures : {item.reps}</span>
+                        </>
+                      )}
                       {isDue ? (
                         <>
                           <span aria-hidden="true">·</span>
-                          <span className="font-medium text-[#8C5E32]">À réviser</span>
+                          <span className="font-medium text-[var(--fg-8c5e32)]">À réviser</span>
                         </>
                       ) : (
                         <>
@@ -362,13 +373,13 @@ export const QueueView: React.FC<QueueViewProps> = ({
                           onStartReview(item.id);
                         }
                       }}
-                      className="text-base font-semibold text-[#28231D] hover:text-[#8C5E32] cursor-pointer transition-colors"
+                      className="text-base font-semibold text-[var(--fg-28231d)] hover:text-[var(--fg-8c5e32)] cursor-pointer transition-colors"
                     >
                       {item.title}
                     </h2>
 
                     {isExtract && (
-                      <div className="flex items-center gap-1.5 mt-1 text-xs text-[#8C8072]">
+                      <div className="flex items-center gap-1.5 mt-1 text-xs text-[var(--fg-8c8072)]">
                         <span>Issu du document :</span>
                         <button
                           type="button"
@@ -376,7 +387,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
                             const doc = documents.find((d) => d.id === (item.originalItem as ExtractItem).documentId);
                             if (doc) onSelectDocument(doc);
                           }}
-                          className="text-[#8C5E32] hover:underline font-medium text-left cursor-pointer inline-flex items-center gap-1"
+                          className="text-[var(--fg-8c5e32)] hover:underline font-medium text-left cursor-pointer inline-flex items-center gap-1"
                           title="Ouvrir le document entier dans le lecteur"
                         >
                           <span>{item.title}</span>
@@ -385,11 +396,11 @@ export const QueueView: React.FC<QueueViewProps> = ({
                       </div>
                     )}
 
-                    <p className="mt-1 text-xs sm:text-sm text-[#4A4137] line-clamp-2 leading-relaxed">
+                    <p className="mt-1 text-xs sm:text-sm text-[var(--fg-4a4137)] line-clamp-2 leading-relaxed">
                       {item.preview}
                     </p>
 
-                    <div className="flex items-center gap-3 mt-3 text-xs text-[#8C8072] flex-wrap">
+                    <div className="flex items-center gap-3 mt-3 text-xs text-[var(--fg-8c8072)] flex-wrap">
                       {item.tags.length > 0 && <span>{item.tags.join(' / ')}</span>}
                       {isDoc && typeof item.readingProgress === 'number' && (
                         <>
@@ -401,11 +412,11 @@ export const QueueView: React.FC<QueueViewProps> = ({
                   </div>
 
                   {/* Actions à droite */}
-                  <div className="flex sm:flex-col items-center sm:items-end gap-2 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-[#F3EFE8]">
+                  <div className="flex sm:flex-col items-center sm:items-end gap-2 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-[var(--bd-f3efe8)]">
                     {isDoc ? (
                       <button
                         onClick={() => onSelectDocument(item.originalItem as DocumentItem)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#3B3026] hover:bg-[#28211A] rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[var(--fg-faf7f2)] bg-[var(--bg-3b3026)] hover:bg-[var(--bg-28211a)] rounded-lg transition-colors whitespace-nowrap cursor-pointer"
                       >
                         <BookOpen className="w-3.5 h-3.5" />
                         <span>Lire</span>
@@ -413,7 +424,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
                     ) : isCloze ? (
                       <button
                         onClick={() => onStartReview(item.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#8C5E32] hover:bg-[#774D27] rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg transition-colors whitespace-nowrap cursor-pointer"
                       >
                         <Sparkles className="w-3.5 h-3.5" />
                         <span>Réviser</span>
@@ -422,7 +433,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => onStartReview(item.id)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#8C5E32] hover:bg-[#774D27] rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg transition-colors whitespace-nowrap cursor-pointer"
                           title="Réviser cet extrait dans le module de mémorisation FSRS"
                         >
                           <Sparkles className="w-3.5 h-3.5" />
@@ -433,10 +444,10 @@ export const QueueView: React.FC<QueueViewProps> = ({
                             const doc = documents.find((d) => d.id === (item.originalItem as ExtractItem).documentId);
                             if (doc) onSelectDocument(doc);
                           }}
-                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-[#3B3026] bg-[#F3EFE8] hover:bg-[#EAE4D9] border border-[#E8E2D5] rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-[var(--fg-3b3026)] bg-[var(--bg-f3efe8)] hover:bg-[var(--bg-eae4d9)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors whitespace-nowrap cursor-pointer"
                           title="Ouvrir le document entier dans le lecteur"
                         >
-                          <BookOpen className="w-3.5 h-3.5 text-[#8C5E32]" />
+                          <BookOpen className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
                           <span className="hidden sm:inline">Document</span>
                         </button>
                       </div>
@@ -458,7 +469,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
                             </button>
                             <button
                               onClick={() => setPendingDeleteId(null)}
-                              className="px-2 py-1 text-[10px] text-[#695F54] hover:text-[#28231D] rounded cursor-pointer"
+                              className="px-2 py-1 text-[10px] text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] rounded cursor-pointer"
                             >
                               Annuler
                             </button>
@@ -467,7 +478,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
                           <button
                             onClick={() => setPendingDeleteId(item.id)}
                             title="Supprimer définitivement cet objet"
-                            className="p-1.5 text-[#8C8072] hover:text-red-600 rounded transition-colors cursor-pointer"
+                            className="p-1.5 text-[var(--fg-8c8072)] hover:text-red-600 rounded transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>

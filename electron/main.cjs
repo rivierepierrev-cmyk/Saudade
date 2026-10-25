@@ -3,7 +3,7 @@
 // optional "web clip" feature (fetching a URL the user types in).
 // Library data lives in JSON files under <userData>/data (see store.cjs), not in
 // the page's localStorage, so it doesn't depend on the port or the page origin.
-const { app, BrowserWindow, shell, Menu, dialog, ipcMain } = require('electron');
+const { app, BrowserWindow, shell, Menu, dialog, ipcMain, nativeTheme } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { createStore } = require('./store.cjs');
@@ -114,6 +114,8 @@ async function start() {
   win = new BrowserWindow({
     width: 1280, height: 860, minWidth: 900, minHeight: 600,
     title: 'Gemma', autoHideMenuBar: true,
+    // Matches the page background while it loads (no white flash in dark mode).
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#181714' : '#faf7f2',
     icon: path.join(__dirname, '..', 'build', 'icon.png'),
     webPreferences: {
       contextIsolation: true,

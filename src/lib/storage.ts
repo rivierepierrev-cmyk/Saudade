@@ -1,6 +1,7 @@
 import { DocumentItem, ExtractItem, ClozeItem, ReviewLog, GemmaStats } from '../types/gemma';
 import { SAMPLE_DOCUMENTS, SAMPLE_EXTRACTS, SAMPLE_CLOZES } from './sampleData';
 import { CollectionName, getRaw, setRaw, reportStorageError } from './kv';
+import type { ThemePreference } from './theme';
 
 export interface AppSettings {
   readingFont: 'sans' | 'serif' | 'mono';
@@ -9,6 +10,7 @@ export interface AppSettings {
   readingColumnWidth: 'narrow' | 'normal' | 'wide';
   targetRetention: number; // default 0.90
   dailyReviewLimit: number;
+  theme: ThemePreference;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -18,6 +20,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   readingColumnWidth: 'normal',
   targetRetention: 0.90,
   dailyReviewLimit: 50,
+  theme: 'system',
 };
 
 export type RestoreResult = { ok: true; counts: { documents: number; extracts: number; clozes: number } } | { ok: false; error: string };

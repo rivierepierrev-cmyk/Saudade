@@ -602,19 +602,19 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
             style={{ paddingLeft: `${node.depth * 14 + 6}px` }}
             className={`group relative flex items-center justify-between pr-2 py-1.5 text-xs rounded-xl transition-all cursor-pointer text-left ${
               isDraggingThis
-                ? 'opacity-30 border border-dashed border-[#8C5E32] bg-[#F5EDE4]'
+                ? 'opacity-30 border border-dashed border-[var(--bd-8c5e32)] bg-[var(--bg-f5ede4)]'
                 : isDragOverThis && canDropHere
-                ? 'bg-[#EBDDCF] ring-2 ring-[#8C5E32] text-[#28231D] font-bold shadow-xs'
+                ? 'bg-[var(--bg-ebddcf)] ring-2 ring-[var(--bd-8c5e32)] text-[var(--fg-28231d)] font-bold shadow-xs'
                 : isSelected
-                ? 'bg-[#3B3026] text-[#FAF7F2] font-semibold shadow-2xs'
-                : 'text-[#4A3E31] hover:bg-[#F3EFE8]'
+                ? 'bg-[var(--bg-3b3026)] text-[var(--fg-faf7f2)] font-semibold shadow-2xs'
+                : 'text-[var(--fg-4a3e31)] hover:bg-[var(--bg-f3efe8)]'
             }`}
             onClick={() => setSelectedFolder(node.path)}
           >
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
               {/* Drag Handle Indicator */}
               <span
-                className="opacity-0 group-hover:opacity-60 hover:opacity-100 p-0.5 text-[#8C8072] cursor-grab active:cursor-grabbing shrink-0"
+                className="opacity-0 group-hover:opacity-60 hover:opacity-100 p-0.5 text-[var(--fg-8c8072)] cursor-grab active:cursor-grabbing shrink-0"
                 title="Glisser pour déplacer dans l'arborescence"
               >
                 <GripVertical className="w-3 h-3" />
@@ -624,12 +624,12 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                 <button
                   type="button"
                   onClick={(e) => toggleFolderExpand(node.path, e)}
-                  className="p-0.5 hover:text-[#8C5E32] rounded cursor-pointer shrink-0"
+                  className="p-0.5 hover:text-[var(--fg-8c5e32)] rounded cursor-pointer shrink-0"
                 >
                   {isExpanded ? (
                     <ChevronDown className="w-3.5 h-3.5" />
                   ) : (
-                    <ChevronRight className="w-3.5 h-3.5 text-[#8C8072]" />
+                    <ChevronRight className="w-3.5 h-3.5 text-[var(--fg-8c8072)]" />
                   )}
                 </button>
               ) : (
@@ -637,9 +637,9 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
               )}
 
               {isExpanded || isSelected ? (
-                <FolderOpen className="w-3.5 h-3.5 text-[#8C5E32] shrink-0" />
+                <FolderOpen className="w-3.5 h-3.5 text-[var(--fg-8c5e32)] shrink-0" />
               ) : (
-                <Folder className="w-3.5 h-3.5 text-[#A87948] shrink-0" />
+                <Folder className="w-3.5 h-3.5 text-[var(--fg-a87948)] shrink-0" />
               )}
 
               <span className="truncate" title={node.path}>
@@ -657,7 +657,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                   setIsNewFolderOpen(true);
                 }}
                 className={`p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/10 ${
-                  isSelected ? 'text-[#FAF7F2]' : 'text-[#8C5E32]'
+                  isSelected ? 'text-[var(--fg-faf7f2)]' : 'text-[var(--fg-8c5e32)]'
                 }`}
                 title="Ajouter un sous-dossier ici"
               >
@@ -666,7 +666,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
 
               {node.dueCount > 0 && (
                 <span
-                  className="w-2 h-2 rounded-full bg-[#D97706]"
+                  className="w-2 h-2 rounded-full bg-[var(--bg-d97706)]"
                   title={`${node.dueCount} révision(s) due(s) dans cette branche`}
                 />
               )}
@@ -674,8 +674,8 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
               <span
                 className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md tabular-nums ${
                   isSelected
-                    ? 'bg-[#4E4134] text-[#E8E2D5]'
-                    : 'bg-[#E8E2D5] text-[#695F54]'
+                    ? 'bg-[var(--bg-4e4134)] text-[var(--fg-e8e2d5)]'
+                    : 'bg-[var(--bg-e8e2d5)] text-[var(--fg-695f54)]'
                 }`}
               >
                 {node.totalDocCount}
@@ -692,21 +692,21 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
   };
 
   return (
-    <div className="relative bg-white border border-[#E8E2D5] rounded-2xl shadow-xs overflow-hidden flex flex-col md:flex-row min-h-[680px]">
+    <div className="relative bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs overflow-hidden flex flex-col md:flex-row min-h-[680px]">
       {/* Toast Notification */}
       {inAppToast && (
-        <div className="absolute top-4 right-4 z-50 flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-[#FAF7F2] bg-[#3B3026] rounded-xl shadow-lg border border-[#8C5E32]/30 animate-in fade-in slide-in-from-top-2">
-          <Check className="w-4 h-4 text-[#7BB369]" />
+        <div className="absolute top-4 right-4 z-50 flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-[var(--fg-faf7f2)] bg-[var(--bg-3b3026)] rounded-xl shadow-lg border border-[var(--bd-8c5e32)]/30 animate-in fade-in slide-in-from-top-2">
+          <Check className="w-4 h-4 text-[var(--fg-7bb369)]" />
           <span>{inAppToast}</span>
         </div>
       )}
 
       {/* --- VOLET GAUCHE : ARBORESCENCE DES DOSSIERS --- */}
-      <aside className="w-full md:w-72 lg:w-80 border-b md:border-b-0 md:border-r border-[#E8E2D5] bg-[#FAF7F2] p-4 flex flex-col shrink-0">
+      <aside className="w-full md:w-72 lg:w-80 border-b md:border-b-0 md:border-r border-[var(--bd-e8e2d5)] bg-[var(--bg-faf7f2)] p-4 flex flex-col shrink-0">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
-            <Folder className="w-4 h-4 text-[#8C5E32]" />
-            <h2 className="text-xs font-bold uppercase tracking-wider text-[#695F54]">
+            <Folder className="w-4 h-4 text-[var(--fg-8c5e32)]" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--fg-695f54)]">
               Arborescence
             </h2>
           </div>
@@ -716,7 +716,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
               setNewFolderParent(selectedFolder !== 'all' ? selectedFolder : '');
               setIsNewFolderOpen(true);
             }}
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#8C5E32] hover:text-white bg-white hover:bg-[#8C5E32] border border-[#D5CBBF] rounded-lg transition-colors cursor-pointer shadow-2xs"
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[var(--fg-8c5e32)] hover:text-white bg-[var(--bg-ffffff)] hover:bg-[var(--bg-8c5e32)] border border-[var(--bd-d5cbbf)] rounded-lg transition-colors cursor-pointer shadow-2xs"
             title="Créer un nouveau dossier racine ou sous-dossier"
           >
             <FolderPlus className="w-3.5 h-3.5" />
@@ -725,20 +725,20 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
         </div>
 
         {/* Aide Drag & Drop */}
-        <div className="mb-2.5 px-2.5 py-1.5 bg-[#F3EFE8] border border-[#E8E2D5] rounded-lg text-[10px] text-[#8C8072] flex items-center gap-1.5">
-          <GripVertical className="w-3 h-3 text-[#8C5E32] shrink-0" />
+        <div className="mb-2.5 px-2.5 py-1.5 bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg text-[10px] text-[var(--fg-8c8072)] flex items-center gap-1.5">
+          <GripVertical className="w-3 h-3 text-[var(--fg-8c5e32)] shrink-0" />
           <span>Glissez-déposez un dossier sur un autre pour le déplacer.</span>
         </div>
 
         {/* Barre de recherche dans les dossiers */}
         <div className="relative mb-3">
-          <Search className="w-3.5 h-3.5 text-[#8C8072] absolute left-2.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-[var(--fg-8c8072)] absolute left-2.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Filtrer les dossiers..."
             value={folderSearch}
             onChange={(e) => setFolderSearch(e.target.value)}
-            className="w-full pl-8 pr-2.5 py-1.5 text-xs bg-white border border-[#E8E2D5] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#8C5E32] text-[#28231D]"
+            className="w-full pl-8 pr-2.5 py-1.5 text-xs bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--bd-8c5e32)] text-[var(--fg-28231d)]"
           />
         </div>
 
@@ -763,12 +763,12 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
             }}
             className={`mb-2 p-2.5 rounded-xl border-2 border-dashed text-xs text-center transition-all ${
               dragOverFolder === '__ROOT__'
-                ? 'bg-[#EBDDCF] border-[#8C5E32] text-[#28231D] font-bold shadow-xs'
-                : 'bg-white/80 border-[#C9BEB0] text-[#8C5E32] hover:bg-[#F3EFE8]'
+                ? 'bg-[var(--bg-ebddcf)] border-[var(--bd-8c5e32)] text-[var(--fg-28231d)] font-bold shadow-xs'
+                : 'bg-[var(--bg-ffffff)]/80 border-[var(--bd-c9beb0)] text-[var(--fg-8c5e32)] hover:bg-[var(--bg-f3efe8)]'
             }`}
           >
             <div className="flex items-center justify-center gap-1.5">
-              <CornerDownRight className="w-3.5 h-3.5 rotate-180 text-[#8C5E32]" />
+              <CornerDownRight className="w-3.5 h-3.5 rotate-180 text-[var(--fg-8c5e32)]" />
               <span>Déposer ici pour déplacer à la racine</span>
             </div>
           </div>
@@ -782,19 +782,19 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
             onClick={() => setSelectedFolder('all')}
             className={`w-full flex items-center justify-between px-2.5 py-2 text-xs rounded-xl transition-colors cursor-pointer text-left ${
               selectedFolder === 'all'
-                ? 'bg-[#3B3026] text-[#FAF7F2] font-semibold shadow-2xs'
-                : 'text-[#4A3E31] hover:bg-[#F3EFE8]'
+                ? 'bg-[var(--bg-3b3026)] text-[var(--fg-faf7f2)] font-semibold shadow-2xs'
+                : 'text-[var(--fg-4a3e31)] hover:bg-[var(--bg-f3efe8)]'
             }`}
           >
             <div className="flex items-center gap-2 min-w-0">
-              <Layers className="w-4 h-4 shrink-0 text-[#8C5E32]" />
+              <Layers className="w-4 h-4 shrink-0 text-[var(--fg-8c5e32)]" />
               <span className="truncate">Tous les documents</span>
             </div>
             <span
               className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md tabular-nums ${
                 selectedFolder === 'all'
-                  ? 'bg-[#4E4134] text-[#E8E2D5]'
-                  : 'bg-[#E8E2D5] text-[#695F54]'
+                  ? 'bg-[var(--bg-4e4134)] text-[var(--fg-e8e2d5)]'
+                  : 'bg-[var(--bg-e8e2d5)] text-[var(--fg-695f54)]'
               }`}
             >
               {documents.length}
@@ -806,7 +806,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
         </div>
 
         {/* Bas de volet : informations */}
-        <div className="mt-4 pt-3 border-t border-[#E8E2D5] flex items-center justify-between text-[11px] text-[#8C8072]">
+        <div className="mt-4 pt-3 border-t border-[var(--bd-e8e2d5)] flex items-center justify-between text-[11px] text-[var(--fg-8c8072)]">
           <span>{allFolderPaths.length} dossiers</span>
           <span>{documents.length} docs</span>
         </div>
@@ -815,11 +815,11 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
       {/* --- VOLET DROIT : EXPLORATEUR DE CONTENU DU DOSSIER --- */}
       <main className="flex-1 p-5 md:p-6 overflow-y-auto flex flex-col">
         {/* Fil d'Ariane & Titre de dossier */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-[#E8E2D5]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-[var(--bd-e8e2d5)]">
           <div>
-            <div className="flex items-center gap-1.5 text-xs text-[#8C8072] mb-1 font-mono flex-wrap">
+            <div className="flex items-center gap-1.5 text-xs text-[var(--fg-8c8072)] mb-1 font-mono flex-wrap">
               <span
-                className="hover:text-[#28231D] cursor-pointer"
+                className="hover:text-[var(--fg-28231d)] cursor-pointer"
                 onClick={() => setSelectedFolder('all')}
               >
                 Bibliothèque
@@ -830,7 +830,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                   {selectedFolder.split('/').map((seg, idx, arr) => (
                     <React.Fragment key={seg}>
                       <span
-                        className="hover:text-[#28231D] cursor-pointer font-semibold"
+                        className="hover:text-[var(--fg-28231d)] cursor-pointer font-semibold"
                         onClick={() => setSelectedFolder(arr.slice(0, idx + 1).join('/'))}
                       >
                         {seg}
@@ -843,8 +843,8 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
             </div>
 
             <div className="flex items-center gap-2.5">
-              <h1 className="text-xl font-bold text-[#28231D] font-serif-reading flex items-center gap-2">
-                <Folder className="w-5 h-5 text-[#8C5E32]" />
+              <h1 className="text-xl font-bold text-[var(--fg-28231d)] font-serif-reading flex items-center gap-2">
+                <Folder className="w-5 h-5 text-[var(--fg-8c5e32)]" />
                 <span>
                   {selectedFolder === 'all'
                     ? 'Tous les documents & sous-éléments'
@@ -860,7 +860,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                       setFolderToRename(selectedFolder);
                       setRenameInput(selectedFolder.split('/').pop() || '');
                     }}
-                    className="p-1 text-[#8C8072] hover:text-[#8C5E32] hover:bg-[#F3EFE8] rounded-md transition-colors"
+                    className="p-1 text-[var(--fg-8c8072)] hover:text-[var(--fg-8c5e32)] hover:bg-[var(--bg-f3efe8)] rounded-md transition-colors"
                     title="Renommer ce dossier"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
@@ -868,7 +868,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setFolderToDelete(selectedFolder)}
-                    className="p-1 text-[#8C8072] hover:text-red-600 hover:bg-[#FDF2F0] rounded-md transition-colors"
+                    className="p-1 text-[var(--fg-8c8072)] hover:text-red-600 hover:bg-[var(--bg-fdf2f0)] rounded-md transition-colors"
                     title="Supprimer ce dossier"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -884,7 +884,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
               <button
                 type="button"
                 onClick={() => onStartReviewWithFolder(selectedFolder)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-[#8C5E32] hover:bg-[#774D27] rounded-xl shadow-xs transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-xl shadow-xs transition-colors cursor-pointer"
                 title="Lancer une révision FSRS sur les éléments de ce dossier"
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
@@ -898,9 +898,9 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                 setNewFolderParent(selectedFolder !== 'all' ? selectedFolder : '');
                 setIsNewFolderOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#4A3E31] bg-white hover:bg-[#F3EFE8] border border-[#D5CBBF] rounded-xl transition-colors cursor-pointer shadow-2xs"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[var(--fg-4a3e31)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-d5cbbf)] rounded-xl transition-colors cursor-pointer shadow-2xs"
             >
-              <FolderPlus className="w-3.5 h-3.5 text-[#8C5E32]" />
+              <FolderPlus className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
               <span>Nouveau sous-dossier</span>
             </button>
 
@@ -908,7 +908,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
               <button
                 type="button"
                 onClick={onOpenImport}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#3B3026] hover:bg-[#28231D] rounded-xl transition-colors cursor-pointer shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[var(--fg-faf7f2)] bg-[var(--bg-3b3026)] hover:bg-[var(--bg-28231d)] rounded-xl transition-colors cursor-pointer shadow-2xs"
                 title="Ajouter un article"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -921,7 +921,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
         {/* Sous-dossiers immédiats s'ils existent (avec support Drag & Drop) */}
         {selectedNode && selectedNode.subfolders.length > 0 && (
           <div className="mb-5">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-[#695F54] mb-2.5">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--fg-695f54)] mb-2.5">
               Sous-dossiers dans {selectedNode.name}
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
@@ -962,18 +962,18 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                     onClick={() => setSelectedFolder(sub.path)}
                     className={`p-3 border rounded-xl cursor-pointer transition-all flex items-center justify-between group ${
                       isOver
-                        ? 'bg-[#EBDDCF] border-[#8C5E32] ring-2 ring-[#8C5E32]'
-                        : 'bg-[#FAF7F2] hover:bg-[#F3EFE8] border-[#E8E2D5] hover:border-[#D5CBBF]'
+                        ? 'bg-[var(--bg-ebddcf)] border-[var(--bd-8c5e32)] ring-2 ring-[var(--bd-8c5e32)]'
+                        : 'bg-[var(--bg-faf7f2)] hover:bg-[var(--bg-f3efe8)] border-[var(--bd-e8e2d5)] hover:border-[var(--bd-d5cbbf)]'
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <GripVertical className="w-3 h-3 text-[#8C8072] opacity-0 group-hover:opacity-100 cursor-grab shrink-0" />
-                      <Folder className="w-4 h-4 text-[#8C5E32] shrink-0" />
-                      <span className="text-xs font-medium text-[#28231D] truncate">
+                      <GripVertical className="w-3 h-3 text-[var(--fg-8c8072)] opacity-0 group-hover:opacity-100 cursor-grab shrink-0" />
+                      <Folder className="w-4 h-4 text-[var(--fg-8c5e32)] shrink-0" />
+                      <span className="text-xs font-medium text-[var(--fg-28231d)] truncate">
                         {sub.name}
                       </span>
                     </div>
-                    <span className="text-[10px] font-mono bg-white px-1.5 py-0.5 rounded border border-[#E8E2D5] text-[#695F54] tabular-nums">
+                    <span className="text-[10px] font-mono bg-[var(--bg-ffffff)] px-1.5 py-0.5 rounded border border-[var(--bd-e8e2d5)] text-[var(--fg-695f54)] tabular-nums">
                       {sub.totalDocCount}
                     </span>
                   </div>
@@ -985,7 +985,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
 
         {/* Recherche d'articles dans la branche */}
         <div className="relative mb-5">
-          <Search className="w-4 h-4 text-[#8C8072] absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-[var(--fg-8c8072)] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder={`Rechercher un document ou extrait dans ${
@@ -993,18 +993,18 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
             }...`}
             value={contentSearch}
             onChange={(e) => setContentSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-[#E8E2D5] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#8C5E32] text-[#28231D]"
+            className="w-full pl-9 pr-3 py-2 text-xs bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-xl focus:outline-none focus:ring-1 focus:ring-[var(--bd-8c5e32)] text-[var(--fg-28231d)]"
           />
         </div>
 
         {/* Liste des documents de la branche */}
         {displayedDocs.length === 0 ? (
-          <div className="p-12 text-center border border-dashed border-[#DDD6C8] rounded-2xl bg-[#FAF7F2]/60 my-auto">
-            <Folder className="w-10 h-10 mx-auto text-[#9E9385] mb-2" />
-            <h3 className="text-sm font-bold text-[#28231D]">
+          <div className="p-12 text-center border border-dashed border-[var(--bd-ddd6c8)] rounded-2xl bg-[var(--bg-faf7f2)]/60 my-auto">
+            <Folder className="w-10 h-10 mx-auto text-[var(--fg-9e9385)] mb-2" />
+            <h3 className="text-sm font-bold text-[var(--fg-28231d)]">
               Aucun document dans {selectedFolder === 'all' ? 'la bibliothèque' : `« ${selectedFolder} »`}
             </h3>
-            <p className="text-xs text-[#695F54] max-w-sm mx-auto mt-1 mb-4">
+            <p className="text-xs text-[var(--fg-695f54)] max-w-sm mx-auto mt-1 mb-4">
               Ce dossier est vide pour le moment. Vous pouvez y créer un sous-dossier ou y importer un article.
             </p>
             <div className="flex items-center justify-center gap-2">
@@ -1014,7 +1014,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                   setNewFolderParent(selectedFolder !== 'all' ? selectedFolder : '');
                   setIsNewFolderOpen(true);
                 }}
-                className="px-3.5 py-2 text-xs font-semibold text-[#8C5E32] bg-white border border-[#D5CBBF] hover:bg-[#F3EFE8] rounded-xl transition-colors cursor-pointer"
+                className="px-3.5 py-2 text-xs font-semibold text-[var(--fg-8c5e32)] bg-[var(--bg-ffffff)] border border-[var(--bd-d5cbbf)] hover:bg-[var(--bg-f3efe8)] rounded-xl transition-colors cursor-pointer"
               >
                 + Nouveau sous-dossier
               </button>
@@ -1022,7 +1022,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                 <button
                   type="button"
                   onClick={onOpenImport}
-                  className="px-4 py-2 text-xs font-semibold text-white bg-[#8C5E32] hover:bg-[#774D27] rounded-xl transition-colors cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-xl transition-colors cursor-pointer"
                 >
                   Importer un document
                 </button>
@@ -1050,13 +1050,13 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                   onDragEnd={() => {
                     setDraggedDocId(null);
                   }}
-                  className="bg-white border border-[#E8E2D5] rounded-2xl hover:border-[#D5CBBF] transition-all overflow-hidden shadow-2xs group"
+                  className="bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl hover:border-[var(--bd-d5cbbf)] transition-all overflow-hidden shadow-2xs group"
                 >
                   {/* Ligne Document */}
                   <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-start gap-2.5 min-w-0 flex-1">
                       <span
-                        className="opacity-0 group-hover:opacity-60 hover:opacity-100 p-1 text-[#8C8072] cursor-grab active:cursor-grabbing shrink-0 mt-0.5"
+                        className="opacity-0 group-hover:opacity-60 hover:opacity-100 p-1 text-[var(--fg-8c8072)] cursor-grab active:cursor-grabbing shrink-0 mt-0.5"
                         title="Glisser vers un dossier dans la colonne de gauche"
                       >
                         <GripVertical className="w-3.5 h-3.5" />
@@ -1065,23 +1065,23 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                       <button
                         type="button"
                         onClick={() => toggleDocExpand(doc.id)}
-                        className="p-1 text-[#8C8072] hover:text-[#28231D] hover:bg-[#F3EFE8] rounded-lg mt-0.5 cursor-pointer shrink-0"
+                        className="p-1 text-[var(--fg-8c8072)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)] rounded-lg mt-0.5 cursor-pointer shrink-0"
                         title={isExpanded ? 'Replier les éléments' : 'Déplier les extraits et cartes'}
                       >
                         {isExpanded ? (
-                          <ChevronDown className="w-4 h-4 text-[#8C5E32]" />
+                          <ChevronDown className="w-4 h-4 text-[var(--fg-8c5e32)]" />
                         ) : (
                           <ChevronRight className="w-4 h-4" />
                         )}
                       </button>
 
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap text-[10px] text-[#8C8072] mb-1">
-                          <span className="font-semibold text-[#8C5E32] uppercase tracking-wider">
+                        <div className="flex items-center gap-2 flex-wrap text-[10px] text-[var(--fg-8c8072)] mb-1">
+                          <span className="font-semibold text-[var(--fg-8c5e32)] uppercase tracking-wider">
                             {doc.format}
                           </span>
                           <span>·</span>
-                          <span className="font-mono bg-[#FAF7F2] px-1.5 py-0.5 rounded border border-[#E8E2D5] text-[#4A3E31]">
+                          <span className="font-mono bg-[var(--bg-faf7f2)] px-1.5 py-0.5 rounded border border-[var(--bd-e8e2d5)] text-[var(--fg-4a3e31)]">
                             📁 {doc.folder || 'Général'}
                           </span>
                           {doc.author && (
@@ -1096,23 +1096,23 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
 
                         <h3
                           onClick={() => onSelectDocument(doc)}
-                          className="text-base font-semibold text-[#28231D] hover:text-[#8C5E32] cursor-pointer transition-colors font-serif-reading leading-snug truncate"
+                          className="text-base font-semibold text-[var(--fg-28231d)] hover:text-[var(--fg-8c5e32)] cursor-pointer transition-colors font-serif-reading leading-snug truncate"
                           title={doc.title}
                         >
                           {doc.title}
                         </h3>
 
                         {/* Extraits & Clozes badges */}
-                        <div className="flex items-center gap-3 mt-1.5 text-xs text-[#695F54]">
+                        <div className="flex items-center gap-3 mt-1.5 text-xs text-[var(--fg-695f54)]">
                           <span className="inline-flex items-center gap-1">
-                            <Scissors className="w-3.5 h-3.5 text-[#8C5E32]" />
+                            <Scissors className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
                             {docExtracts.length} extrait{docExtracts.length > 1 ? 's' : ''}
                           </span>
                           <span className="inline-flex items-center gap-1">
-                            <Sparkles className="w-3.5 h-3.5 text-[#5F8550]" />
+                            <Sparkles className="w-3.5 h-3.5 text-[var(--fg-5f8550)]" />
                             {docClozes.length} cloze{docClozes.length > 1 ? 's' : ''} FSRS
                           </span>
-                          <span className="text-[11px] font-mono text-[#8C8072]">
+                          <span className="text-[11px] font-mono text-[var(--fg-8c8072)]">
                             Progression : {doc.readingProgress || 0}%
                           </span>
                         </div>
@@ -1124,7 +1124,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                       <button
                         type="button"
                         onClick={() => onSelectDocument(doc)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-[#8C5E32] hover:bg-[#774D27] rounded-xl transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-xl transition-colors cursor-pointer"
                         title="Ouvrir dans le lecteur incrémental"
                       >
                         <BookOpen className="w-3.5 h-3.5" />
@@ -1138,7 +1138,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                             setMovingDoc(doc);
                             setTargetMoveFolder(doc.folder || 'Général');
                           }}
-                          className="p-1.5 text-[#695F54] hover:text-[#8C5E32] hover:bg-[#F3EFE8] rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 text-[var(--fg-695f54)] hover:text-[var(--fg-8c5e32)] hover:bg-[var(--bg-f3efe8)] rounded-lg transition-colors cursor-pointer"
                           title="Déplacer vers un autre dossier"
                         >
                           <Move className="w-3.5 h-3.5" />
@@ -1148,7 +1148,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                       <button
                         type="button"
                         onClick={() => onOpenEditModal(doc)}
-                        className="p-1.5 text-[#695F54] hover:text-[#8C5E32] hover:bg-[#F3EFE8] rounded-lg transition-colors cursor-pointer"
+                        className="p-1.5 text-[var(--fg-695f54)] hover:text-[var(--fg-8c5e32)] hover:bg-[var(--bg-f3efe8)] rounded-lg transition-colors cursor-pointer"
                         title="Modifier l'article (texte, métadonnées, tags)"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
@@ -1169,7 +1169,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                           <button
                             type="button"
                             onClick={() => setPendingDelete(null)}
-                            className="px-2 py-1 text-[10px] text-[#695F54] hover:bg-[#E8E2D5] rounded cursor-pointer"
+                            className="px-2 py-1 text-[10px] text-[var(--fg-695f54)] hover:bg-[var(--bg-e8e2d5)] rounded cursor-pointer"
                           >
                             Annuler
                           </button>
@@ -1178,7 +1178,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                         <button
                           type="button"
                           onClick={() => setPendingDelete({ type: 'doc', id: doc.id })}
-                          className="p-1.5 text-[#8C8072] hover:text-red-600 hover:bg-[#FDF2F0] rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 text-[var(--fg-8c8072)] hover:text-red-600 hover:bg-[var(--bg-fdf2f0)] rounded-lg transition-colors cursor-pointer"
                           title="Supprimer ce document et ses extraits"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1189,9 +1189,9 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
 
                   {/* Arborescence dépliée : Extraits et Clozes enfants */}
                   {isExpanded && (
-                    <div className="bg-[#FAF7F2] border-t border-[#E8E2D5] p-4 pl-8 space-y-3">
+                    <div className="bg-[var(--bg-faf7f2)] border-t border-[var(--bd-e8e2d5)] p-4 pl-8 space-y-3">
                       {totalItems === 0 ? (
-                        <p className="text-xs text-[#8C8072] italic">
+                        <p className="text-xs text-[var(--fg-8c8072)] italic">
                           Aucun extrait ou carte cloze n'a encore été découpé depuis cet article.
                         </p>
                       ) : (
@@ -1199,7 +1199,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                           {/* Section Extraits */}
                           {docExtracts.length > 0 && (
                             <div>
-                              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#8C5E32] mb-2">
+                              <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--fg-8c5e32)] mb-2">
                                 <Scissors className="w-3.5 h-3.5" />
                                 <span>Extraits textuels découplés ({docExtracts.length})</span>
                               </div>
@@ -1207,14 +1207,14 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                                 {docExtracts.map((ext) => (
                                   <div
                                     key={ext.id}
-                                    className="p-2.5 bg-white border border-[#E8E2D5] rounded-xl flex items-start justify-between gap-3 text-xs"
+                                    className="p-2.5 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-xl flex items-start justify-between gap-3 text-xs"
                                   >
                                     <div className="flex-1">
-                                      <p className="text-[#28231D] leading-relaxed line-clamp-2">
+                                      <p className="text-[var(--fg-28231d)] leading-relaxed line-clamp-2">
                                         « {ext.text} »
                                       </p>
                                       {ext.note && (
-                                        <p className="text-[11px] text-[#8C8072] mt-1">
+                                        <p className="text-[11px] text-[var(--fg-8c8072)] mt-1">
                                           Note : {ext.note}
                                         </p>
                                       )}
@@ -1222,7 +1222,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                                     <button
                                       type="button"
                                       onClick={() => onDeleteExtract(ext.id)}
-                                      className="p-1 text-[#8C8072] hover:text-red-600 rounded cursor-pointer"
+                                      className="p-1 text-[var(--fg-8c8072)] hover:text-red-600 rounded cursor-pointer"
                                       title="Supprimer cet extrait"
                                     >
                                       <Trash2 className="w-3 h-3" />
@@ -1236,7 +1236,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                           {/* Section Clozes FSRS */}
                           {docClozes.length > 0 && (
                             <div>
-                              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#5F8550] mb-2">
+                              <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--fg-5f8550)] mb-2">
                                 <Sparkles className="w-3.5 h-3.5" />
                                 <span>Cartes Cloze FSRS associées ({docClozes.length})</span>
                               </div>
@@ -1246,17 +1246,17 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                                   return (
                                     <div
                                       key={clz.id}
-                                      className="p-2.5 bg-white border border-[#E8E2D5] rounded-xl flex items-start justify-between gap-3 text-xs"
+                                      className="p-2.5 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-xl flex items-start justify-between gap-3 text-xs"
                                     >
                                       <div className="flex-1">
-                                        <div className="text-[#28231D] font-mono leading-relaxed line-clamp-2">
+                                        <div className="text-[var(--fg-28231d)] font-mono leading-relaxed line-clamp-2">
                                           {clz.text}
                                         </div>
-                                        <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[#8C8072]">
+                                        <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[var(--fg-8c8072)]">
                                           <span>Stabilité : {clz.fsrs?.stability?.toFixed(1) || 1}j</span>
                                           <span>Répétitions : {clz.fsrs?.reps || 0}</span>
                                           {isDue && (
-                                            <span className="font-semibold text-[#D97706] bg-[#FEF3C7] px-1.5 py-0.5 rounded">
+                                            <span className="font-semibold text-[var(--fg-d97706)] bg-[var(--bg-fef3c7)] px-1.5 py-0.5 rounded">
                                               À réviser aujourd'hui
                                             </span>
                                           )}
@@ -1265,7 +1265,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                                       <button
                                         type="button"
                                         onClick={() => onDeleteCloze(clz.id)}
-                                        className="p-1 text-[#8C8072] hover:text-red-600 rounded cursor-pointer"
+                                        className="p-1 text-[var(--fg-8c8072)] hover:text-red-600 rounded cursor-pointer"
                                         title="Supprimer cette carte cloze"
                                       >
                                         <Trash2 className="w-3 h-3" />
@@ -1290,16 +1290,16 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
       {/* --- MODAL : CRÉER UN NOUVEAU DOSSIER OU SOUS-DOSSIER --- */}
       {isNewFolderOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white border border-[#E8E2D5] rounded-2xl p-6 max-w-sm w-full shadow-xl">
+          <div className="bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl p-6 max-w-sm w-full shadow-xl">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-[#28231D] flex items-center gap-2">
-                <FolderPlus className="w-4 h-4 text-[#8C5E32]" />
+              <h3 className="text-sm font-bold text-[var(--fg-28231d)] flex items-center gap-2">
+                <FolderPlus className="w-4 h-4 text-[var(--fg-8c5e32)]" />
                 Nouveau dossier ou sous-dossier
               </h3>
               <button
                 type="button"
                 onClick={() => setIsNewFolderOpen(false)}
-                className="p-1 text-[#8C8072] hover:text-[#28231D] rounded cursor-pointer"
+                className="p-1 text-[var(--fg-8c8072)] hover:text-[var(--fg-28231d)] rounded cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1307,13 +1307,13 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
 
             <form onSubmit={handleCreateFolder} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#4A3E31] mb-1">
+                <label className="block text-xs font-semibold text-[var(--fg-4a3e31)] mb-1">
                   Emplacement / Dossier parent
                 </label>
                 <select
                   value={newFolderParent}
                   onChange={(e) => setNewFolderParent(e.target.value)}
-                  className="w-full text-xs p-2 bg-[#FAF7F2] border border-[#E8E2D5] rounded-xl text-[#28231D]"
+                  className="w-full text-xs p-2 bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-xl text-[var(--fg-28231d)]"
                 >
                   <option value="">(Racine - Dossier principal)</option>
                   {allFolderPaths.map((f) => (
@@ -1325,8 +1325,8 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#4A3E31] mb-1">
-                  Nom du dossier <span className="text-[#A84236]">*</span>
+                <label className="block text-xs font-semibold text-[var(--fg-4a3e31)] mb-1">
+                  Nom du dossier <span className="text-[var(--fg-a84236)]">*</span>
                 </label>
                 <input
                   type="text"
@@ -1335,16 +1335,16 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                   placeholder="ex. Neurobiologie, Épistémologie..."
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
-                  className="w-full text-xs p-2.5 bg-[#FAF7F2] border border-[#D5CBBF] rounded-xl text-[#28231D] focus:outline-none focus:ring-2 focus:ring-[#8C5E32]"
+                  className="w-full text-xs p-2.5 bg-[var(--bg-faf7f2)] border border-[var(--bd-d5cbbf)] rounded-xl text-[var(--fg-28231d)] focus:outline-none focus:ring-2 focus:ring-[var(--bd-8c5e32)]"
                 />
               </div>
 
               {/* Aperçu du chemin */}
               {newFolderName.trim() && (
-                <div className="p-2 bg-[#FAF7F2] rounded-lg text-[11px] font-mono text-[#695F54] border border-[#E8E2D5]">
-                  <span className="text-[#8C8072]">Chemin : </span>
+                <div className="p-2 bg-[var(--bg-faf7f2)] rounded-lg text-[11px] font-mono text-[var(--fg-695f54)] border border-[var(--bd-e8e2d5)]">
+                  <span className="text-[var(--fg-8c8072)]">Chemin : </span>
                   {newFolderParent ? `${newFolderParent} / ` : ''}
-                  <strong className="text-[#8C5E32]">{newFolderName.trim()}</strong>
+                  <strong className="text-[var(--fg-8c5e32)]">{newFolderName.trim()}</strong>
                 </div>
               )}
 
@@ -1352,13 +1352,13 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsNewFolderOpen(false)}
-                  className="px-3 py-1.5 text-xs text-[#695F54] hover:bg-[#F3EFE8] rounded-lg cursor-pointer"
+                  className="px-3 py-1.5 text-xs text-[var(--fg-695f54)] hover:bg-[var(--bg-f3efe8)] rounded-lg cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 text-xs font-semibold text-white bg-[#8C5E32] hover:bg-[#774D27] rounded-lg cursor-pointer"
+                  className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg cursor-pointer"
                 >
                   Créer le dossier
                 </button>
@@ -1371,16 +1371,16 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
       {/* --- MODAL : RENOMMER UN DOSSIER --- */}
       {folderToRename && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white border border-[#E8E2D5] rounded-2xl p-6 max-w-sm w-full shadow-xl">
+          <div className="bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl p-6 max-w-sm w-full shadow-xl">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-[#28231D] flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-[#8C5E32]" />
+              <h3 className="text-sm font-bold text-[var(--fg-28231d)] flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-[var(--fg-8c5e32)]" />
                 Renommer le dossier
               </h3>
               <button
                 type="button"
                 onClick={() => setFolderToRename(null)}
-                className="p-1 text-[#8C8072] hover:text-[#28231D] rounded cursor-pointer"
+                className="p-1 text-[var(--fg-8c8072)] hover:text-[var(--fg-28231d)] rounded cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1388,7 +1388,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
 
             <form onSubmit={handleRenameFolder} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#4A3E31] mb-1">
+                <label className="block text-xs font-semibold text-[var(--fg-4a3e31)] mb-1">
                   Nouveau nom
                 </label>
                 <input
@@ -1397,7 +1397,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                   autoFocus
                   value={renameInput}
                   onChange={(e) => setRenameInput(e.target.value)}
-                  className="w-full text-xs p-2.5 bg-[#FAF7F2] border border-[#D5CBBF] rounded-xl text-[#28231D] focus:outline-none focus:ring-2 focus:ring-[#8C5E32]"
+                  className="w-full text-xs p-2.5 bg-[var(--bg-faf7f2)] border border-[var(--bd-d5cbbf)] rounded-xl text-[var(--fg-28231d)] focus:outline-none focus:ring-2 focus:ring-[var(--bd-8c5e32)]"
                 />
               </div>
 
@@ -1405,13 +1405,13 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setFolderToRename(null)}
-                  className="px-3 py-1.5 text-xs text-[#695F54] hover:bg-[#F3EFE8] rounded-lg cursor-pointer"
+                  className="px-3 py-1.5 text-xs text-[var(--fg-695f54)] hover:bg-[var(--bg-f3efe8)] rounded-lg cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 text-xs font-semibold text-white bg-[#8C5E32] hover:bg-[#774D27] rounded-lg cursor-pointer"
+                  className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg cursor-pointer"
                 >
                   Renommer
                 </button>
@@ -1424,7 +1424,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
       {/* --- MODAL : SUPPRIMER UN DOSSIER --- */}
       {folderToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white border border-[#E8E2D5] rounded-2xl p-6 max-w-sm w-full shadow-xl">
+          <div className="bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl p-6 max-w-sm w-full shadow-xl">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-bold text-red-700 flex items-center gap-2">
                 <Trash2 className="w-4 h-4" />
@@ -1433,16 +1433,16 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
               <button
                 type="button"
                 onClick={() => setFolderToDelete(null)}
-                className="p-1 text-[#8C8072] hover:text-[#28231D] rounded cursor-pointer"
+                className="p-1 text-[var(--fg-8c8072)] hover:text-[var(--fg-28231d)] rounded cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <p className="text-xs text-[#695F54] mb-3">
+            <p className="text-xs text-[var(--fg-695f54)] mb-3">
               Êtes-vous sûr de vouloir supprimer le dossier <strong>« {folderToDelete} »</strong> ?
             </p>
-            <p className="text-[11px] text-[#8C8072] mb-4">
+            <p className="text-[11px] text-[var(--fg-8c8072)] mb-4">
               Les documents éventuels qu'il contient ne seront pas supprimés : ils seront automatiquement déplacés vers le dossier parent ou « Général ».
             </p>
 
@@ -1450,7 +1450,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
               <button
                 type="button"
                 onClick={() => setFolderToDelete(null)}
-                className="px-3 py-1.5 text-xs text-[#695F54] hover:bg-[#F3EFE8] rounded-lg cursor-pointer"
+                className="px-3 py-1.5 text-xs text-[var(--fg-695f54)] hover:bg-[var(--bg-f3efe8)] rounded-lg cursor-pointer"
               >
                 Annuler
               </button>
@@ -1469,34 +1469,34 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
       {/* --- MODAL : DÉPLACER UN DOCUMENT DE DOSSIER --- */}
       {movingDoc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white border border-[#E8E2D5] rounded-2xl p-6 max-w-sm w-full shadow-xl">
+          <div className="bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl p-6 max-w-sm w-full shadow-xl">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-[#28231D] flex items-center gap-2">
-                <Move className="w-4 h-4 text-[#8C5E32]" />
+              <h3 className="text-sm font-bold text-[var(--fg-28231d)] flex items-center gap-2">
+                <Move className="w-4 h-4 text-[var(--fg-8c5e32)]" />
                 Déplacer le document
               </h3>
               <button
                 type="button"
                 onClick={() => setMovingDoc(null)}
-                className="p-1 text-[#8C8072] hover:text-[#28231D] rounded cursor-pointer"
+                className="p-1 text-[var(--fg-8c8072)] hover:text-[var(--fg-28231d)] rounded cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <p className="text-xs text-[#695F54] mb-3 line-clamp-2">
+            <p className="text-xs text-[var(--fg-695f54)] mb-3 line-clamp-2">
               Déplacer <strong>{movingDoc.title}</strong> vers un autre dossier.
             </p>
 
             <form onSubmit={handleMoveDocSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#4A3E31] mb-1">
+                <label className="block text-xs font-semibold text-[var(--fg-4a3e31)] mb-1">
                   Dossier de destination
                 </label>
                 <select
                   value={targetMoveFolder}
                   onChange={(e) => setTargetMoveFolder(e.target.value)}
-                  className="w-full text-xs p-2.5 bg-[#FAF7F2] border border-[#D5CBBF] rounded-xl text-[#28231D] focus:outline-none focus:ring-2 focus:ring-[#8C5E32] font-mono"
+                  className="w-full text-xs p-2.5 bg-[var(--bg-faf7f2)] border border-[var(--bd-d5cbbf)] rounded-xl text-[var(--fg-28231d)] focus:outline-none focus:ring-2 focus:ring-[var(--bd-8c5e32)] font-mono"
                 >
                   {allFolderPaths.map((f) => (
                     <option key={f} value={f}>
@@ -1510,13 +1510,13 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setMovingDoc(null)}
-                  className="px-3 py-1.5 text-xs text-[#695F54] hover:bg-[#F3EFE8] rounded-lg cursor-pointer"
+                  className="px-3 py-1.5 text-xs text-[var(--fg-695f54)] hover:bg-[var(--bg-f3efe8)] rounded-lg cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 text-xs font-semibold text-white bg-[#8C5E32] hover:bg-[#774D27] rounded-lg cursor-pointer"
+                  className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg cursor-pointer"
                 >
                   Déplacer
                 </button>
