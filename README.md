@@ -20,9 +20,21 @@ En mode navigateur (`npm run dev`), les données restent dans le localStorage du
     npm run dev            # http://127.0.0.1:3000
     npm run electron:dev   # fenêtre desktop
 
-## Installateurs
-    npm run dist:linux     # release/*.deb et *.AppImage  (Linux Mint / Ubuntu / Debian)
+## Installation
+- **Linux Mint / Ubuntu / Debian (recommandé)** : `sudo apt install ./Foliole-1.0.0-linux-amd64.deb`, puis lancez Foliole depuis le menu (ou la commande `foliole`).
+- **AppImage** (autres distributions) : `chmod +x Foliole-*.AppImage && ./Foliole-*.AppImage`. Sur Ubuntu 24.04+ et dérivés, où AppArmor bloque le bac à sable de Chromium pour les AppImage, Foliole démarre automatiquement sans ce bac à sable ; le .deb, lui, le conserve.
+- **Windows** : lancez `Foliole-1.0.0-win-x64.exe` (installateur) ou la version portable. L'application n'est pas signée : au premier lancement, Windows SmartScreen affiche un avertissement → « Informations complémentaires » → « Exécuter quand même ».
+
+Les données (Linux : `~/.config/Foliole/data/`, Windows : `%APPDATA%\Foliole\data\`) sont conservées lors d'une mise à jour ou d'une désinstallation.
+Sauvegarde / restauration : onglet Analytique → « Sauvegarde JSON » et « Restaurer une sauvegarde… » (accepte aussi les fichiers de `data/backups/`).
+
+## Construire les installateurs
+    npm run dist:linux     # release/*.deb et *.AppImage
     npm run dist:win       # release/*.exe (installateur NSIS + portable) — à lancer sous Windows
 
-Linux Mint : `sudo apt install ./release/Foliole-1.0.0-linux-amd64.deb` ou `chmod +x *.AppImage && ./*.AppImage`.
-Sauvegarde / restauration : onglet Analytique → « Sauvegarde JSON » et « Restaurer une sauvegarde… » (accepte aussi les fichiers de `data/backups/`).
+Avec GitHub : l'action « Build installers » vérifie le code (types + tests) puis construit les installateurs Linux et Windows. Poussez une étiquette (`git tag v1.0.1 && git push --tags`) pour publier automatiquement une « Release » avec les fichiers. Pensez à remplacer `homepage` dans `package.json` par l'adresse de votre dépôt.
+
+## Tests
+    npm run lint           # vérification des types
+    npm test               # stockage, cartes à trou, planification
+    npm run test:e2e       # parcours complets dans l'application Electron (sous Linux sans écran : xvfb-run -a npm run test:e2e)

@@ -1,5 +1,5 @@
 const assert = require('assert'); const fs = require('fs'); const os = require('os'); const path = require('path');
-const { createStore } = require('../electron/store.cjs');
+const { createStore, withRetry } = require('../electron/store.cjs');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fol-'));
 let s = createStore(dir);
 let r = s.loadAll(); assert.equal(r.isNew, true); assert.deepEqual(r.files, {});
@@ -26,4 +26,9 @@ for (let d=1; d<=9; d++) fs.writeFileSync(path.join(s.backupDir,`daily-2020-01-0
 fs.unlinkSync(snap); s.dailySnapshot();
 const daily = fs.readdirSync(s.backupDir).filter(f=>f.startsWith('daily-')).sort();
 assert.equal(daily.length, 7); assert.ok(!daily.includes('daily-2020-01-01.json'));
+// transient Windows-style lock errors are retried, others are not
+let calls = 0;
+assert.equal(withRetry(() => { if (++calls < 3) { const e = new Error('busy'); e.code = 'EBUSY'; throw e; } return 'ok'; }), 'ok');
+assert.equal(calls, 3);
+assert.throws(() => withRetry(() => { const e = new Error('nope'); e.code = 'ENOENT'; throw e; }), /nope/);
 console.log('store tests OK');

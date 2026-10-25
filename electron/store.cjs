@@ -21,6 +21,20 @@ function localDay(d = new Date()) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
+// On Windows, antivirus or indexing software can hold a file for a moment, making
+// rename/copy fail with EPERM/EBUSY. Retry briefly before giving up.
+const RETRYABLE = new Set(['EPERM', 'EBUSY', 'EACCES']);
+function withRetry(fn, attempts = 8) {
+  for (let i = 1; ; i++) {
+    try {
+      return fn();
+    } catch (e) {
+      if (i >= attempts || !RETRYABLE.has(e && e.code)) throw e;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25 * i);
+    }
+  }
+}
+
 function createStore(dataDir) {
   const backupDir = path.join(dataDir, 'backups');
   const corruptDir = path.join(dataDir, 'corrupt');
@@ -61,8 +75,8 @@ function createStore(dataDir) {
     } finally {
       fs.closeSync(fd);
     }
-    if (fs.existsSync(file)) fs.copyFileSync(file, `${file}.bak`);
-    fs.renameSync(tmp, file);
+    if (fs.existsSync(file)) withRetry(() => fs.copyFileSync(file, `${file}.bak`));
+    withRetry(() => fs.renameSync(tmp, file));
   }
 
   // Returns { files: {name: jsonText}, warnings: string[], isNew, dataDir }
@@ -152,4 +166,4 @@ function createStore(dataDir) {
   return { loadAll, write, dailySnapshot, eventSnapshot, dataDir, backupDir };
 }
 
-module.exports = { createStore, NAMES };
+module.exports = { createStore, NAMES, withRetry };

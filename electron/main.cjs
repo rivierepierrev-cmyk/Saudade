@@ -4,6 +4,7 @@
 // Library data lives in JSON files under <userData>/data (see store.cjs), not in
 // the page's localStorage, so it doesn't depend on the port or the page origin.
 const { app, BrowserWindow, shell, Menu, dialog, ipcMain } = require('electron');
+const fs = require('fs');
 const path = require('path');
 const { createStore } = require('./store.cjs');
 
@@ -15,6 +16,21 @@ const SNAPSHOT_CHECK_MS = 60 * 60 * 1000;
 
 let win;
 let store;
+
+// Ubuntu 24.04+ (and derivatives) block the unprivileged user namespaces Chromium's
+// sandbox needs, and an AppImage can't ship the setuid helper the .deb installs:
+// without this the AppImage would not start at all. The window only shows Foliole's
+// own pages, with imported HTML sanitized, so running it without the sandbox is an
+// acceptable fallback. The .deb keeps the sandbox.
+function appImageNeedsNoSandbox() {
+  if (process.platform !== 'linux' || !process.env.APPIMAGE) return false;
+  try {
+    return fs.readFileSync('/proc/sys/kernel/apparmor_restrict_unprivileged_userns', 'utf8').trim() === '1';
+  } catch {
+    return false;
+  }
+}
+if (appImageNeedsNoSandbox()) app.commandLine.appendSwitch('no-sandbox');
 
 function registerIpc() {
   ipcMain.on('foliole:load', (event) => {

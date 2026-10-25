@@ -5,6 +5,7 @@
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
+  "desktopName": "foliole.desktop",
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build",
@@ -13,53 +14,52 @@
     "clean": "rm -rf dist server.js",
     "build:server": "esbuild server.ts --bundle --platform=node --format=esm --external:vite --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\" --outfile=dist-electron/server.mjs",
     "electron:dev": "npm run build && npm run build:server && electron .",
-    "dist:linux": "npm run build && npm run build:server && electron-builder --linux deb AppImage",
-    "dist:deb": "npm run build && npm run build:server && electron-builder --linux deb",
-    "dist:appimage": "npm run build && npm run build:server && electron-builder --linux AppImage",
+    "dist:linux": "npm run build && npm run build:server && electron-builder --publish never --linux deb AppImage",
+    "dist:deb": "npm run build && npm run build:server && electron-builder --publish never --linux deb",
+    "dist:appimage": "npm run build && npm run build:server && electron-builder --publish never --linux AppImage",
     "lint": "tsc --noEmit",
     "test": "node tests/store.test.cjs && tsx tests/cloze.test.ts",
-    "dist:win": "npm run build && npm run build:server && electron-builder --win nsis portable"
-  },
-  "dependencies": {
-    "@mozilla/readability": "^0.6.0",
-    "@tailwindcss/vite": "^4.3.3",
-    "@vitejs/plugin-react": "^6.1.1",
-    "canvas-confetti": "^1.9.4",
-    "dompurify": "^3.4.17",
-    "express": "^4.21.2",
-    "fflate": "^0.8.3",
-    "lucide-react": "^0.546.0",
-    "marked": "^18.1.1",
-    "motion": "^12.23.24",
-    "pdfjs-dist": "^6.4.299",
-    "react": "^19.0.1",
-    "react-dom": "^19.0.1",
-    "ts-fsrs": "^5.4.2",
-    "turndown": "^7.2.4",
-    "turndown-plugin-gfm": "^1.0.2",
-    "vite": "^8.3.0"
+    "dist:win": "npm run build && npm run build:server && electron-builder --publish never --win nsis portable",
+    "test:e2e": "npm run build && npm run build:server && node tests/e2e/run.cjs"
   },
   "devDependencies": {
+    "@mozilla/readability": "^0.6.0",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/canvas-confetti": "^1.9.0",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/turndown": "^5.0.6",
+    "@vitejs/plugin-react": "^6.1.1",
     "autoprefixer": "^10.4.21",
+    "canvas-confetti": "^1.9.4",
     "concurrently": "^9.1.0",
+    "dompurify": "^3.4.17",
     "electron": "^44.9.3",
     "electron-builder": "^26.18.0",
     "esbuild": "^0.28.0",
+    "express": "^4.21.2",
+    "fflate": "^0.8.3",
+    "lucide-react": "^0.546.0",
+    "marked": "^18.1.1",
+    "motion": "^12.23.24",
+    "pdfjs-dist": "^6.4.299",
+    "playwright": "^1.63.0",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
     "tailwindcss": "^4.3.3",
+    "ts-fsrs": "^5.4.2",
     "tsx": "^4.21.0",
+    "turndown": "^7.2.4",
+    "turndown-plugin-gfm": "^1.0.2",
     "typescript": "^7.0.2",
+    "vite": "^8.3.0",
     "wait-on": "^8.0.1"
   },
   "build": {
     "appId": "app.foliole.desktop",
     "productName": "Foliole",
-    "desktopName": "foliole.desktop",
     "asar": true,
     "files": [
       "dist/**/*",
@@ -75,7 +75,15 @@
         "AppImage"
       ],
       "icon": "build/icon.png",
-      "maintainer": "Foliole <foliole@localhost>"
+      "maintainer": "Foliole <foliole@localhost>",
+      "executableName": "foliole",
+      "synopsis": "Lecture incrémentale et répétition espacée",
+      "desktop": {
+        "entry": {
+          "Keywords": "lecture;révision;flashcards;FSRS;"
+        }
+      },
+      "syncDesktopName": true
     },
     "directories": {
       "buildResources": "build",
@@ -94,8 +102,10 @@
       "perMachine": false,
       "deleteAppDataOnUninstall": false
     },
-    "artifactName": "Foliole-${version}-${os}-${arch}.${ext}"
+    "artifactName": "Foliole-${version}-${os}-${arch}.${ext}",
+    "publish": null
   },
   "description": "Lecture incrémentale et répétition espacée FSRS — 100 % local, sans IA",
+  "homepage": "http://localhost/foliole",
   "author": "Foliole"
 }
