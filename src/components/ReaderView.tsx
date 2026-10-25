@@ -401,11 +401,6 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
               <span>
                 Signet mémorisé · Texte {currentIndex + 1} sur {totalDocuments}
               </span>
-              <span className="hidden md:inline text-[var(--fg-8c8072)]">
-                · Raccourcis : <kbd className="font-mono">L</kbd> lu · <kbd className="font-mono">←</kbd>{' '}
-                <kbd className="font-mono">→</kbd> textes · <kbd className="font-mono">Alt+X</kbd> extraire ·{' '}
-                <kbd className="font-mono">Alt+C</kbd> carte à trou
-              </span>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
@@ -453,6 +448,11 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
               </button>
             </div>
           </div>
+          <p className="hidden md:block mt-4 text-[11px] text-center text-[var(--fg-8c8072)]">
+            Raccourcis : <kbd className="font-mono">L</kbd> lu · <kbd className="font-mono">←</kbd>{' '}
+            <kbd className="font-mono">→</kbd> textes · <kbd className="font-mono">Alt+X</kbd> extraire ·{' '}
+            <kbd className="font-mono">Alt+C</kbd> carte à trou
+          </p>
         </div>
         {/* Panneau latéral d'extraits */}
         {showExtractsPanel && (
