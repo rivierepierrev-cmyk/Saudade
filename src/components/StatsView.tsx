@@ -20,6 +20,8 @@ interface StatsViewProps {
   clozes: ClozeItem[];
   targetRetention: number;
   onUpdateTargetRetention: (retention: number) => void;
+  dailyReviewLimit: number;
+  onUpdateDailyLimit: (limit: number) => void;
   onExportBackup: () => void;
   onExportMarkdownMirror: () => void;
   onResetDemo: () => Promise<boolean>;
@@ -35,6 +37,8 @@ export const StatsView: React.FC<StatsViewProps> = ({
   clozes,
   targetRetention,
   onUpdateTargetRetention,
+  dailyReviewLimit,
+  onUpdateDailyLimit,
   onExportBackup,
   onExportMarkdownMirror,
   onResetDemo,
@@ -242,13 +246,16 @@ export const StatsView: React.FC<StatsViewProps> = ({
 
         <div className="p-4 bg-white border border-[#E8E2D5] rounded-2xl shadow-xs">
           <div className="text-[11px] text-[#695F54] uppercase tracking-wider font-semibold">
-            Rétention Prédite
+            Rétention réelle (30 j)
           </div>
           <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[#5F8550]">
-            {stats.averageRetention}%
+            {stats.averageRetention === null ? '—' : `${stats.averageRetention}%`}
           </div>
           <div className="mt-1 text-xs text-[#8C8072]">
-            Cible : {Math.round(targetRetention * 100)}%
+            {stats.averageRetention === null
+              ? 'Pas encore de cartes révisées'
+              : `Cible : ${Math.round(targetRetention * 100)}%`}
+            {stats.streakDays > 0 && ` · ${stats.streakDays} j d'affilée`}
           </div>
         </div>
 
@@ -276,9 +283,21 @@ export const StatsView: React.FC<StatsViewProps> = ({
             <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[#8C5E32]">
               {Math.round(targetRetention * 100)}%
             </div>
-            <div className="mt-1 text-xs text-[#8C8072]">
-              Facteur délai : {(9 * (1 / targetRetention - 1)).toFixed(2)}× S
-            </div>
+            <label className="mt-1 flex items-center gap-1.5 text-xs text-[#8C8072]">
+              Limite :
+              <input
+                type="number"
+                min={1}
+                max={999}
+                value={dailyReviewLimit}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val)) onUpdateDailyLimit(val);
+                }}
+                className="w-16 px-1.5 py-0.5 font-mono text-[#28231D] bg-[#FAF7F2] border border-[#E8E2D5] rounded-md"
+              />
+              cartes différentes par jour
+            </label>
           </div>
           <div className="mt-4 pt-3 border-t border-[#F3EFE8]">
             <div className="relative w-full">

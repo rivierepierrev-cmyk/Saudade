@@ -17,7 +17,7 @@
     "dist:deb": "npm run build && npm run build:server && electron-builder --linux deb",
     "dist:appimage": "npm run build && npm run build:server && electron-builder --linux AppImage",
     "lint": "tsc --noEmit",
-    "test": "node tests/store.test.cjs",
+    "test": "node tests/store.test.cjs && tsx tests/cloze.test.ts",
     "dist:win": "npm run build && npm run build:server && electron-builder --win nsis portable"
   },
   "dependencies": {
@@ -30,6 +30,7 @@
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "ts-fsrs": "^5.4.2",
     "vite": "^8.3.0"
   },
   "devDependencies": {
@@ -39,13 +40,13 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^9.1.0",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
     "esbuild": "^0.28.0",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",
     "typescript": "^7.0.2",
-    "electron": "^33.2.1",
-    "electron-builder": "^25.1.8",
-    "concurrently": "^9.1.0",
     "wait-on": "^8.0.1"
   },
   "build": {

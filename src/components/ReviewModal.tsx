@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ClozeItem, ExtractItem, ReviewRating, FSRSRecord } from '../types/foliole';
-import { predictAllRatings } from '../lib/fsrs';
+import { predictAllRatings, nextTopicInterval, formatInterval } from '../lib/fsrs';
+import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
 import confetti from 'canvas-confetti';
 import {
   Sparkles,
@@ -35,8 +36,17 @@ interface ReviewModalProps {
   initialItemId?: string;
   initialItemType?: 'cloze' | 'extract';
   targetRetention?: number;
-  onRateItem: (type: 'cloze' | 'extract', id: string, rating: ReviewRating) => void;
-  onCreateClozeFromExtract: (docId: string, text: string) => void;
+  /** Rates a cloze card; returns its new scheduling record. */
+  onRateCard: (id: string, rating: ReviewRating) => FSRSRecord | undefined;
+  /** Done reading an extract for now; returns the new interval in days. */
+  onExtractNext: (id: string) => number | undefined;
+  onRetireExtract: (id: string) => void;
+  onCreateExtractFromExtract: (extractId: string, text: string) => void;
+  onCreateClozeFromExtract: (extractId: string, clozeText: string) => void;
+  /** Maximum number of different cards reviewed per day. */
+  dailyLimit: number;
+  /** Ids of cards already reviewed today (they don't use up the limit again). */
+  reviewedTodayIds: Set<string>;
   onClose: () => void;
   onNavigateToDocument?: (docId: string) => void;
 }
@@ -46,19 +56,35 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   extracts,
   initialItemId,
   targetRetention = 0.90,
-  onRateItem,
+  onRateCard,
+  onExtractNext,
+  onRetireExtract,
+  onCreateExtractFromExtract,
   onCreateClozeFromExtract,
+  dailyLimit,
+  reviewedTodayIds,
   onClose,
   onNavigateToDocument,
 }) => {
   const [reviewAhead, setReviewAhead] = useState(false);
   const [sessionCompletedCount, setSessionCompletedCount] = useState(0);
   const [isAnswerRevealed, setIsAnswerRevealed] = useState(false);
-  const [clozeCreatedToast, setClozeCreatedToast] = useState(false);
+  const [toast, setToast] = useState<{ message: string; error?: boolean } | null>(null);
+  const toastTimer = useRef<number | undefined>(undefined);
+  const extractTextRef = useRef<HTMLDivElement>(null);
+  const [extractSelection, setExtractSelection] = useState<BlockSelection | null>(null);
+  const [confirmRetire, setConfirmRetire] = useState(false);
+
+  const showToast = (message: string, error = false) => {
+    window.clearTimeout(toastTimer.current);
+    setToast({ message, error });
+    toastTimer.current = window.setTimeout(() => setToast(null), error ? 5000 : 2500);
+  };
 
   // --- Mode Entraînement Express (sans reprogrammation FSRS) ---
   const [isFreePractice, setIsFreePractice] = useState(false);
-  const [practicePool, setPracticePool] = useState<'all' | 'cloze' | 'extract'>('all');
+  // Express practice only makes sense for cards: extracts are reading material.
+  const practicePool = 'cloze' as 'all' | 'cloze' | 'extract';
   const [practiceCount, setPracticeCount] = useState<number>(10);
   const [practiceQueue, setPracticeQueue] = useState<ReviewQueueEntry[]>([]);
   const [practiceInitialCount, setPracticeInitialCount] = useState<number>(0);
@@ -140,15 +166,43 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
       return b.priority - a.priority;
     });
 
-    return entries;
+    // Daily limit: cards not yet seen today are capped; cards already reviewed today
+    // (learning steps) and extracts are always included.
+    if (includeAll) return entries;
+    let budget = Math.max(0, dailyLimit - reviewedTodayIds.size);
+    return entries.filter((e) => {
+      if (e.type !== 'cloze' || reviewedTodayIds.has(e.id) || e.id === initialItemId) return true;
+      if (budget <= 0) return false;
+      budget--;
+      return true;
+    });
   };
 
   const [queue, setQueue] = useState<ReviewQueueEntry[]>(() => buildQueue(false));
   const [currentIndex, setCurrentIndex] = useState(0);
 
   // Entrée courante selon le mode actif
-  const currentEntry = isFreePractice ? practiceQueue[0] : queue[currentIndex];
-  const predictions = currentEntry && !isFreePractice ? predictAllRatings(currentEntry.fsrs, targetRetention) : null;
+  const queuedEntry = isFreePractice ? practiceQueue[0] : queue[currentIndex];
+  // Always use the latest version of the item (its schedule changes when it is
+  // reviewed again in the same session, its text when it is edited).
+  const liveItem = queuedEntry
+    ? queuedEntry.type === 'cloze'
+      ? clozes.find((c) => c.id === queuedEntry.id)
+      : extracts.find((e) => e.id === queuedEntry.id)
+    : undefined;
+  const currentEntry: ReviewQueueEntry | undefined =
+    queuedEntry && liveItem
+      ? { ...queuedEntry, fsrs: liveItem.fsrs, text: liveItem.text, note: liveItem.note, priority: liveItem.priority }
+      : queuedEntry;
+  const predictions =
+    currentEntry && currentEntry.type === 'cloze' && !isFreePractice
+      ? predictAllRatings(currentEntry.fsrs, targetRetention)
+      : null;
+
+  useEffect(() => {
+    setExtractSelection(null);
+    setConfirmRetire(false);
+  }, [currentEntry?.id, currentIndex]);
 
   // Lancement de l'entraînement libre sans reprogrammation
   const handleStartFreePractice = () => {
@@ -241,14 +295,19 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   const handleRateNormal = (rating: ReviewRating) => {
     if (!currentEntry) return;
 
-    onRateItem(currentEntry.type, currentEntry.id, rating);
+    if (currentEntry.type !== 'cloze') return;
+    const record = onRateCard(currentEntry.id, rating);
     setSessionCompletedCount((c) => c + 1);
 
-    if (rating === 1 && queue.length > 1) {
+    // Cards in learning steps come back later in the same session.
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    const comesBackToday = record && new Date(record.nextReviewDate) <= endOfToday;
+    if (comesBackToday) {
       setQueue((prevQueue) => [...prevQueue, currentEntry]);
     }
 
-    if (currentIndex + 1 >= queue.length) {
+    if (currentIndex + 1 >= queue.length && !comesBackToday) {
       confetti({
         particleCount: 80,
         spread: 60,
@@ -258,6 +317,45 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 
     setIsAnswerRevealed(false);
     setCurrentIndex((i) => i + 1);
+  };
+
+  const advance = () => {
+    setSessionCompletedCount((c) => c + 1);
+    setIsAnswerRevealed(false);
+    setCurrentIndex((i) => i + 1);
+  };
+
+  const handleExtractNext = () => {
+    if (!currentEntry || currentEntry.type !== 'extract') return;
+    onExtractNext(currentEntry.id);
+    advance();
+  };
+
+  const handleRetireExtract = () => {
+    if (!currentEntry || currentEntry.type !== 'extract') return;
+    onRetireExtract(currentEntry.id);
+    advance();
+  };
+
+  const handleSubExtract = () => {
+    if (!currentEntry || !extractSelection || !extractSelection.text.trim()) return;
+    onCreateExtractFromExtract(currentEntry.id, extractSelection.text.trim());
+    window.getSelection()?.removeAllRanges();
+    setExtractSelection(null);
+    showToast('Sous-extrait créé');
+  };
+
+  const handleClozeFromSelection = () => {
+    if (!currentEntry || !extractSelection) return;
+    const result = buildCloze(extractSelection.context, extractSelection.start, extractSelection.end);
+    if (!result.ok) {
+      showToast(result.error, true);
+      return;
+    }
+    onCreateClozeFromExtract(currentEntry.id, result.text);
+    window.getSelection()?.removeAllRanges();
+    setExtractSelection(null);
+    showToast('Carte à trou créée');
   };
 
   const handleRate = (rating: ReviewRating) => {
@@ -283,25 +381,21 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           if (e.key === '3') handleRate(3);
           if (e.key === '4') handleRate(4);
         }
-      } else {
-        if (e.key === '1') handleRate(1);
-        if (e.key === '2') handleRate(2);
-        if (e.key === '3') handleRate(3);
-        if (e.key === '4') handleRate(4);
+      } else if (e.altKey && e.key.toLowerCase() === 'x') {
+        e.preventDefault();
+        handleSubExtract();
+      } else if (e.altKey && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        handleClozeFromSelection();
+      } else if (e.key === 'Enter' && !(e.target instanceof HTMLButtonElement)) {
+        e.preventDefault();
+        handleExtractNext();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentEntry, isAnswerRevealed, isFreePractice, practiceQueue]);
-
-  const handleTransformToCloze = () => {
-    if (!currentEntry || currentEntry.type !== 'extract') return;
-    const docId = currentEntry.documentId || '';
-    onCreateClozeFromExtract(docId, currentEntry.text);
-    setClozeCreatedToast(true);
-    setTimeout(() => setClozeCreatedToast(false), 2500);
-  };
+  });
 
   const renderClozeContent = (text: string, revealed: boolean) => {
     const clozeRegex = /\{\{c\d+::(.*?)(?:::.*?)?\}\}/g;
@@ -443,82 +537,11 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           </div>
 
           <div className="mt-5 space-y-4">
-            {/* Choix du pool source */}
-            <div>
-              <label className="block text-xs font-medium text-[#28231D] mb-1.5">
-                1. Type d'éléments à réviser
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPracticePool('all');
-                    setPracticeCount((prev) => Math.min(prev, availableCounts.all || 10));
-                  }}
-                  className={`p-2.5 rounded-xl border text-left transition-all ${
-                    practicePool === 'all'
-                      ? 'bg-[#F3EFE8] border-[#8C5E32] text-[#28231D] font-medium'
-                      : 'bg-white border-[#E8E2D5] text-[#695F54] hover:bg-[#FAF7F2]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <span>Tous les éléments</span>
-                    <span className="text-[11px] font-mono opacity-70">
-                      {availableCounts.all}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-[#8C8072] mt-0.5">Clozes et Extraits</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPracticePool('cloze');
-                    setPracticeCount((prev) => Math.min(prev, availableCounts.cloze || 10));
-                  }}
-                  className={`p-2.5 rounded-xl border text-left transition-all ${
-                    practicePool === 'cloze'
-                      ? 'bg-[#F3EFE8] border-[#8C5E32] text-[#28231D] font-medium'
-                      : 'bg-white border-[#E8E2D5] text-[#695F54] hover:bg-[#FAF7F2]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <span>Cartes cloze</span>
-                    <span className="text-[11px] font-mono opacity-70">
-                      {availableCounts.cloze}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-[#8C8072] mt-0.5">Rappels actifs</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPracticePool('extract');
-                    setPracticeCount((prev) => Math.min(prev, availableCounts.extract || 10));
-                  }}
-                  className={`p-2.5 rounded-xl border text-left transition-all ${
-                    practicePool === 'extract'
-                      ? 'bg-[#F3EFE8] border-[#8C5E32] text-[#28231D] font-medium'
-                      : 'bg-white border-[#E8E2D5] text-[#695F54] hover:bg-[#FAF7F2]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <span>Extraits de lecture</span>
-                    <span className="text-[11px] font-mono opacity-70">
-                      {availableCounts.extract}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-[#8C8072] mt-0.5">Passages clés</div>
-                </button>
-              </div>
-            </div>
-
             {/* Nombre de cartes à tirer aléatoirement */}
             <div>
               <div className="flex items-center justify-between text-xs mb-1.5">
                 <label className="font-medium text-[#28231D]">
-                  2. Nombre de cartes aléatoires à tirer
+                  Nombre de cartes aléatoires à tirer
                 </label>
                 <span className="text-[#8C8072] font-mono text-[11px]">
                   Disponible : {totalAvailable} élément{totalAvailable > 1 ? 's' : ''}
@@ -645,7 +668,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[#8C5E32]" />
             <span className="font-semibold text-[#28231D]">
-              Révision du jour (FSRS-4.5)
+              Révision du jour
             </span>
             <span aria-hidden="true">·</span>
             <span className="font-mono tabular-nums">
@@ -655,7 +678,11 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 
           <div className="flex items-center gap-3">
             <span className="font-mono tabular-nums text-[#8C8072]">
-              Stabilité : {currentEntry.fsrs.stability} j · Diff : {currentEntry.fsrs.difficulty}
+              {isCloze
+                ? currentEntry.fsrs.reps === 0 || currentEntry.fsrs.phase === 'new'
+                  ? 'Nouvelle carte'
+                  : `Stabilité : ${formatInterval(currentEntry.fsrs.stability)} · Diff : ${currentEntry.fsrs.difficulty.toFixed(1)}`
+                : `Intervalle actuel : ${formatInterval(currentEntry.fsrs.interval)}`}
             </span>
             <button
               onClick={onClose}
@@ -674,7 +701,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           <div className="flex items-center justify-between text-xs text-[#8C8072] mb-3">
             <div className="flex items-center gap-2">
               <span className="text-[11px] uppercase tracking-wider font-semibold text-[#695F54]">
-                {isCloze ? 'Carte Cloze (Rappel Actif)' : 'Extrait de Lecture Incrémentale'}
+                {isCloze ? 'Carte à trou' : 'Extrait à relire'}
               </span>
               <span aria-hidden="true">·</span>
               {onNavigateToDocument && currentEntry.documentId ? (
@@ -705,27 +732,40 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
             </div>
           ) : (
             <div>
-              <div className="text-lg sm:text-xl font-serif-reading text-[#28231D] leading-relaxed italic mb-4">
-                « {currentEntry.text} »
+              <div
+                ref={extractTextRef}
+                onMouseUp={() => {
+                  const sel = getBlockSelection(extractTextRef.current);
+                  setExtractSelection(sel && sel.text.trim().length > 1 ? sel : null);
+                }}
+                className="text-lg sm:text-xl font-serif-reading text-[#28231D] leading-relaxed whitespace-pre-line select-text"
+              >
+                {currentEntry.text}
               </div>
-              <div className="flex items-center gap-2 mt-4">
+              <div className="flex flex-wrap items-center gap-2 mt-5">
                 <button
-                  onClick={handleTransformToCloze}
-                  disabled={clozeCreatedToast}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#3B3026] bg-[#F3EFE8] hover:bg-[#EAE4D9] border border-[#E8E2D5] rounded-lg transition-colors cursor-pointer"
+                  onClick={handleSubExtract}
+                  disabled={!extractSelection}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#3B3026] bg-[#F3EFE8] hover:bg-[#EAE4D9] border border-[#E8E2D5] rounded-lg transition-colors disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer"
+                  title="Extraire la sélection dans un nouvel extrait plus court (Alt+X)"
                 >
-                  {clozeCreatedToast ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-[#5F8550]" />
-                      <span>Carte Cloze créée !</span>
-                    </>
-                  ) : (
-                    <>
-                      <Scissors className="w-3.5 h-3.5 text-[#8C5E32]" />
-                      <span>Créer une carte à trou depuis cet extrait</span>
-                    </>
-                  )}
+                  <Scissors className="w-3.5 h-3.5 text-[#8C5E32]" />
+                  <span>Extraire la sélection</span>
                 </button>
+                <button
+                  onClick={handleClozeFromSelection}
+                  disabled={!extractSelection}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#3B3026] bg-[#F3EFE8] hover:bg-[#EAE4D9] border border-[#E8E2D5] rounded-lg transition-colors disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer"
+                  title="Masquer la sélection dans une carte à trou ; la phrase autour sert de contexte (Alt+C)"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[#8C5E32]" />
+                  <span>Carte à trou</span>
+                </button>
+                {!extractSelection && (
+                  <span className="text-[11px] text-[#8C8072]">
+                    Sélectionnez un passage (à extraire) ou un mot (à masquer).
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -741,7 +781,49 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 
         {/* Pied de carte : Révélation ou 4 évaluations en beige/blanc */}
         <div className="mt-12 pt-6 border-t border-[#F3EFE8]">
-          {isCloze && !isAnswerRevealed ? (
+          {!isCloze ? (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <span className="text-xs text-[#8C8072] hidden sm:inline">
+                <kbd className="px-1.5 py-0.5 bg-[#F3EFE8] border border-[#E8E2D5] rounded font-mono text-[10px]">Entrée</kbd> pour passer à la suite
+              </span>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {confirmRetire ? (
+                  <span className="flex items-center gap-1.5 text-xs">
+                    <span className="text-[#695F54]">Retirer cet extrait de la file ?</span>
+                    <button
+                      onClick={handleRetireExtract}
+                      className="px-3 py-2 font-semibold text-white bg-[#5F8550] hover:bg-[#4E7042] rounded-lg cursor-pointer"
+                    >
+                      Oui, terminé
+                    </button>
+                    <button
+                      onClick={() => setConfirmRetire(false)}
+                      className="px-2.5 py-2 text-[#695F54] hover:bg-[#F3EFE8] rounded-lg cursor-pointer"
+                    >
+                      Annuler
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => setConfirmRetire(true)}
+                    className="px-3.5 py-2 text-xs text-[#695F54] hover:text-[#28231D] bg-white hover:bg-[#F3EFE8] border border-[#E8E2D5] rounded-lg transition-colors cursor-pointer"
+                    title="Extrait entièrement traité (ses cartes restent)"
+                  >
+                    Terminer cet extrait
+                  </button>
+                )}
+                <button
+                  onClick={handleExtractNext}
+                  className="flex items-center gap-2 px-5 py-2.5 text-xs font-semibold text-[#FAF7F2] bg-[#3B3026] hover:bg-[#28211A] rounded-lg shadow-xs transition-colors cursor-pointer"
+                >
+                  <span>
+                    Suivant · revoir dans {formatInterval(nextTopicInterval(currentEntry.fsrs, currentEntry.priority))}
+                  </span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ) : !isAnswerRevealed ? (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
               <span className="text-xs text-[#8C8072] hidden sm:inline">
                 Appuyez sur <kbd className="px-1.5 py-0.5 bg-[#F3EFE8] border border-[#E8E2D5] rounded font-mono text-[10px]">Espace</kbd> pour afficher la réponse
@@ -759,9 +841,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
               <div className="text-center text-xs text-[#8C8072] mb-3 font-mono">
                 {isFreePractice
                   ? 'Évaluez (1 et 2 remettent dans la file, 3 et 4 retirent la carte maîtrisée) :'
-                  : isCloze
-                  ? 'Évaluez la difficulté de rappel FSRS (1 à 4 au clavier) :'
-                  : 'Évaluez la consolidation mnésique de cet extrait (1 à 4 au clavier) :'}
+                  : 'Évaluez la difficulté de rappel FSRS (1 à 4 au clavier) :'}
               </div>
 
               {isFreePractice ? (
@@ -867,6 +947,19 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           )}
         </div>
       </div>
+      {toast && (
+        <div
+          role={toast.error ? 'alert' : 'status'}
+          className={`fixed bottom-6 right-6 z-50 max-w-sm flex items-start gap-2 px-4 py-2.5 rounded-xl shadow-lg text-xs font-medium border ${
+            toast.error
+              ? 'bg-[#FDF2F0] text-[#8F352B] border-[#F2D6D3]'
+              : 'bg-[#28231D] text-[#FAF7F2] border-[#3E3831]'
+          }`}
+        >
+          {!toast.error && <Check className="w-4 h-4 shrink-0 text-[#8EB87D]" />}
+          <span>{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 };

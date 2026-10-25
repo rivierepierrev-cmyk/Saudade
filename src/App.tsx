@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   DocumentItem,
   ExtractItem,
@@ -11,10 +11,12 @@ import {
   ActiveTab,
   ReviewRating,
   ItemType,
+  ItemState,
+  FSRSRecord,
 } from './types/gemma';
 import { GemmaStorage, FolioleStorage, AppSettings } from './lib/storage';
 import { onStorageError, isDesktop, dataLocation, takeSnapshot, openDataFolder } from './lib/kv';
-import { createInitialFSRSRecord, calculateNextFSRS } from './lib/fsrs';
+import { createInitialFSRSRecord, applyCardReview, applyTopicReview, firstTopicInterval } from './lib/fsrs';
 import { TopNav } from './components/TopNav';
 import { QueueView } from './components/QueueView';
 import { ReaderView } from './components/ReaderView';
@@ -50,6 +52,9 @@ export default function App() {
     const exts = GemmaStorage.getExtracts();
     const clzs = GemmaStorage.getClozes();
 
+    documentsRef.current = docs;
+    extractsRef.current = exts;
+    clozesRef.current = clzs;
     setDocuments(docs);
     setExtracts(exts);
     setClozes(clzs);
@@ -59,81 +64,104 @@ export default function App() {
     }
   }, []);
 
-  // Sync state to local storage
-  const updateDocuments = (newDocs: DocumentItem[]) => {
-    setDocuments(newDocs);
-    GemmaStorage.saveDocuments(newDocs);
+  // Sync state to storage. Updates read the latest state from refs so delayed
+  // callbacks (debounced progress saves, etc.) never overwrite newer changes.
+  const documentsRef = useRef(documents);
+  const extractsRef = useRef(extracts);
+  const clozesRef = useRef(clozes);
+
+  type Update<T> = T[] | ((prev: T[]) => T[]);
+
+  const updateDocuments = (next: Update<DocumentItem>) => {
+    const value = typeof next === 'function' ? next(documentsRef.current) : next;
+    documentsRef.current = value;
+    setDocuments(value);
+    GemmaStorage.saveDocuments(value);
   };
 
-  const updateExtracts = (newExts: ExtractItem[]) => {
-    setExtracts(newExts);
-    GemmaStorage.saveExtracts(newExts);
+  const updateExtracts = (next: Update<ExtractItem>) => {
+    const value = typeof next === 'function' ? next(extractsRef.current) : next;
+    extractsRef.current = value;
+    setExtracts(value);
+    GemmaStorage.saveExtracts(value);
   };
 
-  const updateClozes = (newClzs: ClozeItem[]) => {
-    setClozes(newClzs);
-    GemmaStorage.saveClozes(newClzs);
+  const updateClozes = (next: Update<ClozeItem>) => {
+    const value = typeof next === 'function' ? next(clozesRef.current) : next;
+    clozesRef.current = value;
+    setClozes(value);
+    GemmaStorage.saveClozes(value);
   };
 
   const currentDocument =
     documents.find((d) => d.id === currentDocumentId) || documents[0];
 
   const logs = GemmaStorage.getReviewLogs();
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const reviewedTodayIds = new Set(
+    logs.filter((l) => l.itemType === 'cloze' && new Date(l.reviewDate) >= startOfToday).map((l) => l.itemId)
+  );
   const stats = GemmaStorage.computeStats(documents, extracts, clozes, logs);
 
-  // Handler: Create Extract from Reader
-  const handleCreateExtract = (docId: string, text: string) => {
-    const doc = documents.find((d) => d.id === docId);
-    if (!doc) return;
+  const newId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
+  // Handler: Create Extract (from a document in the reader, or from another extract)
+  const handleCreateExtract = (source: { documentId: string; parentExtractId?: string }, text: string) => {
+    const doc = documentsRef.current.find((d) => d.id === source.documentId);
+    const parent = source.parentExtractId
+      ? extractsRef.current.find((e) => e.id === source.parentExtractId)
+      : undefined;
+    if (!doc && !parent) return;
+
+    const basePriority = parent ? parent.priority : doc!.priority;
+    const priority = Math.min(100, basePriority + 5);
+    const now = new Date().toISOString();
     const newExtract: ExtractItem = {
-      id: `ext-${Date.now()}`,
-      documentId: doc.id,
-      documentTitle: doc.title,
+      id: newId('ext'),
+      documentId: source.documentId,
+      documentTitle: parent?.documentTitle ?? doc!.title,
+      parentExtractId: parent?.id,
+      folder: parent?.folder ?? doc?.folder,
       text,
-      tags: [...doc.tags],
-      priority: Math.min(100, doc.priority + 5),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      state: 'learning',
-      fsrs: createInitialFSRSRecord(1), // due in 1 day
+      tags: [...(parent?.tags ?? doc?.tags ?? [])],
+      priority,
+      createdAt: now,
+      updatedAt: now,
+      state: 'new',
+      fsrs: createInitialFSRSRecord(firstTopicInterval(priority)),
     };
+    updateExtracts((prev) => [newExtract, ...prev]);
 
-    const newExts = [newExtract, ...extracts];
-    updateExtracts(newExts);
-
-    // Update document extracted count
-    const updatedDocs = documents.map((d) =>
-      d.id === docId ? { ...d, extractedCount: (d.extractedCount || 0) + 1 } : d
-    );
-    updateDocuments(updatedDocs);
+    if (doc) {
+      updateDocuments((prev) =>
+        prev.map((d) => (d.id === doc.id ? { ...d, extractedCount: (d.extractedCount || 0) + 1 } : d))
+      );
+    }
   };
 
-  // Handler: Create Cloze from Reader or Extract
-  const handleCreateCloze = (docId: string, text: string) => {
-    const doc = documents.find((d) => d.id === docId);
-
-    // Wrap the selected text in a cloze template if not already wrapped
-    let clozeText = text;
-    if (!text.includes('{{c')) {
-      clozeText = `{{c1::${text}}}`;
-    }
+  // Handler: Create Cloze card. `clozeText` already contains the {{c1::...}} deletion.
+  const handleCreateCloze = (source: { documentId?: string; extractId?: string }, clozeText: string) => {
+    const ext = source.extractId ? extractsRef.current.find((e) => e.id === source.extractId) : undefined;
+    const docId = source.documentId ?? ext?.documentId;
+    const doc = docId ? documentsRef.current.find((d) => d.id === docId) : undefined;
+    const now = new Date().toISOString();
 
     const newCloze: ClozeItem = {
-      id: `cloze-${Date.now()}`,
-      documentId: doc?.id,
-      documentTitle: doc?.title || 'Atomic Insight',
+      id: newId('cloze'),
+      documentId: doc?.id ?? docId,
+      extractId: ext?.id,
+      documentTitle: ext?.documentTitle ?? doc?.title ?? 'Note',
+      folder: ext?.folder ?? doc?.folder,
       text: clozeText,
-      tags: doc ? [...doc.tags] : ['Spaced Repetition'],
-      priority: doc ? doc.priority : 85,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      state: 'learning',
-      fsrs: createInitialFSRSRecord(1),
+      tags: [...(ext?.tags ?? doc?.tags ?? [])],
+      priority: ext?.priority ?? doc?.priority ?? 85,
+      createdAt: now,
+      updatedAt: now,
+      state: 'new',
+      fsrs: createInitialFSRSRecord(0), // available for review right away
     };
-
-    const newClzs = [newCloze, ...clozes];
-    updateClozes(newClzs);
+    updateClozes((prev) => [newCloze, ...prev]);
   };
 
   // Handler: Update FSRS Target Retention
@@ -144,74 +172,79 @@ export default function App() {
     FolioleStorage.saveSettings(newSettings);
   };
 
-  // Handler: Rate Item (Cloze ou Extrait) in FSRS Review
-  const handleRateItem = (type: 'cloze' | 'extract', id: string, rating: ReviewRating) => {
-    if (type === 'cloze') {
-      const target = clozes.find((c) => c.id === id);
-      if (!target) return;
+  const handleUpdateDailyLimit = (limit: number) => {
+    const newSettings: AppSettings = { ...settings, dailyReviewLimit: Math.max(1, Math.min(999, Math.round(limit))) };
+    setSettings(newSettings);
+    FolioleStorage.saveSettings(newSettings);
+  };
 
-      const prediction = calculateNextFSRS(target.fsrs, rating, new Date(), settings.targetRetention);
+  // Handler: Rate a cloze card (FSRS). Returns the new scheduling record.
+  const handleRateCard = (id: string, rating: ReviewRating): FSRSRecord | undefined => {
+    const target = clozesRef.current.find((c) => c.id === id);
+    if (!target) return undefined;
+    const now = new Date();
+    const fsrs = applyCardReview(target.fsrs, rating, now, settings.targetRetention);
+    const state: ItemState = fsrs.phase === 'review' ? 'review' : 'learning';
+    updateClozes((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, fsrs, state, updatedAt: now.toISOString() } : c))
+    );
+    FolioleStorage.appendReviewLog({
+      id: newId('log'),
+      itemId: id,
+      itemType: 'cloze',
+      rating,
+      scheduledInterval: fsrs.interval,
+      actualInterval: target.fsrs.lastReview
+        ? (now.getTime() - new Date(target.fsrs.lastReview).getTime()) / 86400000
+        : 0,
+      reviewDate: now.toISOString(),
+      state,
+    });
+    return fsrs;
+  };
 
-      const updatedCloze: ClozeItem = {
-        ...target,
-        updatedAt: new Date().toISOString(),
-        fsrs: {
-          stability: prediction.stability,
-          difficulty: prediction.difficulty,
-          reps: target.fsrs.reps + 1,
-          lapses: target.fsrs.lapses + (rating === 1 ? 1 : 0),
-          lastReview: new Date().toISOString(),
-          nextReviewDate: prediction.nextReviewDate,
-          interval: prediction.interval,
-        },
-      };
+  // Handler: done reading a document or extract for now ("Suivant"): reschedule it
+  // with an interval that grows according to its priority. Returns the interval in days.
+  const handleTopicNext = (type: 'document' | 'extract', id: string): number | undefined => {
+    const now = new Date();
+    const list: Array<DocumentItem | ExtractItem> = type === 'document' ? documentsRef.current : extractsRef.current;
+    const target = list.find((i) => i.id === id);
+    if (!target) return undefined;
+    const fsrs = applyTopicReview(target.fsrs, target.priority, now);
+    const patch = { fsrs, state: 'review' as ItemState, updatedAt: now.toISOString() };
+    if (type === 'document') {
+      updateDocuments((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)));
+    } else {
+      updateExtracts((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+    }
+    FolioleStorage.appendReviewLog({
+      id: newId('log'),
+      itemId: id,
+      itemType: type,
+      rating: 3,
+      scheduledInterval: fsrs.interval,
+      actualInterval: target.fsrs.lastReview
+        ? (now.getTime() - new Date(target.fsrs.lastReview).getTime()) / 86400000
+        : 0,
+      reviewDate: now.toISOString(),
+      state: 'review',
+    });
+    return fsrs.interval;
+  };
 
-      const updatedList = clozes.map((c) => (c.id === id ? updatedCloze : c));
-      updateClozes(updatedList);
-
-      FolioleStorage.appendReviewLog({
-        id: `log-${Date.now()}`,
-        itemId: id,
-        itemType: 'cloze',
-        rating,
-        scheduledInterval: prediction.interval,
-        actualInterval: target.fsrs.interval,
-        reviewDate: new Date().toISOString(),
-        state: updatedCloze.state,
-      });
-    } else if (type === 'extract') {
-      const target = extracts.find((e) => e.id === id);
-      if (!target) return;
-
-      const prediction = calculateNextFSRS(target.fsrs, rating, new Date(), settings.targetRetention);
-
-      const updatedExtract: ExtractItem = {
-        ...target,
-        updatedAt: new Date().toISOString(),
-        fsrs: {
-          stability: prediction.stability,
-          difficulty: prediction.difficulty,
-          reps: target.fsrs.reps + 1,
-          lapses: target.fsrs.lapses + (rating === 1 ? 1 : 0),
-          lastReview: new Date().toISOString(),
-          nextReviewDate: prediction.nextReviewDate,
-          interval: prediction.interval,
-        },
-      };
-
-      const updatedList = extracts.map((e) => (e.id === id ? updatedExtract : e));
-      updateExtracts(updatedList);
-
-      FolioleStorage.appendReviewLog({
-        id: `log-${Date.now()}`,
-        itemId: id,
-        itemType: 'extract',
-        rating,
-        scheduledInterval: prediction.interval,
-        actualInterval: target.fsrs.interval,
-        reviewDate: new Date().toISOString(),
-        state: updatedExtract.state,
-      });
+  // Opens the highest-priority document due today (other than `excludeId`),
+  // or goes back to the queue when there is nothing left to read.
+  const openNextDueDocument = (excludeId: string) => {
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    const next = documentsRef.current
+      .filter((d) => d.id !== excludeId && d.state !== 'dismissed' && new Date(d.fsrs.nextReviewDate) <= endOfToday)
+      .sort((a, b) => b.priority - a.priority)[0];
+    if (next) {
+      setCurrentDocumentId(next.id);
+      window.scrollTo({ top: 0 });
+    } else {
+      setActiveTab('queue');
     }
   };
 
@@ -220,20 +253,20 @@ export default function App() {
     const newDate = new Date(Date.now() + days * 86400000).toISOString();
 
     if (type === 'document') {
-      updateDocuments(
-        documents.map((d) =>
+      updateDocuments((prev) =>
+        prev.map((d) =>
           d.id === id ? { ...d, fsrs: { ...d.fsrs, nextReviewDate: newDate } } : d
         )
       );
     } else if (type === 'extract') {
-      updateExtracts(
-        extracts.map((e) =>
+      updateExtracts((prev) =>
+        prev.map((e) =>
           e.id === id ? { ...e, fsrs: { ...e.fsrs, nextReviewDate: newDate } } : e
         )
       );
     } else if (type === 'cloze') {
-      updateClozes(
-        clozes.map((c) =>
+      updateClozes((prev) =>
+        prev.map((c) =>
           c.id === id ? { ...c, fsrs: { ...c.fsrs, nextReviewDate: newDate } } : c
         )
       );
@@ -243,16 +276,16 @@ export default function App() {
   // Handler: Update Priority
   const handleUpdatePriority = (type: ItemType, id: string, newPriority: number) => {
     if (type === 'document') {
-      updateDocuments(
-        documents.map((d) => (d.id === id ? { ...d, priority: newPriority } : d))
+      updateDocuments((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, priority: newPriority } : d))
       );
     } else if (type === 'extract') {
-      updateExtracts(
-        extracts.map((e) => (e.id === id ? { ...e, priority: newPriority } : e))
+      updateExtracts((prev) =>
+        prev.map((e) => (e.id === id ? { ...e, priority: newPriority } : e))
       );
     } else if (type === 'cloze') {
-      updateClozes(
-        clozes.map((c) => (c.id === id ? { ...c, priority: newPriority } : c))
+      updateClozes((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, priority: newPriority } : c))
       );
     }
   };
@@ -321,30 +354,27 @@ export default function App() {
   // Handler: Dismiss Item
   const handleDismissItem = (type: ItemType, id: string) => {
     if (type === 'document') {
-      updateDocuments(
-        documents.map((d) => (d.id === id ? { ...d, state: 'dismissed' } : d))
+      updateDocuments((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, state: 'dismissed' } : d))
       );
     } else if (type === 'extract') {
-      updateExtracts(
-        extracts.map((e) => (e.id === id ? { ...e, state: 'dismissed' } : e))
+      updateExtracts((prev) =>
+        prev.map((e) => (e.id === id ? { ...e, state: 'dismissed' } : e))
       );
     } else if (type === 'cloze') {
-      updateClozes(
-        clozes.map((c) => (c.id === id ? { ...c, state: 'dismissed' } : c))
+      updateClozes((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, state: 'dismissed' } : c))
       );
     }
   };
 
-  // Handler: Update Reading Progress
-  const handleUpdateProgress = (docId: string, progress: number, offset: number) => {
-    updateDocuments(
-      documents.map((d) =>
-        d.id === docId
-          ? { ...d, readingProgress: progress, lastReadOffset: offset }
-          : d
-      )
+  // Handler: Update Reading Progress (called debounced by the reader)
+  const handleUpdateProgress = useCallback((docId: string, progress: number, offset: number) => {
+    updateDocuments((prev) =>
+      prev.map((d) => (d.id === docId ? { ...d, readingProgress: progress, lastReadOffset: offset } : d))
     );
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Export JSON Backup
   const handleExportBackup = () => {
@@ -390,9 +420,14 @@ export default function App() {
 
   const reloadFromStorage = () => {
     const docs = GemmaStorage.getDocuments();
+    const exts = GemmaStorage.getExtracts();
+    const clzs = GemmaStorage.getClozes();
+    documentsRef.current = docs;
+    extractsRef.current = exts;
+    clozesRef.current = clzs;
     setDocuments(docs);
-    setExtracts(GemmaStorage.getExtracts());
-    setClozes(GemmaStorage.getClozes());
+    setExtracts(exts);
+    setClozes(clzs);
     setSettings(GemmaStorage.getSettings());
     setCurrentDocumentId(docs[0]?.id ?? '');
   };
@@ -504,8 +539,16 @@ export default function App() {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               onUpdateDocument={handleUpdateDocument}
-              onCreateExtract={handleCreateExtract}
-              onCreateCloze={handleCreateCloze}
+              onCreateExtract={(docId, text) => handleCreateExtract({ documentId: docId }, text)}
+              onCreateCloze={(docId, clozeText) => handleCreateCloze({ documentId: docId }, clozeText)}
+              onFinishReading={(docId) => {
+                handleTopicNext('document', docId);
+                openNextDueDocument(docId);
+              }}
+              onRetireDocument={(docId) => {
+                handleDismissItem('document', docId);
+                openNextDueDocument(docId);
+              }}
               onUpdateProgress={handleUpdateProgress}
               onPostponeDocument={(docId, days) =>
                 handlePostponeItem('document', docId, days)
@@ -536,8 +579,16 @@ export default function App() {
             extracts={extracts}
             initialItemId={reviewClozeId}
             targetRetention={settings.targetRetention}
-            onRateItem={handleRateItem}
-            onCreateClozeFromExtract={(docId, text) => handleCreateCloze(docId, text)}
+            onRateCard={handleRateCard}
+            onExtractNext={(id) => handleTopicNext('extract', id)}
+            onRetireExtract={(id) => handleDismissItem('extract', id)}
+            onCreateExtractFromExtract={(extractId, text) => {
+              const parent = extractsRef.current.find((e) => e.id === extractId);
+              if (parent) handleCreateExtract({ documentId: parent.documentId, parentExtractId: extractId }, text);
+            }}
+            onCreateClozeFromExtract={(extractId, clozeText) => handleCreateCloze({ extractId }, clozeText)}
+            dailyLimit={settings.dailyReviewLimit}
+            reviewedTodayIds={reviewedTodayIds}
             onClose={() => setActiveTab('queue')}
             onNavigateToDocument={(docId) => {
               setCurrentDocumentId(docId);
@@ -587,6 +638,8 @@ export default function App() {
             clozes={clozes}
             targetRetention={settings.targetRetention}
             onUpdateTargetRetention={handleUpdateTargetRetention}
+            dailyReviewLimit={settings.dailyReviewLimit}
+            onUpdateDailyLimit={handleUpdateDailyLimit}
             onExportBackup={handleExportBackup}
             onExportMarkdownMirror={handleExportMarkdownMirror}
             onResetDemo={handleResetDemo}

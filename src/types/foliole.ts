@@ -9,6 +9,9 @@ export type ReviewRating = 1 | 2 | 3 | 4; // 1: Again, 2: Hard, 3: Good, 4: Easy
 
 export type ItemState = 'new' | 'learning' | 'review' | 'dismissed';
 
+/** Learning phase of a cloze card (FSRS). Unused for documents and extracts. */
+export type CardPhase = 'new' | 'learning' | 'review' | 'relearning';
+
 export interface FSRSRecord {
   stability: number;   // S: Days required for retrievability to drop from 100% to 90%
   difficulty: number;  // D: Inherent memory difficulty (1.0 to 10.0)
@@ -17,6 +20,8 @@ export interface FSRSRecord {
   lastReview?: string; // ISO date string
   nextReviewDate: string; // ISO date string
   interval: number;    // Scheduled interval in days
+  phase?: CardPhase;   // Cards only; missing on records from older versions (treated as 'review')
+  learningSteps?: number; // Cards only: current short-term learning step
 }
 
 export interface DocumentItem {
@@ -42,6 +47,7 @@ export interface ExtractItem {
   id: string;
   documentId: string;
   documentTitle: string;
+  parentExtractId?: string; // Set when extracted from another extract
   folder?: string; // Hérité du document ou dossier propre
   text: string;
   note?: string;
@@ -86,7 +92,7 @@ export interface GemmaStats {
   totalClozes: number;
   dueTodayCount: number;
   reviewsCompletedToday: number;
-  averageRetention: number; // e.g. 91.4%
+  averageRetention: number | null; // % of successful card recalls over 30 days; null without reviews
   streakDays: number;
 }
 

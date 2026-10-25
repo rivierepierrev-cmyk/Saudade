@@ -1,0 +1,99 @@
+/**
+ * Building cloze cards from a selection: the card keeps the sentence(s) around the
+ * selected words as context and hides only the selection.
+ */
+
+export type ClozeBuildResult = { ok: true; text: string } | { ok: false; error: string };
+
+const CLOZE_PATTERN = /\{\{c\d+::/;
+
+/** Start/end offsets of the sentences in `text`. */
+function sentenceRanges(text: string): Array<[number, number]> {
+  const ranges: Array<[number, number]> = [];
+  // A sentence ends with . ! ? or … (optionally followed by closing quotes/brackets) and whitespace.
+  const re = /[.!?…]+["»”’)\]]*\s+/g;
+  let start = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const end = m.index + m[0].length;
+    // Don't split after common abbreviations or single initials ("M.", "p.", "J.")
+    const before = text.slice(start, m.index + 1);
+    if (/(?:^|\s)(?:[A-Za-zÀ-ÿ]|M|Mme|Dr|St|p|cf|etc|vol|éd|ex|fig|n°|e\.g|i\.e)\.$/.test(before)) continue;
+    ranges.push([start, end]);
+    start = end;
+  }
+  if (start < text.length) ranges.push([start, text.length]);
+  return ranges;
+}
+
+const visibleLength = (s: string) => s.replace(/[\s\p{P}]/gu, '').length;
+
+/**
+ * @param context  Plain text of the paragraph (or extract) containing the selection.
+ * @param start    Selection start offset in `context`.
+ * @param end      Selection end offset in `context`.
+ */
+export function buildCloze(context: string, start: number, end: number): ClozeBuildResult {
+  // Trim whitespace around the selection.
+  while (start < end && /\s/.test(context[start])) start++;
+  while (end > start && /\s/.test(context[end - 1])) end--;
+  const answer = context.slice(start, end);
+  if (!answer) return { ok: false, error: 'Sélectionnez le mot ou l’expression à masquer.' };
+  if (CLOZE_PATTERN.test(context) || answer.includes('}}') || answer.includes('::')) {
+    return { ok: false, error: 'Ce texte contient déjà une syntaxe de carte à trou.' };
+  }
+
+  const ranges = sentenceRanges(context);
+  const first = ranges.find(([s, e]) => start >= s && start < e) ?? [0, context.length];
+  const last = ranges.find(([s, e]) => end > s && end <= e) ?? [first[0], context.length];
+  const ctxStart = first[0];
+  const ctxEnd = last[1];
+  const sentence = context.slice(ctxStart, ctxEnd);
+
+  if (visibleLength(answer) >= visibleLength(sentence) * 0.85) {
+    return {
+      ok: false,
+      error: 'Sélectionnez seulement le mot ou l’expression à masquer, pas toute la phrase : la phrase sert de contexte à la question.',
+    };
+  }
+
+  const text =
+    context.slice(ctxStart, start) + `{{c1::${answer}}}` + context.slice(end, ctxEnd);
+  return { ok: true, text: text.replace(/\s+/g, ' ').trim() };
+}
+
+/** Selection described relative to the plain text of its enclosing block. */
+export interface BlockSelection {
+  text: string;
+  context: string;
+  start: number;
+  end: number;
+}
+
+const BLOCK_SELECTOR = 'p, li, blockquote, h1, h2, h3, h4, h5, h6, td, th, figcaption, dd, dt, pre';
+
+/**
+ * Locates the current window selection inside `root`. `context` is the text of the
+ * closest block element (paragraph, list item…) when the selection stays inside one
+ * block, otherwise the text of `root`.
+ */
+export function getBlockSelection(root: HTMLElement | null): BlockSelection | null {
+  const selection = window.getSelection();
+  if (!root || !selection || selection.isCollapsed || selection.rangeCount === 0) return null;
+  const range = selection.getRangeAt(0);
+  if (!root.contains(range.commonAncestorContainer)) return null;
+
+  const ancestor =
+    range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+      ? (range.commonAncestorContainer as Element)
+      : range.commonAncestorContainer.parentElement;
+  const closestBlock = ancestor?.closest(BLOCK_SELECTOR);
+  const block = closestBlock && root.contains(closestBlock) ? (closestBlock as HTMLElement) : root;
+
+  const pre = document.createRange();
+  pre.selectNodeContents(block);
+  pre.setEnd(range.startContainer, range.startOffset);
+  const start = pre.toString().length;
+  const text = range.toString();
+  return { text, context: block.textContent ?? '', start, end: start + text.length };
+}

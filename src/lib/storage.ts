@@ -156,9 +156,26 @@ export class GemmaStorage {
       l => new Date(l.reviewDate) >= startOfToday
     );
 
-    // Compute average retention from reviews rated >= 2 (Hard, Good, Easy)
-    const successfulReviews = logs.filter(l => l.rating >= 2).length;
-    const retention = logs.length > 0 ? (successfulReviews / logs.length) * 100 : 92.4;
+    // Real retention: share of successful recalls (Hard/Good/Easy) among card
+    // reviews of the last 30 days. Null until there is something to measure.
+    const since = Date.now() - 30 * 86400000;
+    const recentCardLogs = logs.filter((l) => l.itemType === 'cloze' && new Date(l.reviewDate).getTime() >= since);
+    const retention =
+      recentCardLogs.length > 0
+        ? (recentCardLogs.filter((l) => l.rating >= 2).length / recentCardLogs.length) * 100
+        : null;
+
+    // Streak: consecutive days with at least one review or reading session, ending
+    // today (or yesterday, if nothing has been done yet today).
+    const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    const activeDays = new Set(logs.map((l) => dayKey(new Date(l.reviewDate))));
+    const cursor = new Date();
+    if (!activeDays.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1);
+    let streak = 0;
+    while (activeDays.has(dayKey(cursor))) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    }
 
     return {
       totalDocuments: docs.length,
@@ -166,8 +183,8 @@ export class GemmaStorage {
       totalClozes: clozes.length,
       dueTodayCount: dueDocs + dueExtracts + dueClozes,
       reviewsCompletedToday: todayReviews.length,
-      averageRetention: Number(retention.toFixed(1)),
-      streakDays: logs.length > 0 ? 5 : 1,
+      averageRetention: retention === null ? null : Number(retention.toFixed(1)),
+      streakDays: streak,
     };
   }
 
