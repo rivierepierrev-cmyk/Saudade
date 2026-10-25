@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Foliole - Lecture Incrémentale & Répétition Espacée FSRS</title>
+    <meta name="description" content="Une application moderne et locale de lecture incrémentale et de répétition espacée. Extrayez des passages, générez des clozes et révisez avec FSRS." />
+    <meta property="og:title" content="Foliole - Lecture Incrémentale & Répétition Espacée FSRS" />
+    <meta property="og:description" content="Une application moderne et locale de lecture incrémentale et de répétition espacée. Extrayez des passages, générez des clozes et révisez avec FSRS." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+    <script>
+      // Suppress Vite HMR WebSocket connection errors as per environment instructions
+      window.addEventListener('error', function(e) {
+        if (e.message && (e.message.indexOf('WebSocket') !== -1 || e.message.indexOf('createWebSocket') !== -1 || (e.filename && e.filename.indexOf('@vite/client') !== -1))) {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
+      }, true);
+      window.addEventListener('unhandledrejection', function(e) {
+        var str = String(e.reason || '');
+        var stack = String((e.reason && e.reason.stack) || '');
+        if (str.indexOf('WebSocket') !== -1 || str.indexOf('createWebSocket') !== -1 || stack.indexOf('@vite/client') !== -1) {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
+      }, true);
+    </script>
+  </head>
+  <body class="bg-[#FAF7F2] text-[#28231D] antialiased font-sans selection:bg-[#EBE2D3] selection:text-[#28231D]">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

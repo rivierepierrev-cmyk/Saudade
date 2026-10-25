@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-serif: 'Newsreader', Georgia, serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    --bg-canvas: #FAF7F2;
+    --bg-surface: #FFFFFF;
+    --bg-surface-subtle: #F3EFE8;
+    --border-beige: #E8E2D5;
+    --border-beige-dark: #DDD6C8;
+    --text-primary: #28231D;
+    --text-secondary: #695F54;
+    --text-muted: #9E9385;
+    --accent-warm: #8C5E32;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+  }
+}
+
+.font-serif-reading {
+  font-family: var(--font-serif);
+}
+
+.font-mono-code {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Subtle warm scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(180, 168, 150, 0.35);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(160, 145, 125, 0.55);
+}
+
+/* Reader highlight & cloze styling in warm beige */
+mark.foliole-highlight {
+  background-color: #F3E6CE;
+  color: #28231D;
+  padding: 0.12rem 0.3rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.15s ease;
+}
+
+mark.foliole-highlight:hover {
+  background-color: #ECDAB8;
+}
+
+.cloze-blank {
+  background-color: #F2E8D8;
+  border: 1px dashed #B8966E;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  color: #7A4E26;
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+/* Reader image & media styling */
+article img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+  margin: 1.5rem auto 0.5rem auto;
+  box-shadow: 0 2px 8px -2px rgba(40, 35, 29, 0.08);
+  border: 1px solid #E8E2D5;
+  display: block;
+}
+
+article p:has(> img) {
+  text-align: center;
+}
+
+article p:has(> img) + p > em,
+article p > em:only-child {
+  display: block;
+  font-size: 0.82em;
+  color: #695F54;
+  margin-top: 0.25rem;
+  margin-bottom: 1.25rem;
+  text-align: center;
+  font-family: var(--font-sans);
+}
+
