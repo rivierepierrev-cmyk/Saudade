@@ -5,9 +5,15 @@ Vos données sont stockées dans des fichiers JSON du dossier de l'application :
 - Linux : `~/.config/Foliole/data/`
 - Windows : `%APPDATA%\Foliole\data\`
 
-Chaque écriture est atomique et garde la version précédente (`*.json.bak`). Une sauvegarde complète est créée chaque jour dans `data/backups/` (7 dernières conservées), ainsi qu'avant chaque restauration ou réinitialisation. Ces fichiers ne sont pas supprimés à la désinstallation.
+Chaque écriture est atomique et garde la version précédente (`*.json.bak`). Une sauvegarde complète est créée chaque jour dans `data/backups/` (7 dernières conservées), ainsi qu'avant chaque restauration ou réinitialisation. Les images importées sont dans `data/media/` : pour une sauvegarde complète, copiez tout le dossier `data`. Ces fichiers ne sont pas supprimés à la désinstallation.
 Au premier lancement de cette version, l'ancienne bibliothèque (localStorage) est copiée automatiquement.
-En mode navigateur (`npm run dev`), les données restent dans le localStorage du navigateur. Seule fonction réseau : le « web clip » (récupère l'URL que vous saisissez).
+En mode navigateur (`npm run dev`), les données restent dans le localStorage du navigateur. Seule fonction réseau : la capture d'une page web (l'adresse que vous saisissez) et le téléchargement de ses images.
+
+## Import
+- **Page web** : l'article est extrait (Readability), nettoyé et converti en Markdown ; les images sont copiées dans `data/media/` pour être lisibles hors ligne.
+- **EPUB** : un document par chapitre, dans le dossier `Livres/<titre>` ; un chapitre par jour arrive dans la file.
+- **PDF** : le texte est extrait et remis en paragraphes (les PDF scannés, sans texte, ne sont pas pris en charge).
+- **HTML, Markdown, texte**.
 
 ## Développement
     npm install

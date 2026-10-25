@@ -655,9 +655,15 @@ export default function App() {
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
         onAddDocument={(newDoc) => {
-          const newDocs = [newDoc, ...documents];
-          updateDocuments(newDocs);
+          updateDocuments((prev) => [newDoc, ...prev]);
           setCurrentDocumentId(newDoc.id);
+          setActiveTab('reader');
+        }}
+        onAddDocuments={(newDocs) => {
+          if (newDocs.length === 0) return;
+          updateDocuments((prev) => [...newDocs, ...prev]);
+          FolioleStorage.saveFolders([...FolioleStorage.getFolders(), ...newDocs.map((d) => d.folder || 'Général')]);
+          setCurrentDocumentId(newDocs[0].id);
           setActiveTab('reader');
         }}
       />

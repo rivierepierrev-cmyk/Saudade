@@ -56,6 +56,7 @@ async function start() {
   process.env.PORT_FALLBACK = '1';
   process.env.HOST = HOST;
   process.env.STATIC_DIR = path.join(__dirname, '..', 'dist');
+  process.env.FOLIOLE_DATA_DIR = store.dataDir;
   let port;
   try {
     const server = await import(require('url').pathToFileURL(path.join(__dirname, '..', 'dist-electron', 'server.mjs')).href);
@@ -79,7 +80,13 @@ async function start() {
     },
   });
   win.loadURL(`http://${HOST}:${port}/`);
-  win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' }; });
+  // Links in documents open in the system browser instead of replacing the app.
+  const appOrigin = `http://${HOST}:${port}`;
+  const openExternally = (url) => { if (/^https?:|^mailto:/i.test(url)) shell.openExternal(url); };
+  win.webContents.setWindowOpenHandler(({ url }) => { openExternally(url); return { action: 'deny' }; });
+  win.webContents.on('will-navigate', (event, url) => {
+    if (!url.startsWith(appOrigin + '/')) { event.preventDefault(); openExternally(url); }
+  });
 }
 
 if (!app.requestSingleInstanceLock()) {

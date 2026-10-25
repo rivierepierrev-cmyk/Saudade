@@ -3,6 +3,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,280 +14,171 @@ const host = process.env.HOST || '127.0.0.1';
 
 app.use(express.json({ limit: '10mb' }));
 
-// Web Article Clipper API (avec extraction automatique des images, support Wikipédia & sites web)
-app.post('/api/web-clip', async (req, res) => {
+// Where downloaded and imported images are stored. The desktop app points this to
+// its data folder; `npm run dev` uses ./.foliole-data.
+const dataDir = process.env.FOLIOLE_DATA_DIR || path.resolve(process.cwd(), '.foliole-data');
+const mediaDir = path.join(dataDir, 'media');
+fs.mkdirSync(mediaDir, { recursive: true });
+
+const MAX_PAGE_BYTES = 15 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+const FETCH_TIMEOUT_MS = 20000;
+const BROWSER_UA =
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+
+const IMAGE_EXT: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+  'image/avif': 'avif',
+  'image/svg+xml': 'svg',
+  'image/bmp': 'bmp',
+};
+
+// The API is only for the Foliole page itself. Requiring a custom header makes
+// browsers send a CORS preflight for any other website, which is never approved,
+// so web pages you visit can't make the app fetch URLs or write files.
+app.use('/api', (req, res, next) => {
+  if (req.get('X-Foliole') !== '1') return res.status(403).json({ error: 'Requête refusée' });
+  next();
+});
+
+function normalizeUrl(raw: unknown): URL {
+  if (!raw || typeof raw !== 'string') throw new Error('Une URL valide est requise');
+  let value = raw.trim();
+  if (!/^https?:\/\//i.test(value)) value = 'https://' + value;
+  const url = new URL(value);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('Seules les adresses http(s) sont acceptées');
+  return url;
+}
+
+async function fetchLimited(url: URL, accept: string, maxBytes: number, referer?: string) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const { url } = req.body;
-    if (!url || typeof url !== 'string') {
-      return res.status(400).json({ error: 'Une URL valide est requise' });
-    }
-
-    const trimmedUrl = url.trim();
-    let targetUrl = trimmedUrl;
-    if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
-      targetUrl = 'https://' + targetUrl;
-    }
-
-    const parsedUrl = new URL(targetUrl);
-    const isWikipedia = /(?:^|\.)wikipedia\.org$/i.test(parsedUrl.hostname);
-
-    let html = '';
-    let title = '';
-    let author = parsedUrl.hostname;
-
-    if (isWikipedia) {
-      author = 'Wikipédia';
-      const wikiMatch = parsedUrl.pathname.match(/^\/wiki\/([^#?]+)/);
-      const hostParts = parsedUrl.hostname.split('.');
-      const lang = hostParts.length >= 3 ? hostParts[0] : 'fr';
-
-      if (wikiMatch) {
-        const rawSlug = wikiMatch[1];
-        const pageTitle = decodeURIComponent(rawSlug.replace(/_/g, ' '));
-        title = pageTitle;
-
-        // Tenter l'API REST officielle de Wikipédia (HTML sémantique avec figures et images haute résolution)
-        try {
-          const restApiUrl = `https://${lang}.wikipedia.org/api/rest_v1/page/html/${encodeURIComponent(rawSlug)}`;
-          const restRes = await fetch(restApiUrl, {
-            headers: {
-              'User-Agent': 'FolioleReader/1.0 (Incremental Reading App; mailto:contact@foliole.app)',
-            },
-          });
-          if (restRes.ok) {
-            html = await restRes.text();
-          }
-        } catch (e) {
-          console.warn('Wikipedia REST API fallback vers HTML direct:', e);
-        }
-      }
-    }
-
-    // Si non-Wikipédia ou si le REST API échoue, charger directement la page
-    if (!html) {
-      const response = await fetch(targetUrl, {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Échec du chargement de l'URL : HTTP ${response.status}`);
-      }
-
-      html = await response.text();
-    }
-
-    // Extraction du titre si non défini
-    if (!title) {
-      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-      title = titleMatch
-        ? titleMatch[1]
-            .replace(/\s*[-–|•]\s*(?:Wikipédia|Wikipedia|Le Monde|Medium|Substack|The Verge|BBC|CNN).*$/i, '')
-            .trim()
-        : 'Article Web';
-    }
-
-    // Extraction d'auteur dans les balises meta
-    const authorMatch =
-      html.match(/<meta\s+name=["']author["']\s+content=["']([^"']+)["']/i) ||
-      html.match(/<meta\s+property=["']article:author["']\s+content=["']([^"']+)["']/i);
-    if (authorMatch && authorMatch[1]) {
-      author = authorMatch[1].trim();
-    }
-
-    // Nettoyage des éléments d'interface non pertinents
-    let clean = html
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-      .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, '')
-      .replace(/<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>/gi, '')
-      .replace(/<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>/gi, '')
-      .replace(/<header\b[^<]*(?:(?!<\/header>)<[^<]*)*<\/header>/gi, '')
-      .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, '')
-      .replace(/<sup class=["'][^"']*reference[^"']*["'][^>]*>.*?<\/sup>/gi, '')
-      .replace(/<span class=["'][^"']*mw-editsection[^"']*["'][^>]*>.*?<\/span>/gi, '')
-      .replace(/<div class=["'][^"']*(?:navbox|ambox|catlinks|mw-jump-link|vector-menu)[^"']*["'][^>]*>.*?<\/div>/gi, '');
-
-    // Fonction de résolution et validation d'URL d'image
-    const resolveImgUrl = (rawSrc: string): string | null => {
-      if (!rawSrc) return null;
-      let src = rawSrc.trim();
-      if (src.startsWith('data:') && !src.startsWith('data:image/')) return null;
-      if (src.startsWith('//')) {
-        src = 'https:' + src;
-      } else if (!src.startsWith('http://') && !src.startsWith('https://') && !src.startsWith('data:')) {
-        try {
-          src = new URL(src, targetUrl).href;
-        } catch {
-          return null;
-        }
-      }
-
-      // Filtrer les pixels espions et icônes parasites
-      const lower = src.toLowerCase();
-      if (
-        lower.includes('1x1') ||
-        lower.includes('pixel') ||
-        lower.includes('tracker') ||
-        lower.includes('spinner') ||
-        lower.includes('edit-ltr') ||
-        lower.includes('sprite') ||
-        lower.includes('transparent.gif') ||
-        lower.includes('wikimedia-button')
-      ) {
-        return null;
-      }
-
-      // Pour les vignettes Wikipédia, optimiser la résolution vers une largeur nette (ex. 500px)
-      if (lower.includes('upload.wikimedia.org') && lower.includes('/thumb/')) {
-        src = src.replace(/\/([0-9]{2,3})px-/, '/500px-');
-      }
-
-      return src;
-    };
-
-    const decodeEntities = (str: string): string => {
-      return str
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/&#x27;/g, "'")
-        .replace(/&mdash;/g, '—')
-        .replace(/&ndash;/g, '–');
-    };
-
-    const extractText = (chunk: string): string => {
-      return decodeEntities(
-        chunk
-          .replace(/<br\s*\/?>/gi, '\n')
-          .replace(/<[^>]+>/g, '')
-          .replace(/\s+/g, ' ')
-          .trim()
-      );
-    };
-
-    // Analyse des blocs sémantiques ordonnés (Figures, Titres, Paragraphes, Listes, Citations)
-    const blockRegex = /<(figure|div class=["'][^"']*(?:thumb|image|media)[^"']*["']|h[1-4]|p|li|blockquote)[^>]*>([\s\S]*?)<\/(?:figure|div|h[1-4]|p|li|blockquote)>/gi;
-
-    const markdownBlocks: string[] = [];
-    const seenImages = new Set<string>();
-    let bMatch;
-
-    while ((bMatch = blockRegex.exec(clean)) !== null) {
-      const tagName = bMatch[1].toLowerCase();
-      const innerHtml = bMatch[2];
-
-      // 1. Figures ou conteneurs d'images avec légendes
-      if (tagName.startsWith('figure') || tagName.startsWith('div')) {
-        const imgMatch = innerHtml.match(/<img[^>]+(?:src|data-src)=["']([^"']+)["'][^>]*>/i);
-        if (imgMatch) {
-          const rawSrc = imgMatch[1];
-          const resolved = resolveImgUrl(rawSrc);
-          if (resolved && !seenImages.has(resolved)) {
-            seenImages.add(resolved);
-            const captionMatch = innerHtml.match(/<(?:figcaption|div class=["'][^"']*caption[^"']*["'])[^>]*>([\s\S]*?)<\/(?:figcaption|div)>/i);
-            const altMatch = imgMatch[0].match(/alt=["']([^"']*)["']/i);
-            const caption = captionMatch ? extractText(captionMatch[1]) : '';
-            const alt = altMatch ? decodeEntities(altMatch[1].trim()) : caption || title;
-
-            let mdImg = `![${alt}](${resolved})`;
-            if (caption && caption !== alt) {
-              mdImg += `\n*${caption}*`;
-            }
-            markdownBlocks.push(mdImg);
-          }
-        }
-        continue;
-      }
-
-      // 2. Titres (h1 à h4)
-      if (tagName.startsWith('h')) {
-        const level = parseInt(tagName[1], 10) || 2;
-        const text = extractText(innerHtml);
-        if (text && text.length > 1) {
-          if (/^(notes et références|références|voir aussi|liens externes|external links|see also|notes)$/i.test(text.trim())) {
-            // Arrêter l'extraction avant les sections d'index bibliographiques
-            break;
-          }
-          const hashes = '#'.repeat(level);
-          markdownBlocks.push(`${hashes} ${text}`);
-        }
-        continue;
-      }
-
-      // 3. Paragraphes
-      if (tagName === 'p') {
-        const imgMatch = innerHtml.match(/<img[^>]+(?:src|data-src)=["']([^"']+)["'][^>]*>/i);
-        if (imgMatch) {
-          const resolved = resolveImgUrl(imgMatch[1]);
-          if (resolved && !seenImages.has(resolved)) {
-            seenImages.add(resolved);
-            const altMatch = imgMatch[0].match(/alt=["']([^"']*)["']/i);
-            const alt = altMatch ? decodeEntities(altMatch[1].trim()) : title;
-            markdownBlocks.push(`![${alt}](${resolved})`);
-          }
-        }
-
-        const text = extractText(innerHtml);
-        if (text.length > 15) {
-          markdownBlocks.push(text);
-        }
-        continue;
-      }
-
-      // 4. Éléments de liste
-      if (tagName === 'li') {
-        const text = extractText(innerHtml);
-        if (text.length > 10) {
-          markdownBlocks.push(`- ${text}`);
-        }
-        continue;
-      }
-
-      // 5. Citations
-      if (tagName === 'blockquote') {
-        const text = extractText(innerHtml);
-        if (text.length > 10) {
-          markdownBlocks.push(`> ${text}`);
-        }
-        continue;
-      }
-    }
-
-    // Secours si les blocs complexes sont vides
-    if (markdownBlocks.length === 0) {
-      const pMatches = clean.match(/<p[^>]*>([\s\S]*?)<\/p>/gi) || [];
-      for (const p of pMatches) {
-        const text = extractText(p);
-        if (text.length > 20) markdownBlocks.push(text);
-      }
-    }
-
-    const content =
-      markdownBlocks.join('\n\n') ||
-      'Le contenu textuel n\'a pas pu être extrait automatiquement. Vous pouvez le coller ou l\'éditer directement dans Foliole.';
-
-    return res.json({
-      title,
-      author,
-      sourceUrl: targetUrl,
-      content,
-      imagesCount: seenImages.size,
+    const response = await fetch(url, {
+      signal: controller.signal,
+      redirect: 'follow',
+      headers: {
+        'User-Agent': BROWSER_UA,
+        Accept: accept,
+        'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+        ...(referer ? { Referer: referer } : {}),
+      },
     });
+    if (!response.ok) throw new Error(`Échec du chargement : HTTP ${response.status}`);
+    const declared = Number(response.headers.get('content-length') || 0);
+    if (declared > maxBytes) throw new Error('Fichier trop volumineux');
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    const reader = response.body!.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        controller.abort();
+        throw new Error('Fichier trop volumineux');
+      }
+      chunks.push(value);
+    }
+    return { response, body: Buffer.concat(chunks) };
+  } catch (e: any) {
+    if (e?.name === 'AbortError') throw new Error('Délai dépassé');
+    // Node reports network errors as "fetch failed"; the useful part is the cause.
+    const cause = e?.cause;
+    if (cause) {
+      const reason: Record<string, string> = {
+        ENOTFOUND: 'adresse introuvable',
+        ECONNREFUSED: 'connexion refusée',
+        ECONNRESET: 'connexion interrompue',
+        ETIMEDOUT: 'délai dépassé',
+        CERT_HAS_EXPIRED: 'certificat expiré',
+      };
+      throw new Error(`Connexion impossible (${reason[cause.code] || cause.code || cause.message})`);
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function charsetOf(contentType: string, body: Buffer): string {
+  const fromHeader = /charset=([\w-]+)/i.exec(contentType)?.[1];
+  if (fromHeader) return fromHeader;
+  const head = body.subarray(0, 4096).toString('latin1');
+  return /<meta[^>]+charset=["']?([\w-]+)/i.exec(head)?.[1] || 'utf-8';
+}
+
+function saveMedia(bytes: Buffer, mime: string): string {
+  const type = mime.split(';')[0].trim().toLowerCase();
+  const ext = IMAGE_EXT[type];
+  if (!ext) throw new Error(`Type d'image non pris en charge : ${type || 'inconnu'}`);
+  const name = `${crypto.createHash('sha256').update(bytes).digest('hex').slice(0, 32)}.${ext}`;
+  const file = path.join(mediaDir, name);
+  if (!fs.existsSync(file)) {
+    fs.writeFileSync(`${file}.tmp`, bytes);
+    fs.renameSync(`${file}.tmp`, file);
+  }
+  return `/media/${name}`;
+}
+
+// Fetch a web page's HTML; the article is extracted in the page with Readability.
+app.post('/api/fetch-page', async (req, res) => {
+  try {
+    const url = normalizeUrl(req.body?.url);
+    const { response, body } = await fetchLimited(url, 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8', MAX_PAGE_BYTES);
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType && !/html|xml|text\/plain/i.test(contentType)) {
+      throw new Error(`Cette adresse ne renvoie pas une page web (${contentType.split(';')[0]})`);
+    }
+    let html: string;
+    try {
+      html = new TextDecoder(charsetOf(contentType, body)).decode(body);
+    } catch {
+      html = new TextDecoder('utf-8').decode(body);
+    }
+    res.json({ html, url: response.url || url.href });
   } catch (error: any) {
-    console.error('Erreur dans /api/web-clip:', error);
-    return res.status(500).json({
-      error: error.message || 'Impossible de récupérer l\'article web',
-    });
+    res.status(502).json({ error: error.message || "Impossible de récupérer la page" });
   }
 });
+
+// Download an image and keep a local copy, so documents display offline.
+app.post('/api/media/fetch', async (req, res) => {
+  try {
+    const url = normalizeUrl(req.body?.url);
+    const referer = typeof req.body?.referer === 'string' ? req.body.referer : undefined;
+    const { response, body } = await fetchLimited(url, 'image/avif,image/webp,image/*;q=0.8', MAX_IMAGE_BYTES, referer);
+    res.json({ path: saveMedia(body, response.headers.get('content-type') || '') });
+  } catch (error: any) {
+    res.status(502).json({ error: error.message || "Impossible de télécharger l'image" });
+  }
+});
+
+// Store an image coming from an imported file (EPUB, HTML…). Body = raw bytes.
+app.post('/api/media/upload', express.raw({ type: 'image/*', limit: MAX_IMAGE_BYTES }), (req, res) => {
+  try {
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) throw new Error('Image vide');
+    res.json({ path: saveMedia(req.body, req.get('content-type') || '') });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message || "Impossible d'enregistrer l'image" });
+  }
+});
+
+app.use(
+  '/media',
+  express.static(mediaDir, {
+    immutable: true,
+    maxAge: '365d',
+    setHeaders: (res) => {
+      // Images only: never let a stored file run scripts (e.g. an SVG opened directly).
+      res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'");
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+    },
+  })
+);
 
 // Setup Vite middlewares and server
 async function startServer() {

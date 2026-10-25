@@ -1,21 +1,50 @@
 import React, { useState } from 'react';
 import { DocumentItem } from '../types/foliole';
 import { createInitialFSRSRecord } from '../lib/fsrs';
+import { ImportedDocument, importWebPage, importHtmlFile, importPdf, importEpub } from '../lib/importers';
 import { Globe, FileText, Upload, X, AlertCircle, Folder } from 'lucide-react';
 
 interface ImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddDocument: (doc: DocumentItem) => void;
+  /** Several documents at once (e.g. the chapters of a book), in reading order. */
+  onAddDocuments: (docs: DocumentItem[]) => void;
 }
 
-export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAddDocument }) => {
+let idCounter = 0;
+const newDocId = () => `doc-${Date.now()}-${(idCounter++).toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+function toDocument(imported: ImportedDocument, folder: string, priority: number, tags: string[]): DocumentItem {
+  const now = new Date().toISOString();
+  return {
+    id: newDocId(),
+    title: imported.title,
+    author: imported.author,
+    sourceUrl: imported.sourceUrl,
+    folder,
+    format: imported.format,
+    content: imported.content,
+    tags,
+    priority,
+    readingProgress: 0,
+    lastReadOffset: 0,
+    createdAt: now,
+    updatedAt: now,
+    state: 'new',
+    extractedCount: 0,
+    fsrs: createInitialFSRSRecord(0),
+  };
+}
+
+export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAddDocument, onAddDocuments }) => {
   const [importMode, setImportMode] = useState<'url' | 'paste' | 'file'>('url');
   const [targetFolder, setTargetFolder] = useState('Général');
 
   const [urlInput, setUrlInput] = useState('');
   const [isClipping, setIsClipping] = useState(false);
   const [clipError, setClipError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
 
   const [pasteTitle, setPasteTitle] = useState('');
   const [pasteAuthor, setPasteAuthor] = useState('');
@@ -25,65 +54,27 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
 
   if (!isOpen) return null;
 
+  const folderOrDefault = () => targetFolder.trim() || 'Général';
+
   const handleClipUrl = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!urlInput.trim()) return;
+    if (!urlInput.trim() || isClipping) return;
 
     setIsClipping(true);
     setClipError(null);
-
     try {
-      const res = await fetch('/api/web-clip', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: urlInput.trim() }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Impossible de récupérer l\'article depuis cette URL');
-      }
-
-      const article = await res.json();
-
-      let domain = 'Web';
-      try {
-        domain = new URL(urlInput.startsWith('http') ? urlInput : `https://${urlInput}`).hostname;
-      } catch {}
-      const isWiki = domain.includes('wikipedia.org');
-
-      let formattedContent = article.content || '';
-      if (!formattedContent.startsWith('# ') && article.title) {
-        formattedContent = `# ${article.title}\n\n${formattedContent}`;
-      }
-
-      const newDoc: DocumentItem = {
-        id: `doc-${Date.now()}`,
-        title: article.title || 'Article Web Capturé',
-        author: article.author || (isWiki ? 'Wikipédia' : domain),
-        sourceUrl: urlInput.trim(),
-        folder: targetFolder.trim() || 'Général',
-        format: 'article',
-        content: formattedContent,
-        tags: isWiki ? ['Capture Web', 'Wikipédia'] : ['Capture Web', domain],
-        priority: 85,
-        readingProgress: 0,
-        lastReadOffset: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        state: 'learning',
-        extractedCount: 0,
-        fsrs: createInitialFSRSRecord(0),
-      };
-
-      onAddDocument(newDoc);
+      const imported = await importWebPage(urlInput.trim(), setProgress);
+      const host = new URL(imported.sourceUrl ?? urlInput).hostname.replace(/^www\./, '');
+      const tags = /wikipedia\.org$/.test(host) ? ['Capture Web', 'Wikipédia'] : ['Capture Web', host];
+      onAddDocument(toDocument(imported, folderOrDefault(), 85, tags));
       setUrlInput('');
       onClose();
     } catch (err: any) {
       console.error(err);
-      setClipError(err.message || 'Erreur lors de la capture de l\'article');
+      setClipError(err.message || "Erreur lors de la capture de l'article");
     } finally {
       setIsClipping(false);
+      setProgress(null);
     }
   };
 
@@ -121,36 +112,47 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
     onClose();
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    e.target.value = '';
+    if (!file || isClipping) return;
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = (event.target?.result as string) || '';
-      const title = file.name.replace(/\.[^/.]+$/, '');
-
-      const newDoc: DocumentItem = {
-        id: `doc-${Date.now()}`,
-        title,
-        folder: targetFolder.trim() || 'Général',
-        format: file.name.endsWith('.md') ? 'markdown' : 'book',
-        content,
-        tags: ['Fichier Local', file.name.split('.').pop() || 'txt'],
-        priority: 75,
-        readingProgress: 0,
-        lastReadOffset: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        state: 'learning',
-        extractedCount: 0,
-        fsrs: createInitialFSRSRecord(0),
-      };
-
-      onAddDocument(newDoc);
+    setIsClipping(true);
+    setClipError(null);
+    try {
+      if (ext === 'epub') {
+        const book = await importEpub(file, setProgress);
+        const parent = folderOrDefault() === 'Général' ? 'Livres' : folderOrDefault();
+        const folder = `${parent}/${book.title.replace(/\//g, '-')}`;
+        // One chapter per day, so a whole book doesn't land in today's queue.
+        onAddDocuments(
+          book.chapters.map((chapter, i) => ({
+            ...toDocument(chapter, folder, 70, ['Livre', book.title]),
+            fsrs: createInitialFSRSRecord(i),
+          }))
+        );
+      } else if (ext === 'pdf') {
+        onAddDocument(toDocument(await importPdf(file, setProgress), folderOrDefault(), 75, ['PDF']));
+      } else if (ext === 'html' || ext === 'htm') {
+        onAddDocument(toDocument(await importHtmlFile(file, setProgress), folderOrDefault(), 75, ['Fichier HTML']));
+      } else {
+        const content = await file.text();
+        const imported: ImportedDocument = {
+          title: file.name.replace(/\.[^/.]+$/, ''),
+          format: ext === 'txt' ? 'note' : 'markdown',
+          content,
+        };
+        onAddDocument(toDocument(imported, folderOrDefault(), 75, ['Fichier Local', ext || 'txt']));
+      }
       onClose();
-    };
-    reader.readAsText(file);
+    } catch (err: any) {
+      console.error(err);
+      setClipError(err.message || "Impossible d'importer ce fichier");
+    } finally {
+      setIsClipping(false);
+      setProgress(null);
+    }
   };
 
   return (
@@ -236,7 +238,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
                 URL de l'article ou de la page web
               </label>
               <input
-                type="url"
+                type="text"
+                inputMode="url"
                 required
                 placeholder="https://fr.wikipedia.org/wiki/Répétition_espacée"
                 value={urlInput}
@@ -271,7 +274,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
                 {isClipping ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Extraction en cours...</span>
+                    <span>{progress ?? 'Extraction en cours…'}</span>
                   </>
                 ) : (
                   <>
@@ -367,20 +370,38 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
             <div className="border-2 border-dashed border-[#E8E2D5] rounded-2xl p-8 hover:border-[#8C5E32] transition-colors bg-[#FAF7F2]">
               <Upload className="w-8 h-8 text-[#8C8072] mx-auto mb-2" />
               <p className="text-xs font-semibold text-[#28231D] mb-1">
-                Choisissez un fichier Markdown, Texte ou Notes
+                Choisissez un livre, un PDF, une page HTML ou des notes
               </p>
               <p className="text-[11px] text-[#8C8072] mb-4">
-                Formats acceptés : .md, .txt, .markdown
+                Formats acceptés : .epub (un document par chapitre), .pdf (texte), .html, .md, .txt
               </p>
-              <label className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#8C5E32] hover:bg-[#774D27] rounded-lg shadow-xs">
-                <span>Sélectionner un fichier local</span>
+              <label
+                className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#8C5E32] hover:bg-[#774D27] rounded-lg shadow-xs ${
+                  isClipping ? 'opacity-60 pointer-events-none' : 'cursor-pointer'
+                }`}
+              >
+                {isClipping ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>{progress ?? 'Import en cours…'}</span>
+                  </>
+                ) : (
+                  <span>Sélectionner un fichier local</span>
+                )}
                 <input
                   type="file"
-                  accept=".md,.txt,.markdown"
+                  accept=".epub,.pdf,.html,.htm,.md,.markdown,.txt"
                   onChange={handleFileUpload}
+                  disabled={isClipping}
                   className="hidden"
                 />
               </label>
+              {clipError && (
+                <div role="alert" className="mt-4 flex items-center gap-2 p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800 text-left">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{clipError}</span>
+                </div>
+              )}
             </div>
           </div>
         )}

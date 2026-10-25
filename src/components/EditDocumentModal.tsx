@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { DocumentItem } from '../types/foliole';
-import { marked } from 'marked';
+import { renderMarkdown } from '../lib/markdown';
 import {
   X,
   Check,
@@ -120,7 +120,7 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
 
   const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
   const charCount = content.length;
-  const previewHtml = marked.parse(content || '*Aucun contenu*') as string;
+  const previewHtml = renderMarkdown(content || '*Aucun contenu*');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">

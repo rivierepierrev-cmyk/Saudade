@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DocumentItem, ExtractItem } from '../types/foliole';
-import { marked } from 'marked';
+import { renderMarkdown } from '../lib/markdown';
 import {
   Scissors,
   Sparkles,
@@ -165,7 +165,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
 
   const nextInterval = nextTopicInterval(currentDocument.fsrs, currentDocument.priority);
 
-  const renderedHtml = marked.parse(currentDocument.content) as string;
+  const renderedHtml = renderMarkdown(currentDocument.content);
 
   const widthClass =
     columnWidth === 'narrow'
