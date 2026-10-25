@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { FolioleStats, DocumentItem, ExtractItem, ClozeItem } from '../types/foliole';
 import {
   Download,
@@ -9,6 +9,8 @@ import {
   Sparkles,
   BarChart3,
   TrendingUp,
+  Upload,
+  FolderOpen,
 } from 'lucide-react';
 
 interface StatsViewProps {
@@ -20,7 +22,10 @@ interface StatsViewProps {
   onUpdateTargetRetention: (retention: number) => void;
   onExportBackup: () => void;
   onExportMarkdownMirror: () => void;
-  onResetDemo: () => void;
+  onResetDemo: () => Promise<boolean>;
+  onRestoreBackup: (file: File) => Promise<{ ok: boolean; message: string }>;
+  onOpenDataFolder?: () => void;
+  dataLocation?: string;
 }
 
 export const StatsView: React.FC<StatsViewProps> = ({
@@ -33,8 +38,14 @@ export const StatsView: React.FC<StatsViewProps> = ({
   onExportBackup,
   onExportMarkdownMirror,
   onResetDemo,
+  onRestoreBackup,
+  onOpenDataFolder,
+  dataLocation,
 }) => {
   const [confirmReset, setConfirmReset] = useState(false);
+  const [pendingRestore, setPendingRestore] = useState<File | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const restoreInputRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [forecastPeriod, setForecastPeriod] = useState<'1d' | '7d' | '30d'>('7d');
   const [hoveredDayIndex, setHoveredDayIndex] = useState<number | null>(null);
@@ -573,11 +584,77 @@ export const StatsView: React.FC<StatsViewProps> = ({
               Maintenance de la base de données
             </h2>
             <p className="mt-0.5 text-xs text-[#695F54]">
-              Gérez les exports locaux ou réinitialisez les données de démonstration.
+              Une sauvegarde de sécurité est créée automatiquement avant toute restauration ou réinitialisation.
             </p>
+            {dataLocation && (
+              <p className="mt-1 text-[11px] text-[#8C8072]">
+                Données : <span className="font-mono break-all">{dataLocation}</span> — 7 sauvegardes
+                quotidiennes dans « backups »
+              </p>
+            )}
           </div>
 
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
+            {onOpenDataFolder && (
+              <button
+                type="button"
+                onClick={onOpenDataFolder}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#4A3E31] bg-white border border-[#D5CBBF] rounded-lg hover:bg-[#F3EFE8] transition-colors shadow-xs"
+              >
+                <FolderOpen className="w-3.5 h-3.5" />
+                Ouvrir le dossier des données
+              </button>
+            )}
+            <input
+              ref={restoreInputRef}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = '';
+                if (file) {
+                  setRestoreError(null);
+                  setPendingRestore(file);
+                }
+              }}
+            />
+            {pendingRestore ? (
+              <div className="flex items-center gap-2 p-1.5 bg-[#FAF7F2] border border-[#E8E2D5] rounded-xl">
+                <span className="text-xs text-[#A84236] font-medium px-2">
+                  Remplacer toute la bibliothèque par « {pendingRestore.name} » ?
+                </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const file = pendingRestore;
+                    setPendingRestore(null);
+                    const result = await onRestoreBackup(file);
+                    if (result.ok) showToast(result.message);
+                    else setRestoreError(result.message);
+                  }}
+                  className="px-3 py-1 text-xs font-semibold text-white bg-[#A84236] rounded-lg hover:bg-[#8F352B] transition-colors"
+                >
+                  Oui, restaurer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPendingRestore(null)}
+                  className="px-2.5 py-1 text-xs text-[#695F54] hover:bg-[#E8E2D5] rounded-lg transition-colors"
+                >
+                  Annuler
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => restoreInputRef.current?.click()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#4A3E31] bg-white border border-[#D5CBBF] rounded-lg hover:bg-[#F3EFE8] transition-colors shadow-xs"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                Restaurer une sauvegarde…
+              </button>
+            )}
             {confirmReset ? (
               <div className="flex items-center gap-2 p-1.5 bg-[#FAF7F2] border border-[#E8E2D5] rounded-xl">
                 <span className="text-xs text-[#A84236] font-medium px-2">
@@ -585,10 +662,9 @@ export const StatsView: React.FC<StatsViewProps> = ({
                 </span>
                 <button
                   type="button"
-                  onClick={() => {
-                    onResetDemo();
+                  onClick={async () => {
                     setConfirmReset(false);
-                    showToast('Données de démo réinitialisées');
+                    if (await onResetDemo()) showToast('Données de démo réinitialisées');
                   }}
                   className="px-3 py-1 text-xs font-semibold text-white bg-[#A84236] rounded-lg hover:bg-[#8F352B] transition-colors"
                 >
@@ -614,6 +690,11 @@ export const StatsView: React.FC<StatsViewProps> = ({
             )}
           </div>
         </div>
+        {restoreError && (
+          <p role="alert" className="mt-3 text-xs text-[#A84236]">
+            Restauration impossible : {restoreError}
+          </p>
+        )}
       </div>
 
       {/* Toast Notification */}

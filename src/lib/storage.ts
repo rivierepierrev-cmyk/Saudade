@@ -1,24 +1,6 @@
 import { DocumentItem, ExtractItem, ClozeItem, ReviewLog, GemmaStats, FolioleStats } from '../types/foliole';
 import { SAMPLE_DOCUMENTS, SAMPLE_EXTRACTS, SAMPLE_CLOZES } from './sampleData';
-
-const STORAGE_KEYS = {
-  DOCUMENTS: 'gemma_documents_fr_v2',
-  DOCUMENTS_LEGACY: 'foliole_documents_fr_v2',
-  EXTRACTS: 'gemma_extracts_fr_v2',
-  EXTRACTS_LEGACY: 'foliole_extracts_fr_v2',
-  CLOZES: 'gemma_clozes_fr_v2',
-  CLOZES_LEGACY: 'foliole_clozes_fr_v2',
-  REVIEW_LOGS: 'gemma_review_logs_fr_v2',
-  REVIEW_LOGS_LEGACY: 'foliole_review_logs_fr_v2',
-  SETTINGS: 'gemma_settings_fr_v2',
-  SETTINGS_LEGACY: 'foliole_settings_fr_v2',
-  FOLDERS: 'gemma_folders_fr_v2',
-  FOLDERS_LEGACY: 'foliole_folders_fr_v2',
-};
-
-function readStorage(key: string, legacyKey: string): string | null {
-  return localStorage.getItem(key) || localStorage.getItem(legacyKey);
-}
+import { CollectionName, getRaw, setRaw, reportStorageError } from './kv';
 
 export interface AppSettings {
   readingFont: 'sans' | 'serif' | 'mono';
@@ -38,138 +20,117 @@ export const DEFAULT_SETTINGS: AppSettings = {
   dailyReviewLimit: 50,
 };
 
+export type RestoreResult = { ok: true; counts: { documents: number; extracts: number; clozes: number } } | { ok: false; error: string };
+
+const DEFAULT_FOLDERS = [
+  'Apprentissage & Mémoire',
+  'Apprentissage & Mémoire/SuperMemo',
+  'Apprentissage & Mémoire/Répétition Espacée',
+  'Sciences',
+  'Sciences/Neurobiologie',
+  'Philosophie',
+  'Philosophie/Stoïcisme',
+  'Général',
+];
+
+// Parsed values, so repeated reads (e.g. stats on every render) don't re-parse JSON.
+const parsedCache = new Map<CollectionName, unknown>();
+// Collections whose stored value couldn't be parsed. Saving over them is refused so
+// the original data is never lost; the user is told to restore a backup.
+const unreadable = new Set<CollectionName>();
+
+function load<T>(name: CollectionName, validate: (v: unknown) => boolean, seed: () => T, empty: T): T {
+  if (parsedCache.has(name)) return parsedCache.get(name) as T;
+  const raw = getRaw(name);
+  if (raw === null) {
+    const seeded = seed();
+    save(name, seeded);
+    return seeded;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!validate(parsed)) throw new Error('format inattendu');
+    parsedCache.set(name, parsed);
+    return parsed as T;
+  } catch (e) {
+    if (!unreadable.has(name)) {
+      unreadable.add(name);
+      reportStorageError(
+        `Les données « ${name} » sont illisibles (${e instanceof Error ? e.message : e}). ` +
+          'Elles ne seront pas écrasées : restaurez une sauvegarde.'
+      );
+    }
+    return empty;
+  }
+}
+
+function save(name: CollectionName, value: unknown): void {
+  if (unreadable.has(name)) {
+    reportStorageError(`Enregistrement de « ${name} » bloqué : les données existantes sont illisibles.`);
+    return;
+  }
+  parsedCache.set(name, value);
+  setRaw(name, JSON.stringify(value));
+}
+
+const isArray = (v: unknown) => Array.isArray(v);
+const isObject = (v: unknown) => typeof v === 'object' && v !== null && !Array.isArray(v);
+
 export class GemmaStorage {
   static getDocuments(): DocumentItem[] {
-    try {
-      const data = readStorage(STORAGE_KEYS.DOCUMENTS, STORAGE_KEYS.DOCUMENTS_LEGACY);
-      if (!data) {
-        this.saveDocuments(SAMPLE_DOCUMENTS);
-        return SAMPLE_DOCUMENTS;
-      }
-      const parsed: DocumentItem[] = JSON.parse(data);
-      const sampleMap = new Map(SAMPLE_DOCUMENTS.map((d) => [d.id, d.folder]));
-      return parsed.map((doc) => ({
-        ...doc,
-        folder: doc.folder || sampleMap.get(doc.id) || 'Général',
-      }));
-    } catch {
-      return SAMPLE_DOCUMENTS;
-    }
+    const docs = load<DocumentItem[]>('documents', isArray, () => SAMPLE_DOCUMENTS, []);
+    const sampleMap = new Map(SAMPLE_DOCUMENTS.map((d) => [d.id, d.folder]));
+    return docs.map((doc) => ({
+      ...doc,
+      folder: doc.folder || sampleMap.get(doc.id) || 'Général',
+    }));
   }
 
   static saveDocuments(docs: DocumentItem[]): void {
-    const serialized = JSON.stringify(docs);
-    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, serialized);
-    localStorage.setItem(STORAGE_KEYS.DOCUMENTS_LEGACY, serialized);
+    save('documents', docs);
   }
 
   static getExtracts(): ExtractItem[] {
-    try {
-      const data = readStorage(STORAGE_KEYS.EXTRACTS, STORAGE_KEYS.EXTRACTS_LEGACY);
-      if (!data) {
-        this.saveExtracts(SAMPLE_EXTRACTS);
-        return SAMPLE_EXTRACTS;
-      }
-      const parsed: ExtractItem[] = JSON.parse(data);
-      return parsed.map((ext) => ({
-        ...ext,
-        folder: ext.folder || 'Général',
-      }));
-    } catch {
-      return SAMPLE_EXTRACTS;
-    }
+    const exts = load<ExtractItem[]>('extracts', isArray, () => SAMPLE_EXTRACTS, []);
+    return exts.map((ext) => ({ ...ext, folder: ext.folder || 'Général' }));
   }
 
   static saveExtracts(extracts: ExtractItem[]): void {
-    const serialized = JSON.stringify(extracts);
-    localStorage.setItem(STORAGE_KEYS.EXTRACTS, serialized);
-    localStorage.setItem(STORAGE_KEYS.EXTRACTS_LEGACY, serialized);
+    save('extracts', extracts);
   }
 
   static getClozes(): ClozeItem[] {
-    try {
-      const data = readStorage(STORAGE_KEYS.CLOZES, STORAGE_KEYS.CLOZES_LEGACY);
-      if (!data) {
-        this.saveClozes(SAMPLE_CLOZES);
-        return SAMPLE_CLOZES;
-      }
-      const parsed: ClozeItem[] = JSON.parse(data);
-      return parsed.map((clz) => ({
-        ...clz,
-        folder: clz.folder || 'Général',
-      }));
-    } catch {
-      return SAMPLE_CLOZES;
-    }
+    const clzs = load<ClozeItem[]>('clozes', isArray, () => SAMPLE_CLOZES, []);
+    return clzs.map((clz) => ({ ...clz, folder: clz.folder || 'Général' }));
   }
 
   static saveClozes(clozes: ClozeItem[]): void {
-    const serialized = JSON.stringify(clozes);
-    localStorage.setItem(STORAGE_KEYS.CLOZES, serialized);
-    localStorage.setItem(STORAGE_KEYS.CLOZES_LEGACY, serialized);
+    save('clozes', clozes);
   }
 
   static getFolders(): string[] {
-    try {
-      const data = readStorage(STORAGE_KEYS.FOLDERS, STORAGE_KEYS.FOLDERS_LEGACY);
-      if (!data) {
-        const defaults = [
-          'Apprentissage & Mémoire',
-          'Apprentissage & Mémoire/SuperMemo',
-          'Apprentissage & Mémoire/Répétition Espacée',
-          'Sciences',
-          'Sciences/Neurobiologie',
-          'Philosophie',
-          'Philosophie/Stoïcisme',
-          'Général',
-        ];
-        this.saveFolders(defaults);
-        return defaults;
-      }
-      const parsed = JSON.parse(data);
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : ['Général'];
-    } catch {
-      return ['Général'];
-    }
+    const folders = load<string[]>('folders', isArray, () => DEFAULT_FOLDERS, []);
+    return folders.length > 0 ? folders : ['Général'];
   }
 
   static saveFolders(folders: string[]): void {
-    const unique = Array.from(new Set(folders.filter(Boolean)));
-    const serialized = JSON.stringify(unique);
-    localStorage.setItem(STORAGE_KEYS.FOLDERS, serialized);
-    localStorage.setItem(STORAGE_KEYS.FOLDERS_LEGACY, serialized);
+    save('folders', Array.from(new Set(folders.filter(Boolean))));
   }
 
   static getReviewLogs(): ReviewLog[] {
-    try {
-      const data = readStorage(STORAGE_KEYS.REVIEW_LOGS, STORAGE_KEYS.REVIEW_LOGS_LEGACY);
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
+    return load<ReviewLog[]>('reviewLogs', isArray, () => [], []);
   }
 
   static appendReviewLog(log: ReviewLog): void {
-    const logs = this.getReviewLogs();
-    logs.push(log);
-    const serialized = JSON.stringify(logs);
-    localStorage.setItem(STORAGE_KEYS.REVIEW_LOGS, serialized);
-    localStorage.setItem(STORAGE_KEYS.REVIEW_LOGS_LEGACY, serialized);
+    save('reviewLogs', [...this.getReviewLogs(), log]);
   }
 
   static getSettings(): AppSettings {
-    try {
-      const data = readStorage(STORAGE_KEYS.SETTINGS, STORAGE_KEYS.SETTINGS_LEGACY);
-      return data ? { ...DEFAULT_SETTINGS, ...JSON.parse(data) } : DEFAULT_SETTINGS;
-    } catch {
-      return DEFAULT_SETTINGS;
-    }
+    return { ...DEFAULT_SETTINGS, ...load<Partial<AppSettings>>('settings', isObject, () => ({}), {}) };
   }
 
   static saveSettings(settings: AppSettings): void {
-    const serialized = JSON.stringify(settings);
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, serialized);
-    localStorage.setItem(STORAGE_KEYS.SETTINGS_LEGACY, serialized);
+    save('settings', settings);
   }
 
   static computeStats(
@@ -212,38 +173,65 @@ export class GemmaStorage {
 
   static exportBackup(): string {
     const backup = {
-      version: '1.0',
+      app: 'foliole',
+      version: 2,
       exportedAt: new Date().toISOString(),
       documents: this.getDocuments(),
       extracts: this.getExtracts(),
       clozes: this.getClozes(),
       logs: this.getReviewLogs(),
       settings: this.getSettings(),
+      folders: this.getFolders(),
     };
     return JSON.stringify(backup, null, 2);
   }
 
-  static importBackup(jsonString: string): boolean {
+  /**
+   * Replaces the whole library with the content of a backup (exported JSON or an
+   * automatic snapshot). Nothing is written unless the file is fully valid.
+   */
+  static importBackup(jsonString: string): RestoreResult {
+    let data: any;
     try {
-      const data = JSON.parse(jsonString);
-      if (data.documents) this.saveDocuments(data.documents);
-      if (data.extracts) this.saveExtracts(data.extracts);
-      if (data.clozes) this.saveClozes(data.clozes);
-      if (data.logs) localStorage.setItem(STORAGE_KEYS.REVIEW_LOGS, JSON.stringify(data.logs));
-      if (data.settings) this.saveSettings(data.settings);
-      return true;
-    } catch (e) {
-      console.error('Failed to import backup:', e);
-      return false;
+      data = JSON.parse(jsonString);
+    } catch {
+      return { ok: false, error: "Ce fichier n'est pas un JSON valide." };
     }
+    if (!isObject(data)) return { ok: false, error: "Ce fichier n'est pas une sauvegarde Foliole." };
+    for (const key of ['documents', 'extracts', 'clozes'] as const) {
+      if (!Array.isArray(data[key])) {
+        return { ok: false, error: `Sauvegarde incomplète : la liste « ${key} » est absente ou invalide.` };
+      }
+    }
+    if (data.logs !== undefined && !Array.isArray(data.logs)) return { ok: false, error: 'Historique de révision invalide.' };
+    if (data.folders !== undefined && !Array.isArray(data.folders)) return { ok: false, error: 'Liste de dossiers invalide.' };
+    if (data.settings !== undefined && !isObject(data.settings)) return { ok: false, error: 'Réglages invalides.' };
+
+    // A restore deliberately replaces unreadable collections too.
+    unreadable.clear();
+    save('documents', data.documents);
+    save('extracts', data.extracts);
+    save('clozes', data.clozes);
+    save('reviewLogs', data.logs ?? []);
+    if (data.settings) save('settings', { ...DEFAULT_SETTINGS, ...data.settings });
+    const folders: string[] = data.folders ?? [];
+    // Make sure every folder referenced by an item exists in the tree.
+    for (const item of [...data.documents, ...data.extracts, ...data.clozes]) {
+      if (item && typeof item.folder === 'string') folders.push(item.folder);
+    }
+    this.saveFolders(folders.length > 0 ? folders : ['Général']);
+    return {
+      ok: true,
+      counts: { documents: data.documents.length, extracts: data.extracts.length, clozes: data.clozes.length },
+    };
   }
 
   static resetToSamples(): void {
+    unreadable.clear();
     this.saveDocuments(SAMPLE_DOCUMENTS);
     this.saveExtracts(SAMPLE_EXTRACTS);
     this.saveClozes(SAMPLE_CLOZES);
-    localStorage.removeItem(STORAGE_KEYS.REVIEW_LOGS);
-    localStorage.removeItem(STORAGE_KEYS.REVIEW_LOGS_LEGACY);
+    save('reviewLogs', []);
   }
 }
 

@@ -13,6 +13,7 @@ import {
   ItemType,
 } from './types/gemma';
 import { GemmaStorage, FolioleStorage, AppSettings } from './lib/storage';
+import { onStorageError, isDesktop, dataLocation, takeSnapshot, openDataFolder } from './lib/kv';
 import { createInitialFSRSRecord, calculateNextFSRS } from './lib/fsrs';
 import { TopNav } from './components/TopNav';
 import { QueueView } from './components/QueueView';
@@ -33,6 +34,15 @@ export default function App() {
 
   // Modals & Panels
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [storageErrors, setStorageErrors] = useState<string[]>([]);
+
+  useEffect(
+    () =>
+      onStorageError((message) =>
+        setStorageErrors((prev) => (prev.includes(message) ? prev : [...prev, message]))
+      ),
+    []
+  );
 
   // Initial load from local-first storage
   useEffect(() => {
@@ -378,13 +388,53 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  // Reset to default sample library
-  const handleResetDemo = () => {
-    GemmaStorage.resetToSamples();
-    setDocuments(GemmaStorage.getDocuments());
+  const reloadFromStorage = () => {
+    const docs = GemmaStorage.getDocuments();
+    setDocuments(docs);
     setExtracts(GemmaStorage.getExtracts());
     setClozes(GemmaStorage.getClozes());
+    setSettings(GemmaStorage.getSettings());
+    setCurrentDocumentId(docs[0]?.id ?? '');
+  };
+
+  // Snapshot of the current library before an action that replaces it.
+  const snapshotBefore = async (reason: string): Promise<string | null> => {
+    try {
+      await takeSnapshot(reason);
+      return null;
+    } catch (e) {
+      return `Impossible de créer la sauvegarde de sécurité : ${e instanceof Error ? e.message : e}`;
+    }
+  };
+
+  // Restore a JSON backup (manual export or automatic snapshot)
+  const handleRestoreBackup = async (file: File): Promise<{ ok: boolean; message: string }> => {
+    let text: string;
+    try {
+      text = await file.text();
+    } catch {
+      return { ok: false, message: 'Lecture du fichier impossible.' };
+    }
+    const snapshotError = await snapshotBefore('avant-restauration');
+    if (snapshotError) return { ok: false, message: snapshotError };
+    const result = GemmaStorage.importBackup(text);
+    if (!result.ok) return { ok: false, message: result.error };
+    reloadFromStorage();
+    const { documents: d, extracts: e, clozes: c } = result.counts;
+    return { ok: true, message: `Sauvegarde restaurée : ${d} documents, ${e} extraits, ${c} cartes` };
+  };
+
+  // Reset to default sample library
+  const handleResetDemo = async (): Promise<boolean> => {
+    const snapshotError = await snapshotBefore('avant-reinitialisation');
+    if (snapshotError) {
+      setStorageErrors((prev) => [...prev, snapshotError]);
+      return false;
+    }
+    GemmaStorage.resetToSamples();
+    reloadFromStorage();
     setActiveTab('queue');
+    return true;
   };
 
   return (
@@ -399,6 +449,25 @@ export default function App() {
         dueCount={stats.dueTodayCount}
         onOpenImport={() => setIsImportOpen(true)}
       />
+
+      {storageErrors.length > 0 && (
+        <div role="alert" className="bg-[#FDF2F0] border-b border-[#F2D6D3] text-[#8F352B] text-xs">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex items-start justify-between gap-4">
+            <ul className="space-y-1">
+              {storageErrors.map((msg) => (
+                <li key={msg}>{msg}</li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              onClick={() => setStorageErrors([])}
+              className="shrink-0 px-2 py-0.5 rounded-md hover:bg-[#F2D6D3] font-medium"
+            >
+              Masquer
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1">
@@ -521,6 +590,9 @@ export default function App() {
             onExportBackup={handleExportBackup}
             onExportMarkdownMirror={handleExportMarkdownMirror}
             onResetDemo={handleResetDemo}
+            onRestoreBackup={handleRestoreBackup}
+            onOpenDataFolder={isDesktop ? openDataFolder : undefined}
+            dataLocation={dataLocation}
           />
         )}
       </main>

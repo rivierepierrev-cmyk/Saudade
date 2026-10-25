@@ -331,9 +331,33 @@ async function startServer() {
     });
   }
 
-  httpServer.listen(port, host, () => {
-    console.log(`Foliole: http://${host}:${port}`);
-  });
+  const listen = (p: number) =>
+    new Promise<number>((resolve, reject) => {
+      const onError = (err: NodeJS.ErrnoException) => {
+        httpServer.off('listening', onListening);
+        reject(err);
+      };
+      const onListening = () => {
+        httpServer.off('error', onError);
+        const addr = httpServer.address();
+        resolve(typeof addr === 'object' && addr ? addr.port : p);
+      };
+      httpServer.once('error', onError);
+      httpServer.once('listening', onListening);
+      httpServer.listen(p, host);
+    });
+
+  let actualPort: number;
+  try {
+    actualPort = await listen(port);
+  } catch (err: any) {
+    // The desktop app no longer depends on a fixed port: pick any free one.
+    if (err?.code !== 'EADDRINUSE' || process.env.PORT_FALLBACK !== '1') throw err;
+    actualPort = await listen(0);
+  }
+  console.log(`Foliole: http://${host}:${actualPort}`);
+  return actualPort;
 }
 
-startServer();
+// Resolves with the port once the server is accepting connections.
+export const ready = startServer();
