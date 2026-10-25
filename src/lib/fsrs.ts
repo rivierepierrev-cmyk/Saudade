@@ -8,7 +8,7 @@
  */
 
 import { fsrs, generatorParameters, createEmptyCard, Card, State, Grade, FSRS } from 'ts-fsrs';
-import { FSRSRecord, ReviewRating, CardPhase } from '../types/foliole';
+import { FSRSRecord, ReviewRating, CardPhase } from '../types/gemma';
 
 const DAY_MS = 86400000;
 const DESIRED_RETENTION = 0.9;

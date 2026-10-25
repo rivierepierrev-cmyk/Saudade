@@ -1,6 +1,6 @@
 const { _electron } = require('playwright'); const fs = require('fs'); const os = require('os'); const path = require('path'); const assert = require('assert');
-const APP = path.resolve(__dirname, '../..'); const OUT = fs.mkdtempSync(path.join(os.tmpdir(), 'foliole-shots-'));
-const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'folir-')); const dataDir = path.join(cfg, 'Foliole', 'data');
+const APP = path.resolve(__dirname, '../..'); const OUT = fs.mkdtempSync(path.join(os.tmpdir(), 'gemma-shots-'));
+const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'folir-')); const dataDir = path.join(cfg, 'Gemma', 'data');
 const read = n => JSON.parse(fs.readFileSync(path.join(dataDir, n + '.json'), 'utf8'));
 const settle = p => p.waitForTimeout(400);
 // Select `needle` (or the whole text of the first matching element) inside `root`, then fire mouseup.

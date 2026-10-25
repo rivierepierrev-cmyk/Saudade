@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActiveTab } from '../types/foliole';
+import { ActiveTab } from '../types/gemma';
 import { Plus, BookOpen, Layers, Sparkles, FolderArchive, BarChart2 } from 'lucide-react';
 
 interface TopNavProps {
@@ -21,10 +21,10 @@ export const TopNav: React.FC<TopNavProps> = ({
         {/* Zone 1: Single text element wordmark */}
         <div className="flex items-center gap-3 shrink-0">
           <div className="w-8 h-8 rounded-lg bg-[#3B3026] text-[#FAF7F2] flex items-center justify-center font-bold text-base shadow-xs">
-            F
+            G
           </div>
           <span className="text-xl font-bold tracking-tight text-[#28231D] whitespace-nowrap shrink-0">
-            Foliole
+            Gemma
           </span>
         </div>
 

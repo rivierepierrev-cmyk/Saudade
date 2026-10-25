@@ -1,4 +1,4 @@
-import { DocumentItem, ExtractItem, ClozeItem, ReviewLog, GemmaStats, FolioleStats } from '../types/foliole';
+import { DocumentItem, ExtractItem, ClozeItem, ReviewLog, GemmaStats } from '../types/gemma';
 import { SAMPLE_DOCUMENTS, SAMPLE_EXTRACTS, SAMPLE_CLOZES } from './sampleData';
 import { CollectionName, getRaw, setRaw, reportStorageError } from './kv';
 
@@ -190,7 +190,7 @@ export class GemmaStorage {
 
   static exportBackup(): string {
     const backup = {
-      app: 'foliole',
+      app: 'gemma',
       version: 2,
       exportedAt: new Date().toISOString(),
       documents: this.getDocuments(),
@@ -214,7 +214,7 @@ export class GemmaStorage {
     } catch {
       return { ok: false, error: "Ce fichier n'est pas un JSON valide." };
     }
-    if (!isObject(data)) return { ok: false, error: "Ce fichier n'est pas une sauvegarde Foliole." };
+    if (!isObject(data)) return { ok: false, error: "Ce fichier n'est pas une sauvegarde Gemma." };
     for (const key of ['documents', 'extracts', 'clozes'] as const) {
       if (!Array.isArray(data[key])) {
         return { ok: false, error: `Sauvegarde incomplète : la liste « ${key} » est absente ou invalide.` };
@@ -252,5 +252,4 @@ export class GemmaStorage {
   }
 }
 
-export const FolioleStorage = GemmaStorage;
 

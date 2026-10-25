@@ -53,7 +53,7 @@
 }
 
 /* Reader highlight & cloze styling in warm beige */
-mark.foliole-highlight {
+mark.gemma-highlight {
   background-color: #F3E6CE;
   color: #28231D;
   padding: 0.12rem 0.3rem;
@@ -61,7 +61,7 @@ mark.foliole-highlight {
   transition: background-color 0.15s ease;
 }
 
-mark.foliole-highlight:hover {
+mark.gemma-highlight:hover {
   background-color: #ECDAB8;
 }
 

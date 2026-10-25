@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DocumentItem, ExtractItem, ClozeItem, ItemType } from '../types/foliole';
+import { DocumentItem, ExtractItem, ClozeItem, ItemType } from '../types/gemma';
 import { formatInterval } from '../lib/fsrs';
 import {
   BookOpen,

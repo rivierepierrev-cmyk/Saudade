@@ -1,11 +1,11 @@
 {
-  "name": "foliole",
-  "productName": "Foliole",
+  "name": "gemma",
+  "productName": "Gemma",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
-  "desktopName": "foliole.desktop",
+  "desktopName": "gemma.desktop",
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build",
@@ -58,8 +58,8 @@
     "wait-on": "^8.0.1"
   },
   "build": {
-    "appId": "app.foliole.desktop",
-    "productName": "Foliole",
+    "appId": "app.gemma.desktop",
+    "productName": "Gemma",
     "asar": true,
     "files": [
       "dist/**/*",
@@ -75,8 +75,8 @@
         "AppImage"
       ],
       "icon": "build/icon.png",
-      "maintainer": "Foliole <foliole@localhost>",
-      "executableName": "foliole",
+      "maintainer": "Gemma <gemma@localhost>",
+      "executableName": "gemma",
       "synopsis": "Lecture incrémentale et répétition espacée",
       "desktop": {
         "entry": {
@@ -102,10 +102,17 @@
       "perMachine": false,
       "deleteAppDataOnUninstall": false
     },
-    "artifactName": "Foliole-${version}-${os}-${arch}.${ext}",
-    "publish": null
+    "artifactName": "Gemma-${version}-${os}-${arch}.${ext}",
+    "publish": null,
+    "deb": {
+      "fpm": [
+        "--replaces=foliole",
+        "--conflicts=foliole",
+        "--provides=foliole"
+      ]
+    }
   },
   "description": "Lecture incrémentale et répétition espacée FSRS — 100 % local, sans IA",
-  "homepage": "http://localhost/foliole",
-  "author": "Foliole"
+  "homepage": "http://localhost/gemma",
+  "author": "Gemma"
 }

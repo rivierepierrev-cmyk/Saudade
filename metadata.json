@@ -1,6 +1,0 @@
-{
-  "name": "Foliole - Incremental Reading & FSRS Spaced Repetition",
-  "description": "An approachable, local-first incremental reading and spaced repetition app. Extract passages, generate cloze deletions, and review with FSRS scheduling.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

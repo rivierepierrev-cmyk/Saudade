@@ -18,7 +18,7 @@ assert.equal(r.isNew, false); assert.equal(r.warnings.length, 2);
 assert.equal(fs.readdirSync(path.join(dir,'corrupt')).length, 1);
 // daily snapshot once per day, contains folders key
 const snap = s.dailySnapshot(); assert.ok(snap); assert.equal(s.dailySnapshot(), null);
-const b = JSON.parse(fs.readFileSync(snap)); assert.equal(b.app,'foliole'); assert.ok(Array.isArray(b.folders));
+const b = JSON.parse(fs.readFileSync(snap)); assert.equal(b.app,'gemma'); assert.ok(Array.isArray(b.folders));
 for (let i=0;i<12;i++) s.eventSnapshot('test');
 assert.equal(fs.readdirSync(s.backupDir).filter(f=>f.startsWith('event-')).length, 10);
 // prune daily to 7

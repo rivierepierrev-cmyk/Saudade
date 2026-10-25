@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DocumentItem } from '../types/foliole';
+import { DocumentItem } from '../types/gemma';
 import { renderMarkdown } from '../lib/markdown';
 import {
   X,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ClozeItem, ExtractItem, ReviewRating, FSRSRecord } from '../types/foliole';
+import { ClozeItem, ExtractItem, ReviewRating, FSRSRecord } from '../types/gemma';
 import { predictAllRatings, nextTopicInterval, formatInterval } from '../lib/fsrs';
 import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
 import confetti from 'canvas-confetti';

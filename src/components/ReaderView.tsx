@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { DocumentItem, ExtractItem } from '../types/foliole';
+import { DocumentItem, ExtractItem } from '../types/gemma';
 import { renderMarkdown } from '../lib/markdown';
 import {
   Scissors,

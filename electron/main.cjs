@@ -17,9 +17,36 @@ const SNAPSHOT_CHECK_MS = 60 * 60 * 1000;
 let win;
 let store;
 
+// The app used to be called Foliole. The first time Gemma starts, it takes over the
+// Foliole profile: the library files (data/) and the browser storage that holds the
+// library of the very first versions, which the page migrates on its own. The old
+// folder is left untouched. Must run before anything uses the profile folder.
+function migrateFolioleProfile() {
+  const target = app.getPath('userData');
+  const source = path.join(app.getPath('appData'), 'Foliole');
+  // Electron creates the (empty) profile folder before this code runs.
+  const targetIsEmpty = !fs.existsSync(target) || fs.readdirSync(target).length === 0;
+  if (!targetIsEmpty || !fs.existsSync(source)) return;
+  const partial = `${target}.migrating`;
+  try {
+    fs.rmSync(partial, { recursive: true, force: true });
+    fs.cpSync(source, partial, {
+      recursive: true,
+      // Lock files of a running Foliole must not be copied.
+      filter: (src) => !/^Singleton|^lockfile$|^LOCK$/.test(path.basename(src)),
+    });
+    fs.rmSync(target, { recursive: true, force: true }); // empty: see above
+    fs.renameSync(partial, target);
+  } catch (e) {
+    fs.rmSync(partial, { recursive: true, force: true });
+    console.error('Reprise du profil Foliole impossible :', e);
+  }
+}
+migrateFolioleProfile();
+
 // Ubuntu 24.04+ (and derivatives) block the unprivileged user namespaces Chromium's
 // sandbox needs, and an AppImage can't ship the setuid helper the .deb installs:
-// without this the AppImage would not start at all. The window only shows Foliole's
+// without this the AppImage would not start at all. The window only shows Gemma's
 // own pages, with imported HTML sanitized, so running it without the sandbox is an
 // acceptable fallback. The .deb keeps the sandbox.
 function appImageNeedsNoSandbox() {
@@ -33,18 +60,18 @@ function appImageNeedsNoSandbox() {
 if (appImageNeedsNoSandbox()) app.commandLine.appendSwitch('no-sandbox');
 
 function registerIpc() {
-  ipcMain.on('foliole:load', (event) => {
+  ipcMain.on('gemma:load', (event) => {
     try {
       event.returnValue = store.loadAll();
     } catch (e) {
       event.returnValue = { error: String(e && e.message ? e.message : e) };
     }
   });
-  ipcMain.handle('foliole:write', (_event, name, text) => {
+  ipcMain.handle('gemma:write', (_event, name, text) => {
     store.write(name, text);
   });
-  ipcMain.handle('foliole:snapshot', (_event, reason) => store.eventSnapshot(reason));
-  ipcMain.handle('foliole:open-data-folder', () => shell.openPath(store.dataDir));
+  ipcMain.handle('gemma:snapshot', (_event, reason) => store.eventSnapshot(reason));
+  ipcMain.handle('gemma:open-data-folder', () => shell.openPath(store.dataDir));
 }
 
 function takeDailySnapshot() {
@@ -59,7 +86,7 @@ async function start() {
   try {
     store = createStore(path.join(app.getPath('userData'), 'data'));
   } catch (e) {
-    dialog.showErrorBox('Foliole', `Impossible d'ouvrir le dossier des données.\n\n${e}`);
+    dialog.showErrorBox('Gemma', `Impossible d'ouvrir le dossier des données.\n\n${e}`);
     app.quit();
     return;
   }
@@ -72,13 +99,13 @@ async function start() {
   process.env.PORT_FALLBACK = '1';
   process.env.HOST = HOST;
   process.env.STATIC_DIR = path.join(__dirname, '..', 'dist');
-  process.env.FOLIOLE_DATA_DIR = store.dataDir;
+  process.env.GEMMA_DATA_DIR = store.dataDir;
   let port;
   try {
     const server = await import(require('url').pathToFileURL(path.join(__dirname, '..', 'dist-electron', 'server.mjs')).href);
     port = await server.ready;
   } catch (e) {
-    dialog.showErrorBox('Foliole', `Impossible de démarrer le serveur local.\n\n${e}`);
+    dialog.showErrorBox('Gemma', `Impossible de démarrer le serveur local.\n\n${e}`);
     app.quit();
     return;
   }
@@ -86,7 +113,7 @@ async function start() {
   Menu.setApplicationMenu(null);
   win = new BrowserWindow({
     width: 1280, height: 860, minWidth: 900, minHeight: 600,
-    title: 'Foliole', autoHideMenuBar: true,
+    title: 'Gemma', autoHideMenuBar: true,
     icon: path.join(__dirname, '..', 'build', 'icon.png'),
     webPreferences: {
       contextIsolation: true,

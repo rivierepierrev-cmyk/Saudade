@@ -7,4 +7,4 @@ coverage/
 *.log
 .env*
 !.env.example
-.foliole-data/
+.gemma-data/

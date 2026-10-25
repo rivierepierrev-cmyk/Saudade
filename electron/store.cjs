@@ -121,7 +121,7 @@ function createStore(dataDir) {
 
   function buildBackup() {
     return {
-      app: 'foliole',
+      app: 'gemma',
       version: 2,
       exportedAt: new Date().toISOString(),
       documents: readParsed('documents', []),

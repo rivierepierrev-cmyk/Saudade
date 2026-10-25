@@ -24,7 +24,7 @@ async function api<T>(path: string, init: { json?: unknown; body?: Blob; content
   const res = await fetch(path, {
     method: 'POST',
     headers: {
-      'X-Foliole': '1',
+      'X-Gemma': '1',
       'Content-Type': init.contentType ?? 'application/json',
     },
     body: init.body ?? JSON.stringify(init.json),

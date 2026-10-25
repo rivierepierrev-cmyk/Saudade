@@ -14,7 +14,7 @@ import {
   ItemState,
   FSRSRecord,
 } from './types/gemma';
-import { GemmaStorage, FolioleStorage, AppSettings } from './lib/storage';
+import { GemmaStorage, AppSettings } from './lib/storage';
 import { onStorageError, isDesktop, dataLocation, takeSnapshot, openDataFolder } from './lib/kv';
 import { createInitialFSRSRecord, applyCardReview, applyTopicReview, firstTopicInterval } from './lib/fsrs';
 import { TopNav } from './components/TopNav';
@@ -169,13 +169,13 @@ export default function App() {
     const clamped = Math.min(0.98, Math.max(0.70, Number(newRetention.toFixed(2))));
     const newSettings: AppSettings = { ...settings, targetRetention: clamped };
     setSettings(newSettings);
-    FolioleStorage.saveSettings(newSettings);
+    GemmaStorage.saveSettings(newSettings);
   };
 
   const handleUpdateDailyLimit = (limit: number) => {
     const newSettings: AppSettings = { ...settings, dailyReviewLimit: Math.max(1, Math.min(999, Math.round(limit))) };
     setSettings(newSettings);
-    FolioleStorage.saveSettings(newSettings);
+    GemmaStorage.saveSettings(newSettings);
   };
 
   // Handler: Rate a cloze card (FSRS). Returns the new scheduling record.
@@ -188,7 +188,7 @@ export default function App() {
     updateClozes((prev) =>
       prev.map((c) => (c.id === id ? { ...c, fsrs, state, updatedAt: now.toISOString() } : c))
     );
-    FolioleStorage.appendReviewLog({
+    GemmaStorage.appendReviewLog({
       id: newId('log'),
       itemId: id,
       itemType: 'cloze',
@@ -217,7 +217,7 @@ export default function App() {
     } else {
       updateExtracts((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
     }
-    FolioleStorage.appendReviewLog({
+    GemmaStorage.appendReviewLog({
       id: newId('log'),
       itemId: id,
       itemType: type,
@@ -383,14 +383,14 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `foliole-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `gemma-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   // Export Markdown Mirror (format Obsidian)
   const handleExportMarkdownMirror = () => {
-    let combinedMd = `# Miroir de Voûte Foliole (Lecture Incrémentale)\nExporté le : ${new Date().toLocaleString('fr-FR')}\n\n`;
+    let combinedMd = `# Miroir de Voûte Gemma (Lecture Incrémentale)\nExporté le : ${new Date().toLocaleString('fr-FR')}\n\n`;
 
     documents.forEach((doc) => {
       combinedMd += `## ${doc.title}\n`;
@@ -413,7 +413,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `foliole-markdown-mirror-${new Date().toISOString().slice(0, 10)}.md`;
+    a.download = `gemma-markdown-mirror-${new Date().toISOString().slice(0, 10)}.md`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -662,7 +662,7 @@ export default function App() {
         onAddDocuments={(newDocs) => {
           if (newDocs.length === 0) return;
           updateDocuments((prev) => [...newDocs, ...prev]);
-          FolioleStorage.saveFolders([...FolioleStorage.getFolders(), ...newDocs.map((d) => d.folder || 'Général')]);
+          GemmaStorage.saveFolders([...GemmaStorage.getFolders(), ...newDocs.map((d) => d.folder || 'Général')]);
           setCurrentDocumentId(newDocs[0].id);
           setActiveTab('reader');
         }}

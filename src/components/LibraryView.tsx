@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DocumentItem, ExtractItem, ClozeItem } from '../types/foliole';
+import { DocumentItem, ExtractItem, ClozeItem } from '../types/gemma';
 import {
   Search,
   BookOpen,

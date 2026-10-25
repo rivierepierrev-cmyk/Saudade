@@ -1,4 +1,4 @@
-import { DocumentItem, ExtractItem, ClozeItem } from '../types/foliole';
+import { DocumentItem, ExtractItem, ClozeItem } from '../types/gemma';
 
 export const SAMPLE_DOCUMENTS: DocumentItem[] = [
   {

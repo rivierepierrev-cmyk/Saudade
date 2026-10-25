@@ -1,8 +1,8 @@
 const { _electron } = require('playwright'); const fs = require('fs'); const os = require('os'); const path = require('path'); const net = require('net'); const assert = require('assert');
 const APP = path.resolve(__dirname, '../..');
 const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'folcfg-'));
-const dataDir = path.join(cfg, 'Foliole', 'data');
-const OUT = fs.mkdtempSync(path.join(os.tmpdir(), 'foliole-shots-'));
+const dataDir = path.join(cfg, 'Gemma', 'data');
+const OUT = fs.mkdtempSync(path.join(os.tmpdir(), 'gemma-shots-'));
 async function launch() {
   const app = await _electron.launch({ executablePath: require('electron'), args: [APP, '--no-sandbox'], env: { ...process.env, XDG_CONFIG_HOME: cfg }, cwd: APP });
   const page = await app.firstWindow();
@@ -34,7 +34,7 @@ const read = n => JSON.parse(fs.readFileSync(path.join(dataDir, n + '.json'), 'u
   assert.deepEqual(docs.map(d => d.id), ['legacy-1'], 'legacy data migrated');
   assert.deepEqual(read('extracts'), []);
   // 3. restore through the UI
-  const backup = { app: 'foliole', version: 2, documents: [docs[0], { ...docs[0], id: 'r2', title: 'Restauré' }], extracts: [], clozes: [], logs: [], folders: ['Général', 'Livres'] };
+  const backup = { app: 'gemma', version: 2, documents: [docs[0], { ...docs[0], id: 'r2', title: 'Restauré' }], extracts: [], clozes: [], logs: [], folders: ['Général', 'Livres'] };
   const bfile = path.join(cfg, 'backup.json'); fs.writeFileSync(bfile, JSON.stringify(backup));
   await page.getByRole('button', { name: /Analytique/i }).first().click();
   await page.getByText('Ouvrir le dossier des données').waitFor();
@@ -68,12 +68,47 @@ const read = n => JSON.parse(fs.readFileSync(path.join(dataDir, n + '.json'), 'u
   await new Promise(r => blocker.on('listening', r));
   ({ app, page, errors } = await launch());
   assert.ok(!page.url().includes(':47653/'), 'fallback port used: ' + page.url());
-  console.log('initial', JSON.stringify(await page.evaluate(() => ({w: window.folioleDesktop?.initial?.warnings, keys: Object.keys(window.folioleDesktop?.initial?.files||{})}))), fs.readdirSync(dataDir));
+  console.log('initial', JSON.stringify(await page.evaluate(() => ({w: window.gemmaDesktop?.initial?.warnings, keys: Object.keys(window.gemmaDesktop?.initial?.files||{})}))), fs.readdirSync(dataDir));
   await page.getByRole('alert').first().waitFor();
   const banner = await page.getByRole('alert').first().innerText();
   assert.match(banner, /mis de côté/);
   assert.equal(read('documents').length, 2, 'recovered previous version from .bak');
   await page.screenshot({ path: OUT + '/banner.png' });
   await app.close(); blocker.close();
+
+  // 6. upgrade from the app's former name: the Foliole profile is taken over
+  const cfg2 = fs.mkdtempSync(path.join(os.tmpdir(), 'gemcfg-'));
+  const oldData = path.join(cfg2, 'Foliole', 'data');
+  fs.mkdirSync(path.join(oldData, 'backups'), { recursive: true });
+  const oldDoc = { id: 'from-foliole', title: 'Venu de Foliole', content: 'x', tags: [], priority: 50, readingProgress: 0, lastReadOffset: 0, createdAt: '', updatedAt: '', state: 'new', format: 'note', fsrs: { stability: 0, difficulty: 0, reps: 0, lapses: 0, interval: 0, nextReviewDate: new Date().toISOString() } };
+  for (const [n, v] of Object.entries({ documents: [oldDoc], extracts: [], clozes: [], reviewLogs: [], settings: {}, folders: ['Général'] })) fs.writeFileSync(path.join(oldData, n + '.json'), JSON.stringify(v));
+  fs.writeFileSync(path.join(cfg2, 'Foliole', 'SingletonLock'), 'stale');
+  const app2 = await _electron.launch({ executablePath: require('electron'), args: [APP, '--no-sandbox'], env: { ...process.env, XDG_CONFIG_HOME: cfg2 }, cwd: APP });
+  const page2 = await app2.firstWindow(); await page2.waitForSelector('nav');
+  const migrated = JSON.parse(fs.readFileSync(path.join(cfg2, 'Gemma', 'data', 'documents.json'), 'utf8'));
+  assert.deepEqual(migrated.map((d) => d.id), ['from-foliole'], 'Foliole library taken over');
+  assert.ok(fs.existsSync(path.join(oldData, 'documents.json')), 'old folder left untouched');
+  assert.ok(!fs.existsSync(path.join(cfg2, 'Gemma.migrating')));
+  await app2.close();
+
+  // 7. the very first versions (named Foliole) kept the library in browser storage:
+  // it must survive both the rename and the move to files.
+  const cfg3 = fs.mkdtempSync(path.join(os.tmpdir(), 'gemcfg-'));
+  let app3 = await _electron.launch({ executablePath: require('electron'), args: [APP, '--no-sandbox'], env: { ...process.env, XDG_CONFIG_HOME: cfg3 }, cwd: APP });
+  let page3 = await app3.firstWindow(); await page3.waitForSelector('nav');
+  await page3.evaluate((doc) => {
+    localStorage.setItem('foliole_documents_fr_v2', JSON.stringify([{ ...doc, id: 'original-v1', title: 'Bibliothèque originale' }]));
+    localStorage.setItem('foliole_extracts_fr_v2', '[]');
+    localStorage.setItem('foliole_clozes_fr_v2', '[]');
+  }, oldDoc);
+  await app3.close();
+  // Make it look like an original install: a Foliole profile without data files.
+  fs.renameSync(path.join(cfg3, 'Gemma'), path.join(cfg3, 'Foliole'));
+  fs.rmSync(path.join(cfg3, 'Foliole', 'data'), { recursive: true, force: true });
+  app3 = await _electron.launch({ executablePath: require('electron'), args: [APP, '--no-sandbox'], env: { ...process.env, XDG_CONFIG_HOME: cfg3 }, cwd: APP });
+  page3 = await app3.firstWindow(); await page3.waitForSelector('nav'); await page3.waitForTimeout(500);
+  const fromV1 = JSON.parse(fs.readFileSync(path.join(cfg3, 'Gemma', 'data', 'documents.json'), 'utf8'));
+  assert.deepEqual(fromV1.map((d) => d.id), ['original-v1'], 'original browser-storage library migrated');
+  await app3.close();
   console.log('E2E OK');
 })().catch(e => { console.error(e); process.exit(1); });
