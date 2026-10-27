@@ -48,6 +48,7 @@ export interface ExtractItem {
   documentId: string;
   documentTitle: string;
   parentExtractId?: string; // Set when extracted from another extract
+  sourceStart?: number; // Where the passage starts in the document's Markdown (to edit it there too)
   folder?: string; // Hérité du document ou dossier propre
   text: string;
   note?: string;

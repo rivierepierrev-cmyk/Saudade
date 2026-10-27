@@ -4,6 +4,8 @@ import { formatInterval } from '../lib/fsrs';
 import { matchesQuery } from '../lib/search';
 import { parseClozes, renderTextWithMath } from '../lib/math';
 import { safeHtml } from '../lib/markdown';
+import type { QueueEntry } from '../lib/queue';
+import { projectMarkdown } from '../lib/sourceSync';
 import {
   BookOpen,
   FileText,
@@ -13,6 +15,7 @@ import {
   Layers,
   Trash2,
   Folder,
+  Pencil,
 } from 'lucide-react';
 
 export interface UnifiedQueueItem {
@@ -43,6 +46,11 @@ interface QueueViewProps {
   onDismissItem?: (type: ItemType, id: string) => void;
   onDeleteItem?: (type: ItemType, id: string) => void;
   onOpenImport: () => void;
+  /** Today's queue (see lib/queue.ts): only these items are listed. */
+  queue: QueueEntry[];
+  /** When the next item after today is due (shown when the queue is empty). */
+  nextDueDate: Date | null;
+  onEditItem: (type: 'extract' | 'cloze', id: string) => void;
 }
 
 export const QueueView: React.FC<QueueViewProps> = ({
@@ -53,8 +61,11 @@ export const QueueView: React.FC<QueueViewProps> = ({
   onStartReview,
   onDeleteItem,
   onOpenImport,
+  queue,
+  nextDueDate,
+  onEditItem,
 }) => {
-  const [filterType, setFilterType] = useState<'all' | 'due' | 'document' | 'extract' | 'cloze'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'document' | 'extract' | 'cloze'>('all');
   const [selectedFolder, setSelectedFolder] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -69,7 +80,8 @@ export const QueueView: React.FC<QueueViewProps> = ({
         id: doc.id,
         type: 'document',
         title: doc.title,
-        preview: doc.content.slice(0, 180).replace(/[#*`_]/g, '') + '...',
+        // Visible text (no Markdown syntax), shortened
+        preview: projectMarkdown(doc.content.slice(0, 600)).text.slice(0, 180) + '…',
         folder: doc.folder || 'Général',
         priority: doc.priority,
         tags: doc.tags,
@@ -130,11 +142,15 @@ export const QueueView: React.FC<QueueViewProps> = ({
   const now = new Date();
   now.setHours(23, 59, 59, 999);
 
-  const filteredItems = queueItems
+  // The reading queue is today's to-do list: items leave it once done for today.
+  const queueOrder = new Map(queue.map((entry, index) => [entry.item.id, index]));
+  const todayItems = queueItems
+    .filter((item) => queueOrder.has(item.id))
+    .sort((a, b) => queueOrder.get(a.id)! - queueOrder.get(b.id)!);
+  const countOf = (type: ItemType) => todayItems.filter((i) => i.type === type).length;
+
+  const filteredItems = todayItems
     .filter((item) => {
-      if (filterType === 'due') {
-        return new Date(item.nextReviewDate) <= now;
-      }
       if (filterType !== 'all' && item.type !== filterType) {
         return false;
       }
@@ -149,17 +165,10 @@ export const QueueView: React.FC<QueueViewProps> = ({
         return matchesQuery(searchQuery, [item.title, item.preview, ...item.tags]);
       }
       return true;
-    })
-    .sort((a, b) => {
-      const aDue = new Date(a.nextReviewDate) <= now;
-      const bDue = new Date(b.nextReviewDate) <= now;
-
-      if (aDue && !bDue) return -1;
-      if (!aDue && bDue) return 1;
-      return b.priority - a.priority;
     });
 
-  const dueCount = queueItems.filter((i) => new Date(i.nextReviewDate) <= now).length;
+  // Extracts and cards to review (documents are read in the reader).
+  const dueCount = todayItems.length - countOf('document');
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
@@ -167,8 +176,13 @@ export const QueueView: React.FC<QueueViewProps> = ({
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 pb-6 border-b border-[var(--bd-e8e2d5)]">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--fg-28231d)]">
-            File de lecture incrémentale
+            File de lecture du jour
           </h1>
+          <p className="mt-1 text-sm text-[var(--fg-695f54)]">
+            {todayItems.length === 0
+              ? 'Tout est fait pour aujourd’hui.'
+              : `${todayItems.length} élément${todayItems.length > 1 ? 's' : ''} à traiter aujourd’hui : chaque élément quitte la file une fois lu ou révisé.`}
+          </p>
         </div>
 
         {/* Actions rapides */}
@@ -211,17 +225,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
                 : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
             }`}
           >
-            Tout le flux ({queueItems.length})
-          </button>
-          <button
-            onClick={() => setFilterType('due')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
-              filterType === 'due'
-                ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] shadow-xs font-semibold'
-                : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
-            }`}
-          >
-            Du jour ({dueCount})
+            Tout ({todayItems.length})
           </button>
           <button
             onClick={() => setFilterType('document')}
@@ -231,7 +235,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
                 : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
             }`}
           >
-            Documents ({documents.length})
+            Documents ({countOf('document')})
           </button>
           <button
             onClick={() => setFilterType('extract')}
@@ -241,7 +245,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
                 : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
             }`}
           >
-            Extraits ({extracts.length})
+            Extraits ({countOf('extract')})
           </button>
           <button
             onClick={() => setFilterType('cloze')}
@@ -251,7 +255,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
                 : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
             }`}
           >
-            Cartes Cloze ({clozes.length})
+            Cartes ({countOf('cloze')})
           </button>
         </div>
 
@@ -265,7 +269,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
               className="bg-transparent text-xs font-medium text-[var(--fg-28231d)] focus:outline-none cursor-pointer"
             >
               <option value="all">Tous les dossiers</option>
-              {Array.from(new Set(documents.map((d) => d.folder || 'Général')))
+              {Array.from(new Set(todayItems.map((i) => i.folder || 'Général')))
                 .sort()
                 .map((f) => (
                   <option key={f} value={f}>
@@ -292,19 +296,31 @@ export const QueueView: React.FC<QueueViewProps> = ({
       {/* Liste des cartes en blanc avec bordures beige */}
       {filteredItems.length === 0 ? (
         <div className="p-12 text-center border border-dashed border-[var(--bd-ddd6c8)] rounded-xl bg-[var(--bg-ffffff)]/60">
-          <Layers className="w-10 h-10 mx-auto text-[var(--fg-9e9385)] mb-3" />
-          <h3 className="text-base font-semibold text-[var(--fg-28231d)]">
-            Aucun élément dans cette vue
-          </h3>
-          <p className="text-xs text-[var(--fg-695f54)] max-w-sm mx-auto mt-1 mb-4">
-            Importez un article ou une note markdown pour débuter la lecture incrémentale et extraire des connaissances.
-          </p>
-          <button
-            onClick={onOpenImport}
-            className="px-4 py-2 text-xs font-semibold text-[var(--fg-faf7f2)] bg-[var(--bg-3b3026)] hover:bg-[var(--bg-28211a)] rounded-lg shadow-xs"
-          >
-            Importer un document
-          </button>
+          {todayItems.length === 0 ? (
+            <>
+              <CheckCircle2 className="w-10 h-10 mx-auto text-[var(--fg-5f8550)] mb-3" />
+              <h3 className="text-base font-semibold text-[var(--fg-28231d)]">File vide : rien d’autre à faire aujourd’hui</h3>
+              <p className="text-xs text-[var(--fg-695f54)] max-w-sm mx-auto mt-1 mb-4">
+                {nextDueDate
+                  ? `Prochain élément : ${nextDueDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}. Vous pouvez ajouter une nouvelle source en attendant.`
+                  : 'Ajoutez une source pour commencer la lecture incrémentale.'}
+              </p>
+              <button
+                onClick={onOpenImport}
+                className="px-4 py-2 text-xs font-semibold text-[var(--fg-faf7f2)] bg-[var(--bg-3b3026)] hover:bg-[var(--bg-28211a)] rounded-lg shadow-xs"
+              >
+                Ajouter une source
+              </button>
+            </>
+          ) : (
+            <>
+              <Layers className="w-10 h-10 mx-auto text-[var(--fg-9e9385)] mb-3" />
+              <h3 className="text-base font-semibold text-[var(--fg-28231d)]">Aucun élément ne correspond</h3>
+              <p className="text-xs text-[var(--fg-695f54)] max-w-sm mx-auto mt-1">
+                Changez le type, le dossier ou la recherche.
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -461,6 +477,16 @@ export const QueueView: React.FC<QueueViewProps> = ({
                       </div>
                     )}
 
+                    {!isDoc && (
+                      <button
+                        onClick={() => onEditItem(item.type as 'extract' | 'cloze', item.id)}
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)] rounded-md cursor-pointer"
+                        title={isCloze ? 'Modifier la carte' : "Modifier l'extrait (et le passage dans le document)"}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        <span>Modifier</span>
+                      </button>
+                    )}
                     {onDeleteItem && (
                       <div className="flex items-center">
                         {pendingDeleteId === item.id ? (

@@ -42,9 +42,13 @@ const launch = async () => {
   await page.keyboard.press('ArrowRight'); await page.waitForTimeout(200);
   const t2 = await page.locator('h1').first().innerText();
   assert.notEqual(t1, t2, '→ opens the next text');
-  const reps = read('documents').find((d) => d.title === t2).fsrs.reps;
+  // L reschedules a document due today, never one already scheduled for later.
+  const doc2 = read('documents').find((d) => d.title === t2);
+  const due = new Date(doc2.fsrs.nextReviewDate) <= new Date(new Date().setHours(23, 59, 59, 999));
   await page.keyboard.press('l'); await page.waitForTimeout(400);
-  assert.equal(read('documents').find((d) => d.title === t2).fsrs.reps, reps + 1, 'L = Lu');
+  const after = read('documents').find((d) => d.title === t2);
+  if (due) assert.equal(after.fsrs.reps, doc2.fsrs.reps + 1, 'L = Lu on a due document');
+  else assert.deepEqual(after.fsrs, doc2.fsrs, 'L on a document scheduled for later changes nothing');
 
   // Theme: toggle to dark, persists across restarts, applied before first paint
   await page.getByRole('button', { name: /Thème/ }).click(); // system -> light

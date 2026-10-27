@@ -39,7 +39,8 @@ function audit() {
 
 const screens = [
   ['queue', async (p) => p.getByRole('button', { name: /File de lecture/ }).first().click()],
-  ['reader', async (p) => p.getByRole('button', { name: /^Lecteur/ }).first().click()],
+  ['editor', async (p) => { await p.getByRole('button', { name: /File de lecture/ }).first().click(); await p.getByTitle(/Modifier l'extrait/).first().click(); }],
+  ['reader', async (p) => { await p.keyboard.press('Escape'); await p.getByRole('button', { name: /^Lecteur/ }).first().click(); }],
   ['review-card', async (p) => { await p.getByRole('button', { name: /Révision du jour/ }).first().click(); await p.keyboard.press('Space'); }],
   ['library', async (p) => p.getByRole('button', { name: /Bibliothèque/ }).first().click()],
   ['stats', async (p) => p.getByRole('button', { name: /Analytique/ }).first().click()],

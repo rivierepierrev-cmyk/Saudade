@@ -53,13 +53,24 @@ async function select(page, rootSel, needleOrNull, blockSel = 'p') {
   assert.ok(c.documentId, 'linked to document');
   console.log('cloze:', c.text);
 
-  // 2. whole sentence selected -> refused, nothing created
+  // 2. whole sentence selected -> the card editor opens to choose the hidden words
   const before = clozes.length;
   await select(page, 'article', null);
   await page.getByRole('button', { name: 'Carte à trou' }).click();
-  await page.getByText(/pas toute la phrase/).waitFor(); await settle(page);
-  assert.equal(read('clozes').length, before, 'whole-sentence cloze refused');
-  await page.screenshot({ path: OUT + '/reader-refused.png' });
+  const editor = page.getByRole('dialog', { name: 'Nouvelle carte à trou' });
+  await editor.waitFor();
+  assert.equal(read('clozes').length, before, 'nothing created yet');
+  await editor.getByRole('button', { name: 'Créer la carte' }).click();
+  await editor.getByText(/Ajoutez au moins un trou/).waitFor(); // a card needs a hole
+  const word = await editor.locator('textarea').evaluate((t) => {
+    const m = /[\p{L}]{7,}/u.exec(t.value); t.focus(); t.setSelectionRange(m.index, m.index + m[0].length); return m[0];
+  });
+  await editor.getByRole('button', { name: 'Masquer la sélection' }).click();
+  await page.screenshot({ path: OUT + '/reader-cloze-editor.png' });
+  await editor.getByRole('button', { name: 'Créer la carte' }).click();
+  await editor.waitFor({ state: 'detached' }); await settle(page);
+  assert.equal(read('clozes').length, before + 1);
+  assert.ok(read('clozes')[0].text.includes(`{{c1::${word}}}`), read('clozes')[0].text);
 
   // 3. extract a passage via Alt+X
   const ex = await select(page, 'article', null);
@@ -99,7 +110,7 @@ async function select(page, rootSel, needleOrNull, blockSel = 'p') {
         sawExtract = true;
         const sel = await select(page, 'div.select-text', 0, null);
         await page.getByRole('button', { name: 'Carte à trou', exact: true }).click();
-        await page.getByText('Carte à trou créée').waitFor();
+        await page.getByText('Carte à trou créée').first().waitFor();
         const sub = await select(page, 'div.select-text', null, null);
         await page.getByRole('button', { name: 'Extraire la sélection' }).click();
         await page.getByText('Sous-extrait créé').waitFor(); await settle(page);

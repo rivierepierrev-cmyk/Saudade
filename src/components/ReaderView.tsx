@@ -15,6 +15,7 @@ import {
 import { EditDocumentModal } from './EditDocumentModal';
 import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
 import { formatInterval, nextTopicInterval } from '../lib/fsrs';
+import { isDueToday } from '../lib/queue';
 
 interface ReaderViewProps {
   currentDocument: DocumentItem;
@@ -31,6 +32,8 @@ interface ReaderViewProps {
   onFinishReading: (docId: string) => void;
   /** Finished for good: the document leaves the reading queue. */
   onRetireDocument: (docId: string) => void;
+  /** The selection is a whole sentence: open the card editor with it. */
+  onOpenClozeEditor: (documentId: string, sentence: string) => void;
   onNextQueueItem: () => void;
   onPrevQueueItem: () => void;
   currentIndex: number;
@@ -49,6 +52,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   onPostponeDocument,
   onFinishReading,
   onRetireDocument,
+  onOpenClozeEditor,
   onNextQueueItem,
   onPrevQueueItem,
   currentIndex,
@@ -138,7 +142,12 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
     if (!blockSelection) return;
     const result = buildCloze(blockSelection.context, blockSelection.start, blockSelection.end);
     if (!result.ok) {
-      showToast(result.error, true);
+      if (result.reason === 'whole-sentence') {
+        onOpenClozeEditor(currentDocument.id, result.sentence);
+        clearSelection();
+      } else {
+        showToast(result.error, true);
+      }
       return;
     }
     onCreateCloze(currentDocument.id, result.text);
@@ -181,6 +190,9 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   });
 
   const nextInterval = nextTopicInterval(currentDocument.fsrs, currentDocument.priority);
+  // A document already read today (or scheduled for later) is not rescheduled again.
+  const isDue = isDueToday(currentDocument.fsrs);
+  const daysUntilNext = (new Date(currentDocument.fsrs.nextReviewDate).getTime() - Date.now()) / 86400000;
 
   const renderedHtml = renderMarkdown(currentDocument.content);
 
@@ -443,7 +455,11 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                 className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg shadow-xs transition-all cursor-pointer"
                 title="Lu pour aujourd'hui : le texte revient selon sa priorité, puis le suivant s'ouvre (L)"
               >
-                <span>Lu · revoir dans {formatInterval(nextInterval)}</span>
+                <span>
+                  {isDue
+                    ? `Lu · revoir dans ${formatInterval(nextInterval)}`
+                    : `Suivant · déjà prévu dans ${formatInterval(daysUntilNext)}`}
+                </span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>

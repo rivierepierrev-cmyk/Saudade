@@ -16,6 +16,7 @@ import {
   Edit3,
   FolderTree,
   LayoutGrid,
+  Pencil,
 } from 'lucide-react';
 import { EditDocumentModal } from './EditDocumentModal';
 import { KnowledgeTreeView } from './KnowledgeTreeView';
@@ -33,6 +34,7 @@ interface LibraryViewProps {
   onOpenImport: () => void;
   onExportMarkdown?: () => void;
   onExportBackup: () => void;
+  onEditItem?: (type: 'extract' | 'cloze', id: string) => void;
 }
 
 export const LibraryView: React.FC<LibraryViewProps> = ({
@@ -44,6 +46,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   onDeleteDocument,
   onDeleteExtract,
   onDeleteCloze,
+  onEditItem,
   onStartReviewWithFolder,
   onOpenImport,
   onExportBackup,
@@ -497,6 +500,16 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                             </button>
                           </div>
                         ) : (
+                          <span className="flex items-center">
+                          {onEditItem && (
+                            <button
+                              onClick={() => onEditItem('extract', ext.id)}
+                              title="Modifier l'extrait (et le passage dans le document)"
+                              className="p-1.5 text-[var(--fg-8c8072)] hover:text-[var(--fg-28231d)] rounded transition-colors cursor-pointer"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <button
                             onClick={() => setPendingDeleteId(ext.id)}
                             title="Supprimer cet extrait et le retirer de la file"
@@ -504,6 +517,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
+                          </span>
                         )}
                       </div>
                     </div>
@@ -594,6 +608,16 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                             </button>
                           </div>
                         ) : (
+                          <span className="flex items-center">
+                          {onEditItem && (
+                            <button
+                              onClick={() => onEditItem('cloze', clz.id)}
+                              title="Modifier la carte"
+                              className="p-1.5 text-[var(--fg-8c8072)] hover:text-[var(--fg-28231d)] rounded transition-colors cursor-pointer"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <button
                             onClick={() => setPendingDeleteId(clz.id)}
                             title="Supprimer cette carte cloze et la retirer de la file"
@@ -601,6 +625,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
+                          </span>
                         )}
                       </div>
                     </div>

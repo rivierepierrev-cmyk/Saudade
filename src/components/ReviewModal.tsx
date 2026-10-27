@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ClozeItem, ExtractItem, ReviewRating, FSRSRecord } from '../types/gemma';
 import { predictAllRatings, nextTopicInterval, formatInterval } from '../lib/fsrs';
 import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
+import { buildTodayQueue, isDueToday } from '../lib/queue';
 import { renderClozeCard, renderTextWithMath } from '../lib/math';
 import { safeHtml } from '../lib/markdown';
 import confetti from 'canvas-confetti';
@@ -18,6 +19,7 @@ import {
   ArrowRight,
   BookOpen,
   Filter,
+  Pencil,
 } from 'lucide-react';
 
 export interface ReviewQueueEntry {
@@ -40,8 +42,12 @@ interface ReviewModalProps {
   targetRetention?: number;
   /** Rates a cloze card; returns its new scheduling record. */
   onRateCard: (id: string, rating: ReviewRating) => FSRSRecord | undefined;
-  /** Done reading an extract for now; returns the new interval in days. */
-  onExtractNext: (id: string) => number | undefined;
+  /** Done reading an extract for now. Not rescheduled when it isn't due today. */
+  onExtractNext: (id: string) => { rescheduled: boolean; days: number } | undefined;
+  /** Opens the editor of an extract or a card. */
+  onEditItem: (type: 'extract' | 'cloze', id: string) => void;
+  /** The selection is a whole sentence: open the card editor with it. */
+  onOpenClozeEditor: (extractId: string, sentence: string) => void;
   onRetireExtract: (id: string) => void;
   onCreateExtractFromExtract: (extractId: string, text: string) => void;
   onCreateClozeFromExtract: (extractId: string, clozeText: string) => void;
@@ -60,6 +66,8 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   targetRetention = 0.90,
   onRateCard,
   onExtractNext,
+  onEditItem,
+  onOpenClozeEditor,
   onRetireExtract,
   onCreateExtractFromExtract,
   onCreateClozeFromExtract,
@@ -112,72 +120,45 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   }, [activeClozes, activeExtracts]);
 
   // Initialisation stricte de la file de révision normale selon FSRS
+  const toEntry = (c: ClozeItem | ExtractItem, type: 'cloze' | 'extract'): ReviewQueueEntry => ({
+    id: c.id,
+    type,
+    documentTitle: c.documentTitle || 'Document',
+    documentId: c.documentId,
+    text: c.text,
+    note: c.note,
+    fsrs: c.fsrs,
+    priority: c.priority,
+    originalItem: c,
+  });
+
+  // The session plays today's queue (extracts and cards, same daily card limit as
+  // the reading queue). "Étude anticipée" (includeAll) also takes items scheduled
+  // for later. An item opened explicitly comes first.
   const buildQueue = (includeAll: boolean = false): ReviewQueueEntry[] => {
-    const now = new Date();
-    now.setHours(23, 59, 59, 999);
-    const isDue = (dateStr: string) => new Date(dateStr) <= now;
-
-    const entries: ReviewQueueEntry[] = [];
-
-    // 1. Cartes Cloze
-    clozes.forEach((c) => {
-      if (
-        c.state !== 'dismissed' &&
-        (includeAll || isDue(c.fsrs.nextReviewDate) || c.id === initialItemId)
-      ) {
-        entries.push({
-          id: c.id,
-          type: 'cloze',
-          documentTitle: c.documentTitle || 'Document',
-          documentId: c.documentId,
-          text: c.text,
-          note: c.note,
-          fsrs: c.fsrs,
-          priority: c.priority,
-          originalItem: c,
-        });
+    let entries: ReviewQueueEntry[];
+    if (includeAll) {
+      entries = [
+        ...clozes.filter((c) => c.state !== 'dismissed').map((c) => toEntry(c, 'cloze')),
+        ...extracts.filter((e) => e.state !== 'dismissed').map((e) => toEntry(e, 'extract')),
+      ].sort((a, b) => b.priority - a.priority);
+    } else {
+      entries = buildTodayQueue({ documents: [], extracts, clozes, dailyLimit, reviewedTodayIds }).map((q) =>
+        toEntry(q.item as ClozeItem | ExtractItem, q.type as 'cloze' | 'extract')
+      );
+    }
+    if (initialItemId) {
+      const index = entries.findIndex((e) => e.id === initialItemId);
+      if (index >= 0) {
+        entries.unshift(...entries.splice(index, 1));
+      } else {
+        const card = clozes.find((c) => c.id === initialItemId);
+        const ext = extracts.find((e) => e.id === initialItemId);
+        if (card) entries.unshift(toEntry(card, 'cloze'));
+        else if (ext) entries.unshift(toEntry(ext, 'extract'));
       }
-    });
-
-    // 2. Extraits de lecture incrémentale
-    extracts.forEach((e) => {
-      if (
-        e.state !== 'dismissed' &&
-        (includeAll || isDue(e.fsrs.nextReviewDate) || e.id === initialItemId)
-      ) {
-        entries.push({
-          id: e.id,
-          type: 'extract',
-          documentTitle: e.documentTitle || 'Document',
-          documentId: e.documentId,
-          text: e.text,
-          note: e.note,
-          fsrs: e.fsrs,
-          priority: e.priority,
-          originalItem: e,
-        });
-      }
-    });
-
-    // Tri par priorité décroissante, en plaçant l'item cliqué en premier si spécifié
-    entries.sort((a, b) => {
-      if (initialItemId) {
-        if (a.id === initialItemId) return -1;
-        if (b.id === initialItemId) return 1;
-      }
-      return b.priority - a.priority;
-    });
-
-    // Daily limit: cards not yet seen today are capped; cards already reviewed today
-    // (learning steps) and extracts are always included.
-    if (includeAll) return entries;
-    let budget = Math.max(0, dailyLimit - reviewedTodayIds.size);
-    return entries.filter((e) => {
-      if (e.type !== 'cloze' || reviewedTodayIds.has(e.id) || e.id === initialItemId) return true;
-      if (budget <= 0) return false;
-      budget--;
-      return true;
-    });
+    }
+    return entries;
   };
 
   const [queue, setQueue] = useState<ReviewQueueEntry[]>(() => buildQueue(false));
@@ -351,7 +332,13 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     if (!currentEntry || !extractSelection) return;
     const result = buildCloze(extractSelection.context, extractSelection.start, extractSelection.end);
     if (!result.ok) {
-      showToast(result.error, true);
+      if (result.reason === 'whole-sentence') {
+        onOpenClozeEditor(currentEntry.id, result.sentence);
+        window.getSelection()?.removeAllRanges();
+        setExtractSelection(null);
+      } else {
+        showToast(result.error, true);
+      }
       return;
     }
     onCreateClozeFromExtract(currentEntry.id, result.text);
@@ -372,6 +359,13 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!currentEntry) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]') || document.querySelector('[role="dialog"]')) return;
+      if ((e.key === 'e' || e.key === 'E') && !e.ctrlKey && !e.metaKey && !e.altKey && !isFreePractice) {
+        e.preventDefault();
+        onEditItem(currentEntry.type, currentEntry.id);
+        return;
+      }
 
       if (currentEntry.type === 'cloze') {
         if (e.code === 'Space' && !isAnswerRevealed) {
@@ -692,7 +686,20 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                 </span>
               )}
             </div>
-            <span className="font-mono tabular-nums">Priorité : {currentEntry.priority}%</span>
+            <span className="flex items-center gap-3">
+              {!isFreePractice && (
+                <button
+                  type="button"
+                  onClick={() => onEditItem(currentEntry.type, currentEntry.id)}
+                  className="flex items-center gap-1 px-2 py-1 rounded-md text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)] cursor-pointer"
+                  title={isCloze ? 'Modifier la carte (E)' : "Modifier l'extrait (E)"}
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  Modifier
+                </button>
+              )}
+              <span className="font-mono tabular-nums">Priorité : {currentEntry.priority}%</span>
+            </span>
           </div>
 
           {/* Énoncé de la carte */}
@@ -789,7 +796,11 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                   className="flex items-center gap-2 px-5 py-2.5 text-xs font-semibold text-[var(--fg-faf7f2)] bg-[var(--bg-3b3026)] hover:bg-[var(--bg-28211a)] rounded-lg shadow-xs transition-colors cursor-pointer"
                 >
                   <span>
-                    Suivant · revoir dans {formatInterval(nextTopicInterval(currentEntry.fsrs, currentEntry.priority))}
+                    {isDueToday(currentEntry.fsrs)
+                      ? `Suivant · revoir dans ${formatInterval(nextTopicInterval(currentEntry.fsrs, currentEntry.priority))}`
+                      : `Suivant · déjà prévu dans ${formatInterval(
+                          (new Date(currentEntry.fsrs.nextReviewDate).getTime() - Date.now()) / 86400000
+                        )}`}
                   </span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>

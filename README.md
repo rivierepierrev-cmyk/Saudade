@@ -20,6 +20,15 @@ En mode navigateur (`npm run dev`), les données restent dans le localStorage du
     npm run dev            # http://127.0.0.1:3000
     npm run electron:dev   # fenêtre desktop
 
+## File de lecture du jour
+- La file ne contient que ce qui est à faire aujourd'hui (documents, extraits et cartes dus, avec la même limite quotidienne de cartes que la révision). Chaque élément la quitte une fois lu ou révisé ; quand tout est fait, elle est vide et indique la date du prochain élément.
+- Un document ou un extrait déjà programmé pour plus tard n'est jamais reprogrammé une seconde fois : « Lu » / « Suivant » passe simplement à la suite (« déjà prévu dans N j »).
+
+## Modifier un extrait ou une carte
+- Bouton « Modifier » dans la file, la révision (touche E) et la bibliothèque.
+- Modifier un extrait modifie aussi le passage dans le document d'origine (et dans l'extrait parent) ; seule la partie changée est remplacée, la mise en forme autour est conservée. Si le passage n'est plus retrouvé tel quel, seul l'extrait change (un message le signale). Annulable (Ctrl+Z).
+- Carte à trou sur une phrase entière : l'éditeur s'ouvre pour choisir le mot à masquer (« Masquer la sélection », Alt+C). Syntaxe : `{{c1::réponse}}` ou `{{c1::réponse::indice}}`.
+
 ## Formules mathématiques (LaTeX)
 - `$E=mc^2$` dans le texte, `$$\int_0^1 f(x)\,dx$$` sur sa propre ligne (aussi `\(…\)` et `\[…\]`). Pour écrire un symbole dollar : `\$`.
 - Fonctionne dans le lecteur, l'éditeur, les extraits et les cartes à trou. Une carte peut masquer une formule entière (`{{c1::$E=mc^2$}}`) ou une partie (`$E={{c1::mc^2}}$`).

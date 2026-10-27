@@ -3,7 +3,11 @@
  * selected words as context and hides only the selection.
  */
 
-export type ClozeBuildResult = { ok: true; text: string } | { ok: false; error: string };
+export type ClozeBuildResult =
+  | { ok: true; text: string }
+  | { ok: false; reason: 'empty' | 'syntax'; error: string }
+  /** The selection is the whole sentence: `sentence` can be opened in the card editor. */
+  | { ok: false; reason: 'whole-sentence'; error: string; sentence: string };
 
 const CLOZE_PATTERN = /\{\{c\d+::/;
 
@@ -38,9 +42,9 @@ export function buildCloze(context: string, start: number, end: number): ClozeBu
   while (start < end && /\s/.test(context[start])) start++;
   while (end > start && /\s/.test(context[end - 1])) end--;
   const answer = context.slice(start, end);
-  if (!answer) return { ok: false, error: 'Sélectionnez le mot ou l’expression à masquer.' };
+  if (!answer) return { ok: false, reason: 'empty', error: 'Sélectionnez le mot ou l’expression à masquer.' };
   if (CLOZE_PATTERN.test(context) || answer.includes('}}') || answer.includes('::')) {
-    return { ok: false, error: 'Ce texte contient déjà une syntaxe de carte à trou.' };
+    return { ok: false, reason: 'syntax', error: 'Ce texte contient déjà une syntaxe de carte à trou.' };
   }
 
   const ranges = sentenceRanges(context);
@@ -53,7 +57,9 @@ export function buildCloze(context: string, start: number, end: number): ClozeBu
   if (visibleLength(answer) >= visibleLength(sentence) * 0.85) {
     return {
       ok: false,
-      error: 'Sélectionnez seulement le mot ou l’expression à masquer, pas toute la phrase : la phrase sert de contexte à la question.',
+      reason: 'whole-sentence',
+      error: 'Choisissez dans l’éditeur le mot ou l’expression à masquer : la phrase sert de contexte à la question.',
+      sentence: sentence.replace(/\s+/g, ' ').trim(),
     };
   }
 

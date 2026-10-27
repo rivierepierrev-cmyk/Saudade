@@ -16,6 +16,9 @@ import {
 } from './types/gemma';
 import { GemmaStorage, AppSettings } from './lib/storage';
 import { applyTheme } from './lib/theme';
+import { buildTodayQueue, isDueToday, nextAfterToday } from './lib/queue';
+import { locatePassage, replacePassage } from './lib/sourceSync';
+import { ItemEditor } from './components/ItemEditor';
 import { onStorageError, isDesktop, dataLocation, takeSnapshot, openDataFolder } from './lib/kv';
 import { createInitialFSRSRecord, applyCardReview, applyTopicReview, firstTopicInterval } from './lib/fsrs';
 import { TopNav } from './components/TopNav';
@@ -104,6 +107,16 @@ export default function App() {
     logs.filter((l) => l.itemType === 'cloze' && new Date(l.reviewDate) >= startOfToday).map((l) => l.itemId)
   );
   const stats = GemmaStorage.computeStats(documents, extracts, clozes, logs);
+  // Today's queue: what the reading queue lists, the review session plays and the
+  // badge counts. Empty once everything due today is done.
+  const todayQueue = buildTodayQueue({
+    documents,
+    extracts,
+    clozes,
+    dailyLimit: settings.dailyReviewLimit,
+    reviewedTodayIds,
+  });
+  const nextDueDate = nextAfterToday([documents, extracts, clozes]);
 
   const newId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -131,6 +144,8 @@ export default function App() {
       updatedAt: now,
       state: 'new',
       fsrs: createInitialFSRSRecord(firstTopicInterval(priority)),
+      // Position of the passage in the document, to find it again when the extract is edited.
+      sourceStart: doc ? locatePassage(doc.content, text)?.start : undefined,
     };
     updateExtracts((prev) => [newExtract, ...prev]);
 
@@ -142,7 +157,7 @@ export default function App() {
   };
 
   // Handler: Create Cloze card. `clozeText` already contains the {{c1::...}} deletion.
-  const handleCreateCloze = (source: { documentId?: string; extractId?: string }, clozeText: string) => {
+  const handleCreateCloze = (source: { documentId?: string; extractId?: string }, clozeText: string): string => {
     const ext = source.extractId ? extractsRef.current.find((e) => e.id === source.extractId) : undefined;
     const docId = source.documentId ?? ext?.documentId;
     const doc = docId ? documentsRef.current.find((d) => d.id === docId) : undefined;
@@ -163,6 +178,149 @@ export default function App() {
       fsrs: createInitialFSRSRecord(0), // available for review right away
     };
     updateClozes((prev) => [newCloze, ...prev]);
+    return newCloze.id;
+  };
+
+  // ---- Editing extracts and cards -------------------------------------------
+  type EditRequest =
+    | { kind: 'extract'; id: string }
+    | { kind: 'cloze'; id: string }
+    | { kind: 'new-cloze'; source: { documentId?: string; extractId?: string }; text: string; context: string };
+  const [editRequest, setEditRequest] = useState<EditRequest | null>(null);
+
+  const handleEditItem = (type: ItemType, id: string) => {
+    if (type === 'extract') setEditRequest({ kind: 'extract', id });
+    else if (type === 'cloze') setEditRequest({ kind: 'cloze', id });
+  };
+
+  // Whole sentence selected for a card: open the editor to choose the hidden words.
+  const openClozeEditor = (source: { documentId?: string; extractId?: string }, sentence: string) => {
+    const ext = source.extractId ? extractsRef.current.find((e) => e.id === source.extractId) : undefined;
+    const doc = documentsRef.current.find((d) => d.id === (source.documentId ?? ext?.documentId));
+    setEditRequest({ kind: 'new-cloze', source, text: sentence, context: doc?.title ?? ext?.documentTitle ?? '' });
+  };
+
+  /**
+   * Saves an edited extract and applies the same change to the passage in its
+   * document and in the extracts it was taken from. Can be undone.
+   */
+  const handleUpdateExtractText = (id: string, newText: string) => {
+    const ext = extractsRef.current.find((e) => e.id === id);
+    if (!ext || ext.text === newText) return;
+    const oldText = ext.text;
+    const now = new Date().toISOString();
+    const doc = documentsRef.current.find((d) => d.id === ext.documentId);
+
+    // Document
+    const docResult = doc ? replacePassage(doc.content, oldText, newText, ext.sourceStart) : null;
+    // Parent extracts (an extract taken from an extract contains the same passage)
+    const ancestorUpdates = new Map<string, string>();
+    for (let parentId = ext.parentExtractId; parentId; ) {
+      const parent = extractsRef.current.find((e) => e.id === parentId);
+      if (!parent) break;
+      const result = replacePassage(parent.text, oldText, newText, undefined, false);
+      if (result) ancestorUpdates.set(parent.id, result.source);
+      parentId = parent.parentExtractId;
+    }
+
+    const previousDoc = doc ? { content: doc.content, updatedAt: doc.updatedAt } : null;
+    const previousExtracts = new Map(
+      [ext, ...extractsRef.current.filter((e) => ancestorUpdates.has(e.id))].map((e) => [e.id, { text: e.text, sourceStart: e.sourceStart, updatedAt: e.updatedAt }])
+    );
+    updateExtracts((prev) =>
+      prev.map((e) => {
+        if (e.id === id) return { ...e, text: newText, sourceStart: docResult?.start ?? e.sourceStart, updatedAt: now };
+        const text = ancestorUpdates.get(e.id);
+        return text !== undefined ? { ...e, text, updatedAt: now } : e;
+      })
+    );
+    if (doc && docResult) {
+      updateDocuments((prev) => prev.map((d) => (d.id === doc.id ? { ...d, content: docResult.source, updatedAt: now } : d)));
+    }
+
+    const message = !doc
+      ? 'Extrait modifié'
+      : docResult
+      ? `Extrait modifié, ainsi que le passage dans « ${doc.title} »`
+      : `Extrait modifié. Passage introuvable dans « ${doc.title} » : le document n'a pas changé`;
+    offerUndo(message, () => {
+      updateExtracts((prev) => prev.map((e) => (previousExtracts.has(e.id) ? { ...e, ...previousExtracts.get(e.id)! } : e)));
+      if (doc && docResult && previousDoc) {
+        updateDocuments((prev) => prev.map((d) => (d.id === doc.id ? { ...d, ...previousDoc } : d)));
+      }
+    });
+  };
+
+  const handleUpdateClozeText = (id: string, newText: string) => {
+    const card = clozesRef.current.find((c) => c.id === id);
+    if (!card || card.text === newText) return;
+    const previous = { text: card.text, updatedAt: card.updatedAt };
+    updateClozes((prev) => prev.map((c) => (c.id === id ? { ...c, text: newText, updatedAt: new Date().toISOString() } : c)));
+    offerUndo('Carte modifiée', () => updateClozes((prev) => prev.map((c) => (c.id === id ? { ...c, ...previous } : c))));
+  };
+
+  const renderEditor = () => {
+    if (!editRequest) return null;
+    const close = () => setEditRequest(null);
+    if (editRequest.kind === 'extract') {
+      const ext = extracts.find((e) => e.id === editRequest.id);
+      if (!ext) return null;
+      const doc = documents.find((d) => d.id === ext.documentId);
+      const found = doc ? locatePassage(doc.content, ext.text, ext.sourceStart) !== null : false;
+      return (
+        <ItemEditor
+          mode="extract"
+          title="Modifier l'extrait"
+          context={ext.documentTitle}
+          info={
+            !doc
+              ? undefined
+              : found
+              ? `Le passage sera aussi modifié dans le document « ${doc.title} ».`
+              : `Ce passage n'a pas été retrouvé tel quel dans « ${doc.title} » : seul l'extrait sera modifié.`
+          }
+          initialText={ext.text}
+          onSave={(text) => {
+            handleUpdateExtractText(ext.id, text);
+            close();
+          }}
+          onClose={close}
+        />
+      );
+    }
+    if (editRequest.kind === 'cloze') {
+      const card = clozes.find((c) => c.id === editRequest.id);
+      if (!card) return null;
+      return (
+        <ItemEditor
+          mode="cloze"
+          title="Modifier la carte à trou"
+          context={card.documentTitle}
+          initialText={card.text}
+          onSave={(text) => {
+            handleUpdateClozeText(card.id, text);
+            close();
+          }}
+          onClose={close}
+        />
+      );
+    }
+    return (
+      <ItemEditor
+        mode="cloze"
+        title="Nouvelle carte à trou"
+        context={editRequest.context}
+        info="Sélectionnez le mot ou l'expression à masquer puis cliquez sur « Masquer la sélection ». Vous pouvez aussi raccourcir la phrase."
+        initialText={editRequest.text}
+        saveLabel="Créer la carte"
+        onSave={(text) => {
+          const id = handleCreateCloze(editRequest.source, text);
+          close();
+          offerUndo('Carte à trou créée', () => updateClozes((prev) => prev.filter((c) => c.id !== id)));
+        }}
+        onClose={close}
+      />
+    );
   };
 
   // Handler: Update FSRS Target Retention
@@ -206,11 +364,21 @@ export default function App() {
 
   // Handler: done reading a document or extract for now ("Suivant"): reschedule it
   // with an interval that grows according to its priority. Returns the interval in days.
-  const handleTopicNext = (type: 'document' | 'extract', id: string): number | undefined => {
+  // Done reading a document or extract for now ("Lu" / "Suivant"). Only an item due
+  // today is rescheduled: one already scheduled for later keeps its date, so opening
+  // it again can't push it further away by accident.
+  const handleTopicNext = (
+    type: 'document' | 'extract',
+    id: string
+  ): { rescheduled: boolean; days: number } | undefined => {
     const now = new Date();
     const list: Array<DocumentItem | ExtractItem> = type === 'document' ? documentsRef.current : extractsRef.current;
     const target = list.find((i) => i.id === id);
     if (!target) return undefined;
+    if (!isDueToday(target.fsrs, now)) {
+      const days = Math.max(0, (new Date(target.fsrs.nextReviewDate).getTime() - now.getTime()) / 86400000);
+      return { rescheduled: false, days };
+    }
     const fsrs = applyTopicReview(target.fsrs, target.priority, now);
     const patch = { fsrs, state: 'review' as ItemState, updatedAt: now.toISOString() };
     if (type === 'document') {
@@ -230,16 +398,14 @@ export default function App() {
       reviewDate: now.toISOString(),
       state: 'review',
     });
-    return fsrs.interval;
+    return { rescheduled: true, days: fsrs.interval };
   };
 
   // Opens the highest-priority document due today (other than `excludeId`),
   // or goes back to the queue when there is nothing left to read.
   const openNextDueDocument = (excludeId: string) => {
-    const endOfToday = new Date();
-    endOfToday.setHours(23, 59, 59, 999);
     const next = documentsRef.current
-      .filter((d) => d.id !== excludeId && d.state !== 'dismissed' && new Date(d.fsrs.nextReviewDate) <= endOfToday)
+      .filter((d) => d.id !== excludeId && d.state !== 'dismissed' && isDueToday(d.fsrs))
       .sort((a, b) => b.priority - a.priority)[0];
     if (next) {
       setCurrentDocumentId(next.id);
@@ -538,7 +704,7 @@ export default function App() {
           setActiveTab(tab);
           setReviewClozeId(undefined);
         }}
-        dueCount={stats.dueTodayCount}
+        dueCount={todayQueue.length}
         onOpenImport={() => setIsImportOpen(true)}
         theme={settings.theme}
         onChangeTheme={(theme) => {
@@ -585,6 +751,9 @@ export default function App() {
             }}
             onDeleteItem={handleDeleteItem}
             onOpenImport={() => setIsImportOpen(true)}
+            queue={todayQueue}
+            nextDueDate={nextDueDate}
+            onEditItem={handleEditItem}
           />
         )}
 
@@ -609,6 +778,7 @@ export default function App() {
                 handleTopicNext('document', docId);
                 openNextDueDocument(docId);
               }}
+              onOpenClozeEditor={(docId, sentence) => openClozeEditor({ documentId: docId }, sentence)}
               onRetireDocument={(docId) => {
                 handleDismissItem('document', docId);
                 openNextDueDocument(docId);
@@ -645,6 +815,8 @@ export default function App() {
             targetRetention={settings.targetRetention}
             onRateCard={handleRateCard}
             onExtractNext={(id) => handleTopicNext('extract', id)}
+            onEditItem={handleEditItem}
+            onOpenClozeEditor={(extractId, sentence) => openClozeEditor({ extractId }, sentence)}
             onRetireExtract={(id) => handleDismissItem('extract', id)}
             onCreateExtractFromExtract={(extractId, text) => {
               const parent = extractsRef.current.find((e) => e.id === extractId);
@@ -691,6 +863,7 @@ export default function App() {
             onOpenImport={() => setIsImportOpen(true)}
             onExportMarkdown={handleExportMarkdownMirror}
             onExportBackup={handleExportBackup}
+            onEditItem={handleEditItem}
           />
         )}
 
@@ -730,6 +903,8 @@ export default function App() {
           </button>
         </div>
       )}
+
+      {renderEditor()}
 
       {/* Source Import Modal */}
       <ImportModal
