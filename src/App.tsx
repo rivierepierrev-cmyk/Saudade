@@ -187,7 +187,15 @@ export default function App() {
   type EditRequest =
     | { kind: 'extract'; id: string }
     | { kind: 'cloze'; id: string }
-    | { kind: 'new-cloze'; source: { documentId?: string; extractId?: string }; text: string; context: string };
+    | {
+        kind: 'new-cloze';
+        source: { documentId?: string; extractId?: string };
+        text: string;
+        context: string;
+        info?: string;
+        /** Runs once the card is created (e.g. finishing the document after a summary card). */
+        afterSave?: () => void;
+      };
   const [editRequest, setEditRequest] = useState<EditRequest | null>(null);
 
   const handleEditItem = (type: ItemType, id: string) => {
@@ -298,6 +306,8 @@ export default function App() {
         document={doc}
         parentExtract={ext?.parentExtractId ? extracts.find((e) => e.id === ext.parentExtractId) : undefined}
         childCards={ext ? clozes.filter((c) => c.extractId === ext.id) : []}
+        childExtracts={ext ? extracts.filter((e) => e.parentExtractId === ext.id) : []}
+        showExtractHighlights={settings.showExtractHighlights}
         onEdit={() => {
           setViewRequest(null);
           handleEditItem(viewRequest.type, viewRequest.id);
@@ -360,13 +370,20 @@ export default function App() {
         mode="cloze"
         title="Nouvelle carte à trou"
         context={editRequest.context}
-        info="Sélectionnez le mot ou l'expression à masquer puis cliquez sur « Masquer la sélection ». Vous pouvez aussi raccourcir la phrase."
+        info={
+          editRequest.info ??
+          "Sélectionnez le mot ou l'expression à masquer puis cliquez sur « Masquer la sélection ». Vous pouvez aussi raccourcir la phrase."
+        }
         initialText={editRequest.text}
         saveLabel="Créer la carte"
         onSave={(text) => {
           const id = handleCreateCloze(editRequest.source, text);
           close();
-          offerUndo('Carte à trou créée', () => updateClozes((prev) => prev.filter((c) => c.id !== id)));
+          if (editRequest.afterSave) {
+            editRequest.afterSave();
+          } else {
+            offerUndo('Carte à trou créée', () => updateClozes((prev) => prev.filter((c) => c.id !== id)));
+          }
         }}
         onClose={close}
       />
@@ -449,6 +466,46 @@ export default function App() {
       state: 'review',
     });
     return { rescheduled: true, days: fsrs.interval };
+  };
+
+  // "Pas fini": the document comes back tomorrow, at the same place. It doesn't count
+  // as a reading, so its interval doesn't grow.
+  const handleNotFinished = (docId: string) => {
+    const doc = documentsRef.current.find((d) => d.id === docId);
+    if (!doc) return;
+    const tomorrow = new Date();
+    tomorrow.setHours(24, 0, 0, 0);
+    const previous = doc.fsrs;
+    updateDocuments((prev) =>
+      prev.map((d) => (d.id === docId ? { ...d, fsrs: { ...d.fsrs, nextReviewDate: tomorrow.toISOString() } } : d))
+    );
+    openNextDueDocument(docId);
+    offerUndo(`« ${doc.title} » : reprise demain`, () =>
+      updateDocuments((prev) => prev.map((d) => (d.id === docId ? { ...d, fsrs: previous } : d)))
+    );
+  };
+
+  const handleLowerPriority = (docId: string) => {
+    updateDocuments((prev) =>
+      prev.map((d) => (d.id === docId ? { ...d, priority: Math.max(0, d.priority - 20), updatedAt: new Date().toISOString() } : d))
+    );
+  };
+
+  // Finishing a text with nothing extracted: a summary card, then the text is done.
+  const handleWriteSummary = (docId: string) => {
+    const doc = documentsRef.current.find((d) => d.id === docId);
+    if (!doc) return;
+    setEditRequest({
+      kind: 'new-cloze',
+      source: { documentId: docId },
+      text: `L'idée principale de « ${doc.title} » : `,
+      context: doc.title,
+      info: "Résumez l'essentiel du texte en une ou deux phrases, puis masquez les mots clés (« Masquer la sélection »). Le texte sera ensuite terminé.",
+      afterSave: () => {
+        handleDismissItem('document', docId);
+        openNextDueDocument(docId);
+      },
+    });
   };
 
   // Opens the highest-priority document due today (other than `excludeId`),
@@ -831,6 +888,16 @@ export default function App() {
               onOpenClozeEditor={(docId, sentence) => openClozeEditor({ documentId: docId }, sentence)}
               onEditItem={handleEditItem}
               focusPassage={focusPassage}
+              onNotFinished={handleNotFinished}
+              onLowerPriority={handleLowerPriority}
+              onWriteSummary={handleWriteSummary}
+              cardCount={clozes.filter((c) => c.documentId === currentDocument.id && c.state !== 'dismissed').length}
+              showExtractHighlights={settings.showExtractHighlights}
+              onToggleExtractHighlights={() => {
+                const newSettings: AppSettings = { ...settings, showExtractHighlights: !settings.showExtractHighlights };
+                setSettings(newSettings);
+                GemmaStorage.saveSettings(newSettings);
+              }}
               onRetireDocument={(docId) => {
                 handleDismissItem('document', docId);
                 openNextDueDocument(docId);
@@ -877,6 +944,7 @@ export default function App() {
             onCreateClozeFromExtract={(extractId, clozeText) => handleCreateCloze({ extractId }, clozeText)}
             dailyLimit={settings.dailyReviewLimit}
             reviewedTodayIds={reviewedTodayIds}
+            showExtractHighlights={settings.showExtractHighlights}
             onClose={() => setActiveTab('queue')}
             onNavigateToDocument={(docId) => {
               setCurrentDocumentId(docId);

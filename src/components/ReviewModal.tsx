@@ -3,6 +3,7 @@ import { ClozeItem, ExtractItem, ReviewRating, FSRSRecord } from '../types/gemma
 import { predictAllRatings, nextTopicInterval, formatInterval } from '../lib/fsrs';
 import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
 import { buildTodayQueue, isDueToday } from '../lib/queue';
+import { findPassages, setHighlight, clearHighlight } from '../lib/highlight';
 import { renderClozeCard, renderTextWithMath } from '../lib/math';
 import { safeHtml } from '../lib/markdown';
 import confetti from 'canvas-confetti';
@@ -55,6 +56,8 @@ interface ReviewModalProps {
   dailyLimit: number;
   /** Ids of cards already reviewed today (they don't use up the limit again). */
   reviewedTodayIds: Set<string>;
+  /** Highlight sub-extracts inside the extract being read. */
+  showExtractHighlights: boolean;
   onClose: () => void;
   onNavigateToDocument?: (docId: string) => void;
 }
@@ -73,6 +76,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   onCreateClozeFromExtract,
   dailyLimit,
   reviewedTodayIds,
+  showExtractHighlights,
   onClose,
   onNavigateToDocument,
 }) => {
@@ -186,6 +190,21 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     setExtractSelection(null);
     setConfirmRetire(false);
   }, [currentEntry?.id, currentIndex]);
+
+  // Like in SuperMemo: inside an extract, its sub-extracts are highlighted (the
+  // extract itself is not). Follows edits of the extract and of its sub-extracts.
+  const subExtractTexts =
+    currentEntry?.type === 'extract' && showExtractHighlights
+      ? extracts.filter((e) => e.parentExtractId === currentEntry.id).map((e) => e.text)
+      : [];
+  const subExtractKey = subExtractTexts.join('\u0001');
+  useEffect(() => {
+    const el = extractTextRef.current;
+    const ranges = el && subExtractTexts.length ? findPassages(el, subExtractTexts) : [];
+    setHighlight('gemma-subextracts', ranges.filter((r): r is Range => r !== null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentEntry?.id, currentEntry?.text, subExtractKey]);
+  useEffect(() => () => clearHighlight('gemma-subextracts'), []);
 
   // Lancement de l'entraînement libre sans reprogrammation
   const handleStartFreePractice = () => {
@@ -763,7 +782,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           {!isCloze ? (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
               <span className="text-xs text-[var(--fg-8c8072)] hidden sm:inline">
-                <kbd className="px-1.5 py-0.5 bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded font-mono text-[10px]">Entrée</kbd> pour passer à la suite
+                Reste-t-il quelque chose à tirer de cet extrait ? <kbd className="px-1.5 py-0.5 bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded font-mono text-[10px]">Entrée</kbd> = oui
               </span>
               <div className="flex flex-wrap items-center justify-end gap-2">
                 {confirmRetire ? (
@@ -788,7 +807,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                     className="px-3.5 py-2 text-xs text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors cursor-pointer"
                     title="Extrait entièrement traité (ses cartes restent)"
                   >
-                    Terminer cet extrait
+                    Tout est extrait · terminer
                   </button>
                 )}
                 <button
@@ -797,7 +816,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                 >
                   <span>
                     {isDueToday(currentEntry.fsrs)
-                      ? `Suivant · revoir dans ${formatInterval(nextTopicInterval(currentEntry.fsrs, currentEntry.priority))}`
+                      ? `Il reste à extraire · dans ${formatInterval(nextTopicInterval(currentEntry.fsrs, currentEntry.priority))}`
                       : `Suivant · déjà prévu dans ${formatInterval(
                           (new Date(currentEntry.fsrs.nextReviewDate).getTime() - Date.now()) / 86400000
                         )}`}

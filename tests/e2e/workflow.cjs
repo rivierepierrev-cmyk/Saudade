@@ -90,7 +90,7 @@ const badge = (page) => page.getByRole('button', { name: /File de lecture/ }).fi
 
   // 5. The last document: "Lu" empties the queue
   await page.getByRole('button', { name: 'Lire' }).first().click();
-  await page.getByRole('button', { name: /^Lu · revoir dans/ }).click();
+  await page.getByRole('button', { name: /^Il reste à extraire · dans/ }).click();
   await page.getByText(/File vide/).waitFor();
   await page.getByText(/Prochain élément :/).waitFor();
   assert.doesNotMatch(await badge(page), /\d/);
@@ -99,7 +99,8 @@ const badge = (page) => page.getByRole('button', { name: /File de lecture/ }).fi
   // 6. Opening it again can't push it further away
   const before = read('documents').find((d) => d.id === 'docA').fsrs;
   await page.getByRole('button', { name: /^Lecteur/ }).first().click();
-  await page.getByRole('button', { name: /^Suivant · déjà prévu dans/ }).waitFor();
+  await page.getByText(/^Déjà programmé : revient dans/).waitFor();
+  await page.getByRole('button', { name: 'Texte suivant de la file' }).waitFor();
   await page.keyboard.press('l'); await page.waitForTimeout(300);
   assert.deepEqual(read('documents').find((d) => d.id === 'docA').fsrs, before, 'L on a scheduled document');
   // nor in "Étude anticipée": extracts scheduled for later keep their date

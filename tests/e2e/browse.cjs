@@ -47,7 +47,9 @@ const highlightState = (page) => page.evaluate(() => {
   await dialog.getByText(/Prochaine lecture/).waitFor();
   await page.screenshot({ path: path.join(OUT, 'viewer-extract.png') });
   // its card, from the list of cards
-  await dialog.locator('ul button').first().click();
+  await dialog.getByText('Sous-extraits (1)').waitFor(); // listed and highlighted in the extract
+  assert.deepEqual(await page.evaluate(() => [...(CSS.highlights.get('gemma-subextracts') ?? [])].map((r) => r.toString())), ['la plus célèbre de la physique']);
+  await dialog.getByRole('button', { name: /La relation la plus célèbre est/ }).click();
   dialog = page.getByRole('dialog', { name: 'Carte à trou' });
   assert.equal(await dialog.locator('.cloze-answer').count(), 0, 'answer hidden');
   await page.keyboard.press('Space');

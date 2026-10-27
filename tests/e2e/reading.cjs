@@ -86,7 +86,7 @@ async function select(page, rootSel, needleOrNull, blockSel = 'p') {
   assert.ok(curDoc.readingProgress > 0, 'progress saved: ' + curDoc.readingProgress);
 
   // 5. "Lu" reschedules and moves on
-  const lu = page.getByRole('button', { name: /^Lu · revoir dans/ });
+  const lu = page.getByRole('button', { name: /^Il reste à extraire · dans/ });
   const luLabel = await lu.innerText();
   await lu.click(); await settle(page);
   const after = read('documents').find(d => d.id === curDoc.id);

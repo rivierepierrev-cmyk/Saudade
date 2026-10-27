@@ -11,6 +11,8 @@ export interface AppSettings {
   targetRetention: number; // default 0.90
   dailyReviewLimit: number;
   theme: ThemePreference;
+  /** Extracted passages highlighted in the reader. */
+  showExtractHighlights: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -21,6 +23,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   targetRetention: 0.90,
   dailyReviewLimit: 50,
   theme: 'system',
+  showExtractHighlights: true,
 };
 
 export type RestoreResult = { ok: true; counts: { documents: number; extracts: number; clozes: number } } | { ok: false; error: string };

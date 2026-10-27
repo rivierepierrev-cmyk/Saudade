@@ -10,25 +10,31 @@
 
 /* Extracted passages in the reader (CSS Custom Highlight API, see lib/highlight.ts) */
 :root {
-  --extract-mark: rgba(140, 94, 50, 0.1);
+  --extract-mark: rgba(196, 140, 60, 0.24);
+  --extract-mark-active: rgba(196, 140, 60, 0.5);
 }
 :root[data-theme='dark'] {
-  --extract-mark: rgba(223, 180, 142, 0.12);
+  --extract-mark: rgba(223, 180, 142, 0.2);
+  --extract-mark-active: rgba(223, 180, 142, 0.4);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --extract-mark: rgba(223, 180, 142, 0.12);
+    --extract-mark: rgba(223, 180, 142, 0.2);
+    --extract-mark-active: rgba(223, 180, 142, 0.4);
   }
 }
-::highlight(gemma-extracts) {
+/* Passages already extracted (in the document, or sub-extracts inside an extract) */
+::highlight(gemma-extracts),
+::highlight(gemma-subextracts) {
   background-color: var(--extract-mark);
 }
+/* The extract opened in the side panel */
 ::highlight(gemma-extract-active) {
-  background-color: var(--highlight-bg);
+  background-color: var(--extract-mark-active);
   color: var(--text-primary);
 }
 .katex.extract-active-formula {
-  background-color: var(--highlight-bg);
+  background-color: var(--extract-mark-active);
   border-radius: 0.2em;
 }
 

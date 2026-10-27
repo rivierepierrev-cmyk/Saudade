@@ -31,7 +31,16 @@ En mode navigateur (`npm run dev`), les données restent dans le localStorage du
 
 ## Consulter les extraits et les cartes
 - Bibliothèque (arborescence ou fiches) : cliquer sur un extrait ou une carte l'ouvre en entier (formules, réponse avec Espace, prochaine révision, cartes tirées de l'extrait), avec « Modifier » et « Voir dans le document ».
-- Lecteur, volet « Extraits » : cliquer sur un extrait l'affiche en entier, fait défiler le texte jusqu'au passage et le surligne. Tous les passages déjà extraits sont légèrement surlignés dans le texte.
+- Lecteur, volet « Extraits » : cliquer sur un extrait l'affiche en entier, fait défiler le texte jusqu'au passage et le surligne.
+- Comme dans SuperMemo, les passages déjà extraits sont surlignés dans le texte d'origine (bouton « Surlignage » pour les masquer) ; le surlignage suit les modifications des extraits. Dans un extrait, seuls ses sous-extraits sont surlignés.
+
+## Fin de lecture d'un texte
+La question n'est pas « m'en souviendrai-je ? » (ce sont les cartes qui servent à retenir) mais « reste-t-il quelque chose à extraire ? » :
+- **Pas fini · demain** (P) : revient demain, à la même position ; ne compte pas comme une lecture.
+- **Il reste à extraire** (L) : revient selon la priorité, avec un intervalle qui grandit.
+- **Tout est extrait · terminer** (T) : le texte quitte la file. Si rien n'en a été extrait, Gemma propose d'écrire une carte de résumé.
+- **Moins important** : baisse la priorité (retours plus espacés).
+- La lecture reprend là où elle s'était arrêtée.
 
 ## Formules mathématiques (LaTeX)
 - `$E=mc^2$` dans le texte, `$$\int_0^1 f(x)\,dx$$` sur sa propre ligne (aussi `\(…\)` et `\[…\]`). Pour écrire un symbole dollar : `\$`.

@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Edit3,
   AlertCircle,
+  Highlighter,
 } from 'lucide-react';
 import { EditDocumentModal } from './EditDocumentModal';
 import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
@@ -38,6 +39,17 @@ interface ReaderViewProps {
   /** The selection is a whole sentence: open the card editor with it. */
   onOpenClozeEditor: (documentId: string, sentence: string) => void;
   onEditItem: (type: 'extract' | 'cloze', id: string) => void;
+  /** "Pas fini": back tomorrow, at the same place, without counting as a reading. */
+  onNotFinished: (docId: string) => void;
+  /** "Moins important": lower priority, so the text comes back less often. */
+  onLowerPriority: (docId: string) => void;
+  /** Ending a text with nothing extracted: write a summary card, then the text is finished. */
+  onWriteSummary: (docId: string) => void;
+  /** Number of cards made from this document (to warn before finishing an unused text). */
+  cardCount: number;
+  /** Extracted passages highlighted in the text (setting). */
+  showExtractHighlights: boolean;
+  onToggleExtractHighlights: () => void;
   /** Passage to show when the reader opens (from the library): scrolled to and highlighted. */
   focusPassage?: { text: string; extractId?: string; key: number } | null;
   onNextQueueItem: () => void;
@@ -60,6 +72,12 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   onRetireDocument,
   onOpenClozeEditor,
   onEditItem,
+  onNotFinished,
+  onLowerPriority,
+  onWriteSummary,
+  cardCount,
+  showExtractHighlights,
+  onToggleExtractHighlights,
   focusPassage,
   onNextQueueItem,
   onPrevQueueItem,
@@ -170,7 +188,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   useEffect(() => {
     const article = articleRef.current;
     if (!article) return;
-    const passages = documentExtracts.map((e) => e.text);
+    const passages = showExtractHighlights ? documentExtracts.map((e) => e.text) : [];
     const ranges = findPassages(article, activePassage ? [...passages, activePassage] : passages);
     setHighlight('gemma-extracts', ranges.slice(0, passages.length).filter((r): r is Range => r !== null));
     setMissingExtractIds(new Set(documentExtracts.filter((_, i) => !ranges[i]).map((e) => e.id)));
@@ -192,7 +210,15 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
       window.scrollTo({ top: window.scrollY + rect.top - window.innerHeight / 3, behavior: 'smooth' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [renderedHtml, extractsKey, activePassage]);
+  }, [renderedHtml, extractsKey, activePassage, showExtractHighlights]);
+
+  // Resume reading where it was left (unless a passage is being shown).
+  useEffect(() => {
+    if (scrollToActive.current) return;
+    const offset = currentDocument.lastReadOffset || 0;
+    requestAnimationFrame(() => window.scrollTo({ top: offset }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDocument.id]);
   useEffect(
     () => () => {
       clearHighlight('gemma-extracts');
@@ -239,9 +265,16 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
       const typing = !!target?.closest('input, textarea, select, [contenteditable="true"]');
       if (typing || isEditModalOpen) return;
       if (!e.altKey && !e.ctrlKey && !e.metaKey) {
-        if (e.key === 'l' || e.key === 'L') {
+        const key = e.key.toLowerCase();
+        if (key === 'l') {
           e.preventDefault();
           onFinishReading(currentDocument.id);
+        } else if (key === 'p') {
+          e.preventDefault();
+          notFinished();
+        } else if (key === 't') {
+          e.preventDefault();
+          setConfirmRetire(true);
         } else if (e.key === 'ArrowRight') {
           e.preventDefault();
           onNextQueueItem();
@@ -264,6 +297,10 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   });
+
+  const notFinished = () => {
+    onNotFinished(currentDocument.id);
+  };
 
   const nextInterval = nextTopicInterval(currentDocument.fsrs, currentDocument.priority);
   // A document already read today (or scheduled for later) is not rescheduled again.
@@ -405,6 +442,22 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
               </button>
             )}
 
+            {/* Surlignage des passages extraits */}
+            <button
+              type="button"
+              onClick={onToggleExtractHighlights}
+              aria-pressed={showExtractHighlights}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium border rounded-lg transition-colors cursor-pointer ${
+                showExtractHighlights
+                  ? 'bg-[var(--bg-f3efe8)] border-[var(--bd-d5cbbf)] text-[var(--fg-28231d)]'
+                  : 'bg-[var(--bg-ffffff)] border-[var(--bd-e8e2d5)] text-[var(--fg-695f54)]'
+              }`}
+              title={showExtractHighlights ? 'Masquer le surlignage des passages extraits' : 'Surligner les passages extraits'}
+            >
+              <Highlighter className="w-3.5 h-3.5" />
+              <span className="hidden xl:inline">Surlignage</span>
+            </button>
+
             {/* Volet des extraits */}
             <button
               onClick={() => setShowExtractsPanel(!showExtractsPanel)}
@@ -481,33 +534,59 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
             dangerouslySetInnerHTML={{ __html: renderedHtml }}
           />
 
-          {/* Commandes de fin de session et navigation fluide dans la file */}
-          <div className="mt-16 pt-8 border-t border-[var(--bd-e8e2d5)] flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-xs text-[var(--fg-695f54)]">
-              <Bookmark className="w-4 h-4 text-[var(--fg-8c5e32)]" />
-              <span>
-                Signet mémorisé · Texte {currentIndex + 1} sur {totalDocuments}
+          {/* Fin de lecture : la question est « reste-t-il quelque chose à extraire ? » */}
+          <div className="mt-16 pt-8 border-t border-[var(--bd-e8e2d5)]">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3 text-xs text-[var(--fg-695f54)]">
+              <span className="flex items-center gap-2">
+                <Bookmark className="w-4 h-4 text-[var(--fg-8c5e32)]" />
+                Position mémorisée · Texte {currentIndex + 1} sur {totalDocuments} · {documentExtracts.length} extrait
+                {documentExtracts.length > 1 ? 's' : ''}, {cardCount} carte{cardCount > 1 ? 's' : ''}
               </span>
+              <button
+                type="button"
+                onClick={() => {
+                  onLowerPriority(currentDocument.id);
+                  showToast(`Priorité abaissée à ${Math.max(0, currentDocument.priority - 20)} % : ce texte reviendra moins souvent`);
+                }}
+                disabled={currentDocument.priority <= 0}
+                className="px-2 py-1 rounded-md hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)] disabled:opacity-45 cursor-pointer disabled:cursor-not-allowed"
+                title="Baisse la priorité de 20 points : les retours s'espacent plus vite"
+              >
+                ↓ Moins important ({currentDocument.priority} %)
+              </button>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => {
-                  onPostponeDocument(currentDocument.id, 3);
-                  showToast('Document reporté de 3 jours');
-                }}
-                className="px-3.5 py-2 text-xs text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors cursor-pointer"
-              >
-                Reporter 3j
-              </button>
-              {confirmRetire ? (
-                <span className="flex items-center gap-1.5 text-xs">
-                  <span className="text-[var(--fg-695f54)]">Retirer de la file ?</span>
+            {confirmRetire ? (
+              <div role="alert" className="p-4 rounded-xl border border-[var(--bd-e8e2d5)] bg-[var(--bg-ffffff)] text-xs">
+                {documentExtracts.length === 0 && cardCount === 0 ? (
+                  <>
+                    <p className="font-semibold text-[var(--fg-28231d)]">Rien n'a été extrait de ce texte.</p>
+                    <p className="mt-1 text-[var(--fg-695f54)]">
+                      Une fois terminé, il ne reviendra plus. Pour en garder l'essentiel, écrivez une carte de résumé.
+                    </p>
+                  </>
+                ) : (
+                  <p className="font-semibold text-[var(--fg-28231d)]">
+                    Terminer ce texte ? Il quitte la file ; ses extraits et ses cartes restent.
+                  </p>
+                )}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {documentExtracts.length === 0 && cardCount === 0 && (
+                    <button
+                      onClick={() => {
+                        setConfirmRetire(false);
+                        onWriteSummary(currentDocument.id);
+                      }}
+                      className="px-3 py-2 font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg cursor-pointer"
+                    >
+                      Écrire une carte de résumé
+                    </button>
+                  )}
                   <button
                     onClick={() => onRetireDocument(currentDocument.id)}
-                    className="px-3 py-2 font-semibold text-white bg-[var(--bg-5f8550)] hover:bg-[var(--bg-4e7042)] rounded-lg cursor-pointer"
+                    className="px-3 py-2 font-semibold text-[var(--fg-faf7f2)] bg-[var(--bg-3b3026)] hover:bg-[var(--bg-28211a)] rounded-lg cursor-pointer"
                   >
-                    Oui, terminé
+                    {documentExtracts.length === 0 && cardCount === 0 ? 'Terminer quand même' : 'Oui, terminer'}
                   </button>
                   <button
                     onClick={() => setConfirmRetire(false)}
@@ -515,32 +594,47 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                   >
                     Annuler
                   </button>
-                </span>
-              ) : (
-                <button
-                  onClick={() => setConfirmRetire(true)}
-                  className="px-3.5 py-2 text-xs text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors cursor-pointer"
-                  title="Texte entièrement traité : il quitte la file de lecture (ses extraits et cartes restent)"
-                >
-                  Terminer ce texte
-                </button>
-              )}
-              <button
-                onClick={() => onFinishReading(currentDocument.id)}
-                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg shadow-xs transition-all cursor-pointer"
-                title="Lu pour aujourd'hui : le texte revient selon sa priorité, puis le suivant s'ouvre (L)"
-              >
-                <span>
-                  {isDue
-                    ? `Lu · revoir dans ${formatInterval(nextInterval)}`
-                    : `Suivant · déjà prévu dans ${formatInterval(daysUntilNext)}`}
-                </span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="mb-2 text-sm font-semibold text-[var(--fg-28231d)]">
+                  {isDue ? 'Avez-vous tout extrait de ce texte ?' : `Déjà programmé : revient dans ${formatInterval(daysUntilNext)}`}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={notFinished}
+                    className="px-3.5 py-2 text-xs text-[var(--fg-4a3e31)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors cursor-pointer"
+                    title="Lecture pas terminée : le texte revient demain, à la même position (P)"
+                  >
+                    Pas fini · demain
+                  </button>
+                  <button
+                    onClick={() => onFinishReading(currentDocument.id)}
+                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg shadow-xs transition-all cursor-pointer"
+                    title="Lu, mais il reste des choses à extraire : le texte revient selon sa priorité (L)"
+                  >
+                    <span>
+                      {isDue
+                        ? `Il reste à extraire · dans ${formatInterval(nextInterval)}`
+                        : 'Texte suivant de la file'}
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setConfirmRetire(true)}
+                    className="px-3.5 py-2 text-xs text-[var(--fg-4a3e31)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors cursor-pointer"
+                    title="Tout ce qui compte est extrait : le texte quitte la file (T)"
+                  >
+                    Tout est extrait · terminer
+                  </button>
+                </div>
+              </>
+            )}
           </div>
           <p className="hidden md:block mt-4 text-[11px] text-center text-[var(--fg-8c8072)]">
-            Raccourcis : <kbd className="font-mono">L</kbd> lu · <kbd className="font-mono">←</kbd>{' '}
+            Raccourcis : <kbd className="font-mono">P</kbd> pas fini · <kbd className="font-mono">L</kbd> il reste à
+            extraire · <kbd className="font-mono">T</kbd> terminer · <kbd className="font-mono">←</kbd>{' '}
             <kbd className="font-mono">→</kbd> textes · <kbd className="font-mono">Alt+X</kbd> extraire ·{' '}
             <kbd className="font-mono">Alt+C</kbd> carte à trou
           </p>

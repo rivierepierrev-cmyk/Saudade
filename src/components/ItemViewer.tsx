@@ -5,6 +5,7 @@ import { renderClozeCard, renderTextWithMath, clozePreviewText } from '../lib/ma
 import { safeHtml } from '../lib/markdown';
 import { formatInterval } from '../lib/fsrs';
 import { isDueToday } from '../lib/queue';
+import { findPassages, setHighlight, clearHighlight } from '../lib/highlight';
 
 export type ViewedItem = { type: 'extract'; item: ExtractItem } | { type: 'cloze'; item: ClozeItem };
 
@@ -14,6 +15,9 @@ interface ItemViewerProps {
   parentExtract?: ExtractItem;
   /** Cards created from this extract. */
   childCards: ClozeItem[];
+  /** Extracts taken from this extract (highlighted in its text). */
+  childExtracts: ExtractItem[];
+  showExtractHighlights: boolean;
   onEdit: () => void;
   /** Opens the document in the reader, on this passage. */
   onOpenInDocument?: () => void;
@@ -35,6 +39,8 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
   document: doc,
   parentExtract,
   childCards,
+  childExtracts,
+  showExtractHighlights,
   onEdit,
   onOpenInDocument,
   onView,
@@ -42,6 +48,7 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
 }) => {
   const [revealed, setRevealed] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
   const { item } = viewed;
   const isCloze = viewed.type === 'cloze';
 
@@ -50,6 +57,16 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
     // Focus the window itself (not a button), so Space reveals the answer.
     panelRef.current?.focus();
   }, [item.id]);
+
+  const childKey = childExtracts.map((e) => e.text).join('\u0001');
+  useEffect(() => {
+    const el = textRef.current;
+    const texts = !isCloze && showExtractHighlights ? childExtracts.map((e) => e.text) : [];
+    const ranges = el && texts.length ? findPassages(el, texts) : [];
+    setHighlight('gemma-subextracts', ranges.filter((r): r is Range => r !== null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id, item.text, childKey, revealed]);
+  useEffect(() => () => clearHighlight('gemma-subextracts'), []);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -109,6 +126,7 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
 
         <div className="px-6 py-5 overflow-y-auto space-y-5">
           <div
+            ref={textRef}
             className="text-xl font-serif-reading text-[var(--fg-28231d)] leading-relaxed select-text"
             dangerouslySetInnerHTML={{ __html: safeHtml(html) }}
           />
@@ -151,6 +169,26 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
               </>
             )}
           </dl>
+
+          {!isCloze && childExtracts.length > 0 && (
+            <div>
+              <h3 className="text-xs font-semibold text-[var(--fg-28231d)] mb-1.5">
+                Sous-extraits ({childExtracts.length}){showExtractHighlights ? ' · surlignés dans le texte' : ''}
+              </h3>
+              <ul className="space-y-1">
+                {childExtracts.map((sub) => (
+                  <li key={sub.id}>
+                    <button
+                      type="button"
+                      onClick={() => onView('extract', sub.id)}
+                      className="w-full text-left px-3 py-1.5 text-xs rounded-lg border border-[var(--bd-e8e2d5)] text-[var(--fg-4a3e31)] hover:bg-[var(--bg-f3efe8)] cursor-pointer line-clamp-2"
+                      dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(sub.text)) }}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {!isCloze && childCards.length > 0 && (
             <div>
