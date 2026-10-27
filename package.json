@@ -1,11 +1,11 @@
 {
-  "name": "gemma",
-  "productName": "Gemma",
+  "name": "saudade",
+  "productName": "Saudade",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
-  "desktopName": "gemma.desktop",
+  "desktopName": "saudade.desktop",
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build",
@@ -63,8 +63,8 @@
     "wait-on": "^8.0.1"
   },
   "build": {
-    "appId": "app.gemma.desktop",
-    "productName": "Gemma",
+    "appId": "app.saudade.desktop",
+    "productName": "Saudade",
     "asar": true,
     "files": [
       "dist/**/*",
@@ -80,8 +80,8 @@
         "AppImage"
       ],
       "icon": "build/icon.png",
-      "maintainer": "Gemma <gemma@localhost>",
-      "executableName": "gemma",
+      "maintainer": "Saudade <saudade@localhost>",
+      "executableName": "saudade",
       "synopsis": "Lecture incrémentale et répétition espacée",
       "desktop": {
         "entry": {
@@ -107,10 +107,13 @@
       "perMachine": false,
       "deleteAppDataOnUninstall": false
     },
-    "artifactName": "Gemma-${version}-${os}-${arch}.${ext}",
+    "artifactName": "Saudade-${version}-${os}-${arch}.${ext}",
     "publish": null,
     "deb": {
       "fpm": [
+        "--replaces=gemma",
+        "--conflicts=gemma",
+        "--provides=gemma",
         "--replaces=foliole",
         "--conflicts=foliole",
         "--provides=foliole"
@@ -118,6 +121,11 @@
     }
   },
   "description": "Lecture incrémentale et répétition espacée FSRS — 100 % local, sans IA",
-  "homepage": "http://localhost/gemma",
-  "author": "Gemma"
+  "homepage": "https://github.com/rivierepierrev-cmyk/saudade",
+  "author": "Saudade",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rivierepierrev-cmyk/saudade.git"
+  }
 }

@@ -2,7 +2,7 @@
  * Today's queue: the single definition used by the reading queue, the review
  * session, the badge in the top bar and the reader's "next document".
  */
-import { DocumentItem, ExtractItem, ClozeItem, FSRSRecord } from '../types/gemma';
+import { DocumentItem, ExtractItem, ClozeItem, FSRSRecord } from '../types/saudade';
 
 export type QueueEntry =
   | { type: 'document'; item: DocumentItem }

@@ -4,7 +4,7 @@
  *   The whole library is loaded once at startup and kept in memory; writes are sent
  *   to the main process, which writes them atomically.
  * - Browser (npm run dev): localStorage.
- * Older versions stored everything in localStorage under gemma_* / foliole_* keys;
+ * Older versions stored everything in localStorage under saudade_* / foliole_* keys;
  * those are copied over once and left untouched as a fallback copy.
  */
 
@@ -29,7 +29,7 @@ interface DesktopBridge {
 
 declare global {
   interface Window {
-    gemmaDesktop?: DesktopBridge;
+    saudadeDesktop?: DesktopBridge;
   }
 }
 
@@ -42,7 +42,7 @@ const LEGACY_KEYS: Record<CollectionName, string[]> = {
   folders: ['gemma_folders_fr_v2', 'foliole_folders_fr_v2'],
 };
 
-const browserKey = (name: CollectionName) => `gemma.v3.${name}`;
+const browserKey = (name: CollectionName) => `saudade.v3.${name}`;
 
 // ---- Error reporting -------------------------------------------------------
 
@@ -51,7 +51,7 @@ const listeners = new Set<ErrorListener>();
 const pendingMessages: string[] = [];
 
 export function reportStorageError(message: string): void {
-  console.error('[Gemma storage]', message);
+  console.error('[Saudade storage]', message);
   if (listeners.size === 0) pendingMessages.push(message);
   listeners.forEach((l) => l(message));
 }
@@ -73,15 +73,15 @@ function safeLocalGet(key: string): string | null {
 }
 
 function readLegacy(name: CollectionName): string | null {
-  // Also the keys used while the app was called Foliole (browser mode).
-  for (const key of [...LEGACY_KEYS[name], `foliole.v3.${name}`]) {
+  // Also the keys used while the app was called Gemma or Foliole (browser mode).
+  for (const key of [...LEGACY_KEYS[name], `gemma.v3.${name}`, `foliole.v3.${name}`]) {
     const value = safeLocalGet(key);
     if (value) return value;
   }
   return null;
 }
 
-const desktop = typeof window !== 'undefined' ? window.gemmaDesktop : undefined;
+const desktop = typeof window !== 'undefined' ? window.saudadeDesktop : undefined;
 const cache = new Map<CollectionName, string>();
 
 if (desktop) {

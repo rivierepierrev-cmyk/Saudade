@@ -3,8 +3,8 @@
 // (SuperMemo style) that follow edits.
 const { _electron } = require('playwright'); const fs = require('fs'); const os = require('os'); const path = require('path'); const assert = require('assert');
 const APP = path.resolve(__dirname, '../..');
-const OUT = process.env.GEMMA_SHOTS || fs.mkdtempSync(path.join(os.tmpdir(), 'gemma-finish-shots-'));
-const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'gemma-finish-')); const dataDir = path.join(cfg, 'Gemma', 'data');
+const OUT = process.env.SAUDADE_SHOTS || fs.mkdtempSync(path.join(os.tmpdir(), 'saudade-finish-shots-'));
+const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'saudade-finish-')); const dataDir = path.join(cfg, 'Saudade', 'data');
 const read = (n) => JSON.parse(fs.readFileSync(path.join(dataDir, n + '.json'), 'utf8'));
 const DAY = 86400000; const now = Date.now();
 const rec = (days) => ({ stability: 3, difficulty: 5, reps: 1, lapses: 0, interval: 2, lastReview: new Date(now - DAY).toISOString(), nextReviewDate: new Date(now + days * DAY).toISOString(), phase: 'review' });
@@ -35,11 +35,11 @@ const h1 = (page) => page.locator('h1').first().innerText();
   await page.waitForFunction(() => document.querySelector('h1')?.textContent === 'Texte A avec extraits');
 
   // 1. Extracted passages highlighted in the text (both extracts), toggle off/on
-  assert.deepEqual((await hl(page, 'gemma-extracts')).sort(), ['Le passage choisi contient une idée importante à retenir.', 'une idée importante'].sort());
+  assert.deepEqual((await hl(page, 'saudade-extracts')).sort(), ['Le passage choisi contient une idée importante à retenir.', 'une idée importante'].sort());
   await page.getByRole('button', { name: /Surlignage|Surligner|Masquer le surlignage/ }).first().click();
-  assert.deepEqual(await hl(page, 'gemma-extracts'), []); assert.equal(read('settings').showExtractHighlights, false);
+  assert.deepEqual(await hl(page, 'saudade-extracts'), []); assert.equal(read('settings').showExtractHighlights, false);
   await page.getByRole('button', { name: /Surlignage|Surligner/ }).first().click();
-  assert.equal((await hl(page, 'gemma-extracts')).length, 2);
+  assert.equal((await hl(page, 'saudade-extracts')).length, 2);
 
   // 2. Editing an extract: the document changes and the highlight follows
   await page.getByRole('button', { name: /Extraits \(/ }).first().click();
@@ -48,7 +48,7 @@ const h1 = (page) => page.locator('h1').first().innerText();
   await page.getByRole('dialog').locator('textarea').fill('Le passage choisi contient une idée importante à bien retenir.');
   await page.getByRole('dialog').getByRole('button', { name: 'Enregistrer' }).click(); await page.waitForTimeout(500);
   assert.ok(read('documents')[0].content.includes('Le **passage choisi** contient une idée importante à bien retenir.'));
-  assert.ok((await hl(page, 'gemma-extracts')).includes('Le passage choisi contient une idée importante à bien retenir.'), 'highlight follows the edit');
+  assert.ok((await hl(page, 'saudade-extracts')).includes('Le passage choisi contient une idée importante à bien retenir.'), 'highlight follows the edit');
   await page.screenshot({ path: path.join(OUT, 'reader-highlights.png') });
 
   // 3. Resume where the reading stopped
@@ -91,7 +91,7 @@ const h1 = (page) => page.locator('h1').first().innerText();
   // 7. Inside an extract (review), its sub-extract is highlighted, not the extract itself
   await page.getByRole('button', { name: /Révision du jour/ }).first().click();
   await page.getByText('Extrait à relire').waitFor();
-  assert.deepEqual(await hl(page, 'gemma-subextracts'), ['une idée importante']);
+  assert.deepEqual(await hl(page, 'saudade-subextracts'), ['une idée importante']);
   await page.screenshot({ path: path.join(OUT, 'review-subextract.png') });
   assert.deepEqual(errors, []);
   await app.close();

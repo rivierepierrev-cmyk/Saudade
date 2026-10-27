@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DocumentItem, ExtractItem, ClozeItem } from '../types/gemma';
+import { DocumentItem, ExtractItem, ClozeItem } from '../types/saudade';
 import { matchesQuery } from '../lib/search';
 import { parseClozes, renderTextWithMath } from '../lib/math';
 import { safeHtml } from '../lib/markdown';

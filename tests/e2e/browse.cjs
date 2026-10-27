@@ -2,8 +2,8 @@
 // reader's side panel (passage scrolled to and highlighted in the text).
 const { _electron } = require('playwright'); const fs = require('fs'); const os = require('os'); const path = require('path'); const assert = require('assert');
 const APP = path.resolve(__dirname, '../..');
-const OUT = process.env.GEMMA_SHOTS || fs.mkdtempSync(path.join(os.tmpdir(), 'gemma-browse-shots-'));
-const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'gemma-browse-')); const dataDir = path.join(cfg, 'Gemma', 'data');
+const OUT = process.env.SAUDADE_SHOTS || fs.mkdtempSync(path.join(os.tmpdir(), 'saudade-browse-shots-'));
+const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'saudade-browse-')); const dataDir = path.join(cfg, 'Saudade', 'data');
 const DAY = 86400000; const now = Date.now();
 const rec = (days) => ({ stability: 3, difficulty: 5, reps: 1, lapses: 0, interval: 2, lastReview: new Date(now - DAY).toISOString(), nextReviewDate: new Date(now + days * DAY).toISOString(), phase: 'review' });
 const base = { tags: [], createdAt: '', updatedAt: '', folder: 'Général', readingProgress: 0, lastReadOffset: 0, format: 'article' };
@@ -27,7 +27,7 @@ for (const [n, v] of Object.entries(data)) fs.writeFileSync(path.join(dataDir, n
 
 const highlightState = (page) => page.evaluate(() => {
   const get = (name) => { const h = CSS.highlights.get(name); return h ? [...h].map((r) => r.toString().replace(/\s+/g, ' ').trim()) : []; };
-  return { all: get('gemma-extracts'), active: get('gemma-extract-active'), scrollY: window.scrollY };
+  return { all: get('saudade-extracts'), active: get('saudade-extract-active'), scrollY: window.scrollY };
 });
 
 (async () => {
@@ -48,7 +48,7 @@ const highlightState = (page) => page.evaluate(() => {
   await page.screenshot({ path: path.join(OUT, 'viewer-extract.png') });
   // its card, from the list of cards
   await dialog.getByText('Sous-extraits (1)').waitFor(); // listed and highlighted in the extract
-  assert.deepEqual(await page.evaluate(() => [...(CSS.highlights.get('gemma-subextracts') ?? [])].map((r) => r.toString())), ['la plus célèbre de la physique']);
+  assert.deepEqual(await page.evaluate(() => [...(CSS.highlights.get('saudade-subextracts') ?? [])].map((r) => r.toString())), ['la plus célèbre de la physique']);
   await dialog.getByRole('button', { name: /La relation la plus célèbre est/ }).click();
   dialog = page.getByRole('dialog', { name: 'Carte à trou' });
   assert.equal(await dialog.locator('.cloze-answer').count(), 0, 'answer hidden');

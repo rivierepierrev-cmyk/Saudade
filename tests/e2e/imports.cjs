@@ -1,6 +1,6 @@
 const { _electron } = require('playwright'); const fs = require('fs'); const os = require('os'); const path = require('path'); const http = require('http'); const assert = require('assert');
-const APP = path.resolve(__dirname, '../..'); const S = fs.mkdtempSync(path.join(os.tmpdir(), 'gemma-shots-')); const FX = path.join(__dirname, 'fixtures');
-const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'folimp-')); const dataDir = path.join(cfg, 'Gemma', 'data');
+const APP = path.resolve(__dirname, '../..'); const S = fs.mkdtempSync(path.join(os.tmpdir(), 'saudade-shots-')); const FX = path.join(__dirname, 'fixtures');
+const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'folimp-')); const dataDir = path.join(cfg, 'Saudade', 'data');
 const read = n => JSON.parse(fs.readFileSync(path.join(dataDir, n + '.json'), 'utf8'));
 const site = http.createServer((req, res) => {
   if (req.url === '/article.html') { res.setHeader('content-type', 'text/html; charset=utf-8'); return res.end(fs.readFileSync(FX + '/article.html')); }
@@ -16,7 +16,7 @@ const site = http.createServer((req, res) => {
   const origin = new URL(page.url()).origin;
   const openImport = async (mode) => { await page.getByRole('button', { name: /Ajouter une source/ }).click(); if (mode) await page.getByRole('button', { name: mode }).click(); };
 
-  // 0. API refuses requests without the Gemma header (other websites)
+  // 0. API refuses requests without the Saudade header (other websites)
   const denied = await fetch(origin + '/api/fetch-page', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"url":"http://127.0.0.1:8765/article.html"}' });
   assert.equal(denied.status, 403);
 

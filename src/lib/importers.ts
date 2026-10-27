@@ -24,7 +24,7 @@ async function api<T>(path: string, init: { json?: unknown; body?: Blob; content
   const res = await fetch(path, {
     method: 'POST',
     headers: {
-      'X-Gemma': '1',
+      'X-Saudade': '1',
       'Content-Type': init.contentType ?? 'application/json',
     },
     body: init.body ?? JSON.stringify(init.json),
@@ -94,7 +94,7 @@ function texFromElement(el: Element): { tex: string; display: boolean } | null {
   return { tex: cleaned, display };
 }
 
-const mathMarker = (n: number) => `⟦gemma-math-${n}⟧`;
+const mathMarker = (n: number) => `⟦saudade-math-${n}⟧`;
 
 /** Replaces formulas in `root` by markers; returns the formulas in marker order. */
 function protectMath(root: ParentNode, doc: Document): Array<{ tex: string; display: boolean }> {
@@ -110,7 +110,7 @@ function protectMath(root: ParentNode, doc: Document): Array<{ tex: string; disp
 }
 
 function restoreMath(markdown: string, formulas: Array<{ tex: string; display: boolean }>): string {
-  return markdown.replace(/⟦gemma-math-(\d+)⟧/g, (all, n) => {
+  return markdown.replace(/⟦saudade-math-(\d+)⟧/g, (all, n) => {
     const math = formulas[Number(n)];
     if (!math) return all;
     return math.display ? `$$${math.tex}$$` : `$${math.tex}$`;

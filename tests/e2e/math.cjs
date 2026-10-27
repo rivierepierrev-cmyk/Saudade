@@ -1,8 +1,8 @@
 // LaTeX formulas: rendering, clozes on formulas, extracts keep LaTeX, imports.
 const { _electron } = require('playwright'); const fs = require('fs'); const os = require('os'); const path = require('path'); const http = require('http'); const assert = require('assert');
 const APP = path.resolve(__dirname, '../..'); const FX = path.join(__dirname, 'fixtures');
-const OUT = process.env.GEMMA_SHOTS || fs.mkdtempSync(path.join(os.tmpdir(), 'gemma-math-shots-'));
-const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'gemma-math-')); const dataDir = path.join(cfg, 'Gemma', 'data');
+const OUT = process.env.SAUDADE_SHOTS || fs.mkdtempSync(path.join(os.tmpdir(), 'saudade-math-shots-'));
+const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'saudade-math-')); const dataDir = path.join(cfg, 'Saudade', 'data');
 const read = (n) => JSON.parse(fs.readFileSync(path.join(dataDir, n + '.json'), 'utf8'));
 const write = (n, v) => fs.writeFileSync(path.join(dataDir, n + '.json'), JSON.stringify(v));
 const site = http.createServer((req, res) => {

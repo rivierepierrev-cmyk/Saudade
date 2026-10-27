@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { DocumentItem, ExtractItem, ClozeItem } from '../types/gemma';
-import { GemmaStorage } from '../lib/storage';
+import { DocumentItem, ExtractItem, ClozeItem } from '../types/saudade';
+import { SaudadeStorage } from '../lib/storage';
 import { parseClozes, renderTextWithMath } from '../lib/math';
 import { safeHtml } from '../lib/markdown';
 import {
@@ -72,13 +72,13 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
 }) => {
   // Persistent list of custom folders from storage
   const [customFolders, setCustomFolders] = useState<string[]>(() => {
-    return GemmaStorage.getFolders();
+    return SaudadeStorage.getFolders();
   });
 
   const [selectedFolder, setSelectedFolder] = useState<string>('all');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => {
     const initial = new Set<string>(['Apprentissage & Mémoire', 'Sciences', 'Philosophie']);
-    GemmaStorage.getFolders().forEach((f) => {
+    SaudadeStorage.getFolders().forEach((f) => {
       const top = f.split('/')[0];
       initial.add(top);
     });
@@ -296,7 +296,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
     // Save persistently
     const updated = Array.from(new Set([...customFolders, fullPath]));
     setCustomFolders(updated);
-    GemmaStorage.saveFolders(updated);
+    SaudadeStorage.saveFolders(updated);
 
     // Expand parent and select new folder
     setExpandedFolders((prev) => {
@@ -335,7 +335,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
       return f;
     });
     setCustomFolders(updatedFolders);
-    GemmaStorage.saveFolders(updatedFolders);
+    SaudadeStorage.saveFolders(updatedFolders);
 
     // Update documents in this folder
     if (onUpdateDocument) {
@@ -369,7 +369,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
       (f) => f !== folderToDelete && !f.startsWith(`${folderToDelete}/`)
     );
     setCustomFolders(updatedFolders);
-    GemmaStorage.saveFolders(updatedFolders);
+    SaudadeStorage.saveFolders(updatedFolders);
 
     // Move any documents in this folder to 'Général' or parent
     if (onUpdateDocument) {
@@ -400,7 +400,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
     if (!customFolders.includes(folderDest)) {
       const updated = Array.from(new Set([...customFolders, folderDest]));
       setCustomFolders(updated);
-      GemmaStorage.saveFolders(updated);
+      SaudadeStorage.saveFolders(updated);
     }
 
     const updatedDoc: DocumentItem = {
@@ -476,7 +476,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
 
     const uniqueFolders = Array.from(new Set(updatedFolders));
     setCustomFolders(uniqueFolders);
-    GemmaStorage.saveFolders(uniqueFolders);
+    SaudadeStorage.saveFolders(uniqueFolders);
 
     // 2. Cascade update to all documents
     if (onUpdateDocument) {
@@ -533,7 +533,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
     if (!customFolders.includes(targetFolderPath)) {
       const updated = Array.from(new Set([...customFolders, targetFolderPath]));
       setCustomFolders(updated);
-      GemmaStorage.saveFolders(updated);
+      SaudadeStorage.saveFolders(updated);
     }
 
     showToast(`Document déplacé vers « ${targetFolderPath} »`);
@@ -564,7 +564,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
             draggable
             onDragStart={(e) => {
               e.dataTransfer.setData('text/plain', node.path);
-              e.dataTransfer.setData('application/gemma-type', 'folder');
+              e.dataTransfer.setData('application/saudade-type', 'folder');
               e.dataTransfer.effectAllowed = 'move';
               setDraggedFolder(node.path);
             }}
@@ -594,11 +594,11 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
               e.stopPropagation();
               setDragOverFolder(null);
 
-              const gemmaType = e.dataTransfer.getData('application/gemma-type');
-              if (gemmaType === 'folder' && draggedFolder) {
+              const saudadeType = e.dataTransfer.getData('application/saudade-type');
+              if (saudadeType === 'folder' && draggedFolder) {
                 handleMoveFolder(draggedFolder, node.path);
                 setDraggedFolder(null);
-              } else if (gemmaType === 'doc' && draggedDocId) {
+              } else if (saudadeType === 'doc' && draggedDocId) {
                 handleDropDocOntoFolder(draggedDocId, node.path);
                 setDraggedDocId(null);
               } else if (draggedFolder) {
@@ -940,7 +940,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.setData('text/plain', sub.path);
-                      e.dataTransfer.setData('application/gemma-type', 'folder');
+                      e.dataTransfer.setData('application/saudade-type', 'folder');
                       e.dataTransfer.effectAllowed = 'move';
                       setDraggedFolder(sub.path);
                     }}
@@ -1050,7 +1050,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                   draggable
                   onDragStart={(e) => {
                     e.dataTransfer.setData('text/plain', doc.id);
-                    e.dataTransfer.setData('application/gemma-type', 'doc');
+                    e.dataTransfer.setData('application/saudade-type', 'doc');
                     e.dataTransfer.effectAllowed = 'move';
                     setDraggedDocId(doc.id);
                   }}

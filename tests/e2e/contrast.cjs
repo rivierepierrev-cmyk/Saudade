@@ -3,7 +3,7 @@
 // Fails when the dark theme has contrast problems the light theme doesn't have.
 const { _electron } = require('playwright'); const fs = require('fs'); const os = require('os'); const path = require('path'); const assert = require('assert');
 const APP = path.resolve(__dirname, '../..');
-const OUT = process.env.GEMMA_SHOTS || fs.mkdtempSync(path.join(os.tmpdir(), 'gemma-contrast-'));
+const OUT = process.env.SAUDADE_SHOTS || fs.mkdtempSync(path.join(os.tmpdir(), 'saudade-contrast-'));
 
 function audit() {
   const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
@@ -50,7 +50,7 @@ const screens = [
 ];
 
 (async () => {
-  const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'gemma-contrast-cfg-'));
+  const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'saudade-contrast-cfg-'));
   const app = await _electron.launch({ executablePath: require('electron'), args: [APP, '--no-sandbox'], env: { ...process.env, XDG_CONFIG_HOME: cfg } });
   const page = await app.firstWindow(); await page.setViewportSize({ width: 1280, height: 900 });
   await page.waitForSelector('nav');

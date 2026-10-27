@@ -13,8 +13,8 @@ import {
   ItemType,
   ItemState,
   FSRSRecord,
-} from './types/gemma';
-import { GemmaStorage, AppSettings } from './lib/storage';
+} from './types/saudade';
+import { SaudadeStorage, AppSettings } from './lib/storage';
 import { applyTheme } from './lib/theme';
 import { buildTodayQueue, isDueToday, nextAfterToday } from './lib/queue';
 import { locatePassage, replacePassage } from './lib/sourceSync';
@@ -35,7 +35,7 @@ export default function App() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [extracts, setExtracts] = useState<ExtractItem[]>([]);
   const [clozes, setClozes] = useState<ClozeItem[]>([]);
-  const [settings, setSettings] = useState<AppSettings>(() => GemmaStorage.getSettings());
+  const [settings, setSettings] = useState<AppSettings>(() => SaudadeStorage.getSettings());
   const [activeTab, setActiveTab] = useState<ActiveTab>('queue');
   const [currentDocumentId, setCurrentDocumentId] = useState<string>('');
   const [reviewClozeId, setReviewClozeId] = useState<string | undefined>(undefined);
@@ -54,9 +54,9 @@ export default function App() {
 
   // Initial load from local-first storage
   useEffect(() => {
-    const docs = GemmaStorage.getDocuments();
-    const exts = GemmaStorage.getExtracts();
-    const clzs = GemmaStorage.getClozes();
+    const docs = SaudadeStorage.getDocuments();
+    const exts = SaudadeStorage.getExtracts();
+    const clzs = SaudadeStorage.getClozes();
 
     documentsRef.current = docs;
     extractsRef.current = exts;
@@ -82,33 +82,33 @@ export default function App() {
     const value = typeof next === 'function' ? next(documentsRef.current) : next;
     documentsRef.current = value;
     setDocuments(value);
-    GemmaStorage.saveDocuments(value);
+    SaudadeStorage.saveDocuments(value);
   };
 
   const updateExtracts = (next: Update<ExtractItem>) => {
     const value = typeof next === 'function' ? next(extractsRef.current) : next;
     extractsRef.current = value;
     setExtracts(value);
-    GemmaStorage.saveExtracts(value);
+    SaudadeStorage.saveExtracts(value);
   };
 
   const updateClozes = (next: Update<ClozeItem>) => {
     const value = typeof next === 'function' ? next(clozesRef.current) : next;
     clozesRef.current = value;
     setClozes(value);
-    GemmaStorage.saveClozes(value);
+    SaudadeStorage.saveClozes(value);
   };
 
   const currentDocument =
     documents.find((d) => d.id === currentDocumentId) || documents[0];
 
-  const logs = GemmaStorage.getReviewLogs();
+  const logs = SaudadeStorage.getReviewLogs();
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const reviewedTodayIds = new Set(
     logs.filter((l) => l.itemType === 'cloze' && new Date(l.reviewDate) >= startOfToday).map((l) => l.itemId)
   );
-  const stats = GemmaStorage.computeStats(documents, extracts, clozes, logs);
+  const stats = SaudadeStorage.computeStats(documents, extracts, clozes, logs);
   // Today's queue: what the reading queue lists, the review session plays and the
   // badge counts. Empty once everything due today is done.
   const todayQueue = buildTodayQueue({
@@ -282,9 +282,9 @@ export default function App() {
       clozesRef.current.filter((c) => targets.has(c.id)).map((c) => [c.id, { fsrs: c.fsrs, state: c.state }])
     );
     if (previousCards.size === 0) return 0;
-    const allLogs = GemmaStorage.getReviewLogs();
+    const allLogs = SaudadeStorage.getReviewLogs();
     const removedLogs = allLogs.filter((l) => l.itemType === 'cloze' && targets.has(l.itemId));
-    GemmaStorage.saveReviewLogs(allLogs.filter((l) => !(l.itemType === 'cloze' && targets.has(l.itemId))));
+    SaudadeStorage.saveReviewLogs(allLogs.filter((l) => !(l.itemType === 'cloze' && targets.has(l.itemId))));
     const now = new Date().toISOString();
     updateClozes((prev) =>
       prev.map((c) =>
@@ -302,8 +302,8 @@ export default function App() {
     offerUndo(count === 1 ? 'Carte réinitialisée' : `${count} cartes réinitialisées`, () => {
       updateClozes((prev) => prev.map((c) => (previousCards.has(c.id) ? { ...c, ...previousCards.get(c.id)! } : c)));
       // Put the removed history back, keeping reviews made since.
-      const merged = [...GemmaStorage.getReviewLogs(), ...removedLogs].sort((a, b) => a.reviewDate.localeCompare(b.reviewDate));
-      GemmaStorage.saveReviewLogs(merged);
+      const merged = [...SaudadeStorage.getReviewLogs(), ...removedLogs].sort((a, b) => a.reviewDate.localeCompare(b.reviewDate));
+      SaudadeStorage.saveReviewLogs(merged);
     });
     return count;
   };
@@ -445,13 +445,13 @@ export default function App() {
     const clamped = Math.min(0.98, Math.max(0.70, Number(newRetention.toFixed(2))));
     const newSettings: AppSettings = { ...settings, targetRetention: clamped };
     setSettings(newSettings);
-    GemmaStorage.saveSettings(newSettings);
+    SaudadeStorage.saveSettings(newSettings);
   };
 
   const handleUpdateDailyLimit = (limit: number) => {
     const newSettings: AppSettings = { ...settings, dailyReviewLimit: Math.max(1, Math.min(999, Math.round(limit))) };
     setSettings(newSettings);
-    GemmaStorage.saveSettings(newSettings);
+    SaudadeStorage.saveSettings(newSettings);
   };
 
   // Handler: Rate a cloze card (FSRS). Returns the new scheduling record.
@@ -464,7 +464,7 @@ export default function App() {
     updateClozes((prev) =>
       prev.map((c) => (c.id === id ? { ...c, fsrs, state, updatedAt: now.toISOString() } : c))
     );
-    GemmaStorage.appendReviewLog({
+    SaudadeStorage.appendReviewLog({
       id: newId('log'),
       itemId: id,
       itemType: 'cloze',
@@ -503,7 +503,7 @@ export default function App() {
     } else {
       updateExtracts((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
     }
-    GemmaStorage.appendReviewLog({
+    SaudadeStorage.appendReviewLog({
       id: newId('log'),
       itemId: id,
       itemType: type,
@@ -756,19 +756,19 @@ export default function App() {
 
   // Export JSON Backup
   const handleExportBackup = () => {
-    const jsonStr = GemmaStorage.exportBackup();
+    const jsonStr = SaudadeStorage.exportBackup();
     const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `gemma-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `saudade-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   // Export Markdown Mirror (format Obsidian)
   const handleExportMarkdownMirror = () => {
-    let combinedMd = `# Miroir de Voûte Gemma (Lecture Incrémentale)\nExporté le : ${new Date().toLocaleString('fr-FR')}\n\n`;
+    let combinedMd = `# Miroir de Voûte Saudade (Lecture Incrémentale)\nExporté le : ${new Date().toLocaleString('fr-FR')}\n\n`;
 
     documents.forEach((doc) => {
       combinedMd += `## ${doc.title}\n`;
@@ -791,22 +791,22 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `gemma-markdown-mirror-${new Date().toISOString().slice(0, 10)}.md`;
+    a.download = `saudade-markdown-mirror-${new Date().toISOString().slice(0, 10)}.md`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const reloadFromStorage = () => {
-    const docs = GemmaStorage.getDocuments();
-    const exts = GemmaStorage.getExtracts();
-    const clzs = GemmaStorage.getClozes();
+    const docs = SaudadeStorage.getDocuments();
+    const exts = SaudadeStorage.getExtracts();
+    const clzs = SaudadeStorage.getClozes();
     documentsRef.current = docs;
     extractsRef.current = exts;
     clozesRef.current = clzs;
     setDocuments(docs);
     setExtracts(exts);
     setClozes(clzs);
-    const restoredSettings = GemmaStorage.getSettings();
+    const restoredSettings = SaudadeStorage.getSettings();
     setSettings(restoredSettings);
     applyTheme(restoredSettings.theme);
     setCurrentDocumentId(docs[0]?.id ?? '');
@@ -832,7 +832,7 @@ export default function App() {
     }
     const snapshotError = await snapshotBefore('avant-restauration');
     if (snapshotError) return { ok: false, message: snapshotError };
-    const result = GemmaStorage.importBackup(text);
+    const result = SaudadeStorage.importBackup(text);
     if (!result.ok) return { ok: false, message: result.error };
     reloadFromStorage();
     const { documents: d, extracts: e, clozes: c } = result.counts;
@@ -846,7 +846,7 @@ export default function App() {
       setStorageErrors((prev) => [...prev, snapshotError]);
       return false;
     }
-    GemmaStorage.resetToSamples();
+    SaudadeStorage.resetToSamples();
     reloadFromStorage();
     setActiveTab('queue');
     return true;
@@ -867,7 +867,7 @@ export default function App() {
         onChangeTheme={(theme) => {
           const newSettings: AppSettings = { ...settings, theme };
           setSettings(newSettings);
-          GemmaStorage.saveSettings(newSettings);
+          SaudadeStorage.saveSettings(newSettings);
           applyTheme(theme);
         }}
       />
@@ -946,7 +946,7 @@ export default function App() {
               onToggleExtractHighlights={() => {
                 const newSettings: AppSettings = { ...settings, showExtractHighlights: !settings.showExtractHighlights };
                 setSettings(newSettings);
-                GemmaStorage.saveSettings(newSettings);
+                SaudadeStorage.saveSettings(newSettings);
               }}
               onRetireDocument={(docId) => {
                 handleDismissItem('document', docId);
@@ -1091,7 +1091,7 @@ export default function App() {
         onAddDocuments={(newDocs) => {
           if (newDocs.length === 0) return;
           updateDocuments((prev) => [...newDocs, ...prev]);
-          GemmaStorage.saveFolders([...GemmaStorage.getFolders(), ...newDocs.map((d) => d.folder || 'Général')]);
+          SaudadeStorage.saveFolders([...SaudadeStorage.getFolders(), ...newDocs.map((d) => d.folder || 'Général')]);
           setCurrentDocumentId(newDocs[0].id);
           setActiveTab('reader');
         }}

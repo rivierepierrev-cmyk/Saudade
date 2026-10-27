@@ -1,4 +1,4 @@
-import { DocumentItem, ExtractItem, ClozeItem, ReviewLog, GemmaStats } from '../types/gemma';
+import { DocumentItem, ExtractItem, ClozeItem, ReviewLog, SaudadeStats } from '../types/saudade';
 import { SAMPLE_DOCUMENTS, SAMPLE_EXTRACTS, SAMPLE_CLOZES } from './sampleData';
 import { CollectionName, getRaw, setRaw, reportStorageError } from './kv';
 import type { ThemePreference } from './theme';
@@ -82,7 +82,7 @@ function save(name: CollectionName, value: unknown): void {
 const isArray = (v: unknown) => Array.isArray(v);
 const isObject = (v: unknown) => typeof v === 'object' && v !== null && !Array.isArray(v);
 
-export class GemmaStorage {
+export class SaudadeStorage {
   static getDocuments(): DocumentItem[] {
     const docs = load<DocumentItem[]>('documents', isArray, () => SAMPLE_DOCUMENTS, []);
     const sampleMap = new Map(SAMPLE_DOCUMENTS.map((d) => [d.id, d.folder]));
@@ -148,7 +148,7 @@ export class GemmaStorage {
     extracts: ExtractItem[],
     clozes: ClozeItem[],
     logs: ReviewLog[]
-  ): GemmaStats {
+  ): SaudadeStats {
     const today = new Date();
     today.setHours(23, 59, 59, 999);
 
@@ -200,7 +200,7 @@ export class GemmaStorage {
 
   static exportBackup(): string {
     const backup = {
-      app: 'gemma',
+      app: 'saudade',
       version: 2,
       exportedAt: new Date().toISOString(),
       documents: this.getDocuments(),
@@ -224,7 +224,7 @@ export class GemmaStorage {
     } catch {
       return { ok: false, error: "Ce fichier n'est pas un JSON valide." };
     }
-    if (!isObject(data)) return { ok: false, error: "Ce fichier n'est pas une sauvegarde Gemma." };
+    if (!isObject(data)) return { ok: false, error: "Ce fichier n'est pas une sauvegarde Saudade." };
     for (const key of ['documents', 'extracts', 'clozes'] as const) {
       if (!Array.isArray(data[key])) {
         return { ok: false, error: `Sauvegarde incomplète : la liste « ${key} » est absente ou invalide.` };

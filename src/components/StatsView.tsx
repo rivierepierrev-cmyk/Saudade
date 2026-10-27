@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { GemmaStats, DocumentItem, ExtractItem, ClozeItem } from '../types/gemma';
+import { SaudadeStats, DocumentItem, ExtractItem, ClozeItem } from '../types/saudade';
 import {
   Download,
   RotateCcw,
@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 interface StatsViewProps {
-  stats: GemmaStats;
+  stats: SaudadeStats;
   documents: DocumentItem[];
   extracts: ExtractItem[];
   clozes: ClozeItem[];
@@ -214,7 +214,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
               showToast('Sauvegarde JSON générée avec succès');
             }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-4a3e31)] bg-[var(--bg-ffffff)] border border-[var(--bd-d5cbbf)] rounded-lg hover:bg-[var(--bg-f3efe8)] transition-colors shadow-xs"
-            title="Exporter l'ensemble de la base Gemma en JSON"
+            title="Exporter l'ensemble de la base Saudade en JSON"
           >
             <Download className="w-3.5 h-3.5" />
             Sauvegarde JSON

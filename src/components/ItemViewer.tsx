@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X, Pencil, BookOpen, Eye, EyeOff, Sparkles, Scissors, RotateCcw } from 'lucide-react';
-import { ClozeItem, DocumentItem, ExtractItem, FSRSRecord } from '../types/gemma';
+import { ClozeItem, DocumentItem, ExtractItem, FSRSRecord } from '../types/saudade';
 import { renderClozeCard, renderTextWithMath, clozePreviewText } from '../lib/math';
 import { safeHtml } from '../lib/markdown';
 import { formatInterval } from '../lib/fsrs';
@@ -68,10 +68,10 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
     const el = textRef.current;
     const texts = !isCloze && showExtractHighlights ? childExtracts.map((e) => e.text) : [];
     const ranges = el && texts.length ? findPassages(el, texts) : [];
-    setHighlight('gemma-subextracts', ranges.filter((r): r is Range => r !== null));
+    setHighlight('saudade-subextracts', ranges.filter((r): r is Range => r !== null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.id, item.text, childKey, revealed]);
-  useEffect(() => () => clearHighlight('gemma-subextracts'), []);
+  useEffect(() => () => clearHighlight('saudade-subextracts'), []);
 
   // Escape closes the window even when the focus has left it (e.g. after a button
   // that disappeared on click).

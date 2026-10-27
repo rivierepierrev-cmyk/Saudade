@@ -15,8 +15,8 @@ const host = process.env.HOST || '127.0.0.1';
 app.use(express.json({ limit: '10mb' }));
 
 // Where downloaded and imported images are stored. The desktop app points this to
-// its data folder; `npm run dev` uses ./.gemma-data.
-const dataDir = process.env.GEMMA_DATA_DIR || path.resolve(process.cwd(), '.gemma-data');
+// its data folder; `npm run dev` uses ./.saudade-data.
+const dataDir = process.env.SAUDADE_DATA_DIR || path.resolve(process.cwd(), '.saudade-data');
 const mediaDir = path.join(dataDir, 'media');
 fs.mkdirSync(mediaDir, { recursive: true });
 
@@ -36,11 +36,11 @@ const IMAGE_EXT: Record<string, string> = {
   'image/bmp': 'bmp',
 };
 
-// The API is only for the Gemma page itself. Requiring a custom header makes
+// The API is only for the Saudade page itself. Requiring a custom header makes
 // browsers send a CORS preflight for any other website, which is never approved,
 // so web pages you visit can't make the app fetch URLs or write files.
 app.use('/api', (req, res, next) => {
-  if (req.get('X-Gemma') !== '1') return res.status(403).json({ error: 'Requête refusée' });
+  if (req.get('X-Saudade') !== '1') return res.status(403).json({ error: 'Requête refusée' });
   next();
 });
 
@@ -247,7 +247,7 @@ async function startServer() {
     if (err?.code !== 'EADDRINUSE' || process.env.PORT_FALLBACK !== '1') throw err;
     actualPort = await listen(0);
   }
-  console.log(`Gemma: http://${host}:${actualPort}`);
+  console.log(`Saudade: http://${host}:${actualPort}`);
   return actualPort;
 }
 

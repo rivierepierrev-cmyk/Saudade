@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActiveTab } from '../types/gemma';
+import { ActiveTab } from '../types/saudade';
 import { Plus, BookOpen, Layers, Sparkles, FolderArchive, BarChart2, Sun, Moon, Monitor } from 'lucide-react';
 import { ThemePreference, NEXT_THEME, THEME_LABEL } from '../lib/theme';
 
@@ -27,10 +27,10 @@ export const TopNav: React.FC<TopNavProps> = ({
         {/* Zone 1: Single text element wordmark */}
         <div className="flex items-center gap-3 shrink-0">
           <div className="w-8 h-8 rounded-lg bg-[var(--bg-3b3026)] text-[var(--fg-faf7f2)] flex items-center justify-center font-bold text-base shadow-xs">
-            G
+            S
           </div>
           <span className="text-xl font-bold tracking-tight text-[var(--fg-28231d)] whitespace-nowrap shrink-0">
-            Gemma
+            Saudade
           </span>
         </div>
 

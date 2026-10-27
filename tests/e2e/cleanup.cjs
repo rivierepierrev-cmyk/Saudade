@@ -2,8 +2,8 @@
 // restores it); resetting cards to "never reviewed", one or all.
 const { _electron } = require('playwright'); const fs = require('fs'); const os = require('os'); const path = require('path'); const assert = require('assert');
 const APP = path.resolve(__dirname, '../..');
-const OUT = process.env.GEMMA_SHOTS || fs.mkdtempSync(path.join(os.tmpdir(), 'gemma-cleanup-shots-'));
-const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'gemma-cleanup-')); const dataDir = path.join(cfg, 'Gemma', 'data');
+const OUT = process.env.SAUDADE_SHOTS || fs.mkdtempSync(path.join(os.tmpdir(), 'saudade-cleanup-shots-'));
+const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'saudade-cleanup-')); const dataDir = path.join(cfg, 'Saudade', 'data');
 const read = (n) => JSON.parse(fs.readFileSync(path.join(dataDir, n + '.json'), 'utf8'));
 const DAY = 86400000; const now = Date.now();
 const rec = (days, reps = 1) => ({ stability: 8, difficulty: 5, reps, lapses: 1, interval: 8, lastReview: new Date(now - DAY).toISOString(), nextReviewDate: new Date(now + days * DAY).toISOString(), phase: 'review' });
@@ -23,7 +23,7 @@ fs.mkdirSync(dataDir, { recursive: true });
 for (const [n, v] of Object.entries(data)) fs.writeFileSync(path.join(dataDir, n + '.json'), JSON.stringify(v));
 const marks = (page) => page.evaluate(() => {
   const get = (n) => [...(CSS.highlights.get(n) ?? [])].map((r) => r.toString().replace(/\s+/g, ' ').trim());
-  return { extracts: get('gemma-extracts'), cards: get('gemma-cards') };
+  return { extracts: get('saudade-extracts'), cards: get('saudade-cards') };
 });
 const tab = (page, name) => page.getByRole('button', { name }).first().click();
 const toReader = async (page) => { await tab(page, /^Lecteur/); await page.waitForSelector('article p'); await page.waitForTimeout(300); };

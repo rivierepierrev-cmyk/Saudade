@@ -1,7 +1,7 @@
 // Undo, theme persistence, reader shortcuts, accent-insensitive search.
 const { _electron } = require('playwright'); const fs = require('fs'); const os = require('os'); const path = require('path'); const assert = require('assert');
 const APP = path.resolve(__dirname, '../..');
-const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'gemma-polish-')); const dataDir = path.join(cfg, 'Gemma', 'data');
+const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'saudade-polish-')); const dataDir = path.join(cfg, 'Saudade', 'data');
 const read = (n) => JSON.parse(fs.readFileSync(path.join(dataDir, n + '.json'), 'utf8'));
 const launch = async () => {
   const app = await _electron.launch({ executablePath: require('electron'), args: [APP, '--no-sandbox'], env: { ...process.env, XDG_CONFIG_HOME: cfg } });

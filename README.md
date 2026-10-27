@@ -1,12 +1,12 @@
-# Gemma
+# Saudade
 
 Lecture incrémentale + répétition espacée FSRS. 100 % local, **aucune IA, aucune clé API**.
 Vos données sont stockées dans des fichiers JSON du dossier de l'application :
-- Linux : `~/.config/Gemma/data/`
-- Windows : `%APPDATA%\Gemma\data\`
+- Linux : `~/.config/Saudade/data/`
+- Windows : `%APPDATA%\Saudade\data\`
 
 Chaque écriture est atomique et garde la version précédente (`*.json.bak`). Une sauvegarde complète est créée chaque jour dans `data/backups/` (7 dernières conservées), ainsi qu'avant chaque restauration ou réinitialisation. Les images importées sont dans `data/media/` : pour une sauvegarde complète, copiez tout le dossier `data`. Ces fichiers ne sont pas supprimés à la désinstallation.
-Au premier lancement, la bibliothèque des versions précédentes est reprise automatiquement : le profil de l'application lorsqu'elle s'appelait **Foliole** (`~/.config/Foliole`, `%APPDATA%\Foliole`, laissé intact) et l'ancien stockage du navigateur (localStorage). Le paquet .deb `gemma` remplace le paquet `foliole`.
+Au premier lancement, la bibliothèque des versions précédentes est reprise automatiquement : le profil de l'application lorsqu'elle s'appelait **Gemma** ou, à défaut, **Foliole** (`~/.config/Gemma`, `~/.config/Foliole`, `%APPDATA%\…`, laissés intacts) et l'ancien stockage du navigateur (localStorage). Le paquet .deb `saudade` remplace les paquets `gemma` et `foliole`.
 En mode navigateur (`npm run dev`), les données restent dans le localStorage du navigateur. Seule fonction réseau : la capture d'une page web (l'adresse que vous saisissez) et le téléchargement de ses images.
 
 ## Import
@@ -39,7 +39,7 @@ En mode navigateur (`npm run dev`), les données restent dans le localStorage du
 La question n'est pas « m'en souviendrai-je ? » (ce sont les cartes qui servent à retenir) mais « reste-t-il quelque chose à extraire ? » :
 - **Pas fini · demain** (P) : revient demain, à la même position ; ne compte pas comme une lecture.
 - **Il reste à extraire** (L) : revient selon la priorité, avec un intervalle qui grandit.
-- **Tout est extrait · terminer** (T) : le texte quitte la file. Si rien n'en a été extrait, Gemma propose d'écrire une carte de résumé.
+- **Tout est extrait · terminer** (T) : le texte quitte la file. Si rien n'en a été extrait, Saudade propose d'écrire une carte de résumé.
 - **Moins important** : baisse la priorité (retours plus espacés).
 - La lecture reprend là où elle s'était arrêtée.
 
@@ -50,11 +50,11 @@ La question n'est pas « m'en souviendrai-je ? » (ce sont les cartes qui serven
 - Les formules des pages web (Wikipédia…) et des EPUB sont importées en LaTeX. Celles des PDF ne peuvent pas être récupérées.
 
 ## Installation
-- **Linux Mint / Ubuntu / Debian (recommandé)** : `sudo apt install ./Gemma-1.0.0-linux-amd64.deb`, puis lancez Gemma depuis le menu (ou la commande `gemma`).
-- **AppImage** (autres distributions) : `chmod +x Gemma-*.AppImage && ./Gemma-*.AppImage`. Sur Ubuntu 24.04+ et dérivés, où AppArmor bloque le bac à sable de Chromium pour les AppImage, Gemma démarre automatiquement sans ce bac à sable ; le .deb, lui, le conserve.
-- **Windows** : lancez `Gemma-1.0.0-win-x64.exe` (installateur) ou la version portable. L'application n'est pas signée : au premier lancement, Windows SmartScreen affiche un avertissement → « Informations complémentaires » → « Exécuter quand même ».
+- **Linux Mint / Ubuntu / Debian (recommandé)** : `sudo apt install ./Saudade-1.0.0-linux-amd64.deb`, puis lancez Saudade depuis le menu (ou la commande `saudade`).
+- **AppImage** (autres distributions) : `chmod +x Saudade-*.AppImage && ./Saudade-*.AppImage`. Sur Ubuntu 24.04+ et dérivés, où AppArmor bloque le bac à sable de Chromium pour les AppImage, Saudade démarre automatiquement sans ce bac à sable ; le .deb, lui, le conserve.
+- **Windows** : lancez `Saudade-1.0.0-win-x64.exe` (installateur) ou la version portable. L'application n'est pas signée : au premier lancement, Windows SmartScreen affiche un avertissement → « Informations complémentaires » → « Exécuter quand même ».
 
-Les données (Linux : `~/.config/Gemma/data/`, Windows : `%APPDATA%\Gemma\data\`) sont conservées lors d'une mise à jour ou d'une désinstallation.
+Les données (Linux : `~/.config/Saudade/data/`, Windows : `%APPDATA%\Saudade\data\`) sont conservées lors d'une mise à jour ou d'une désinstallation.
 Sauvegarde / restauration : onglet Analytique → « Sauvegarde JSON » et « Restaurer une sauvegarde… » (accepte aussi les fichiers de `data/backups/`).
 
 ## Construire les installateurs
@@ -67,3 +67,6 @@ Avec GitHub : l'action « Build installers » vérifie le code (types + tests) p
     npm run lint           # vérification des types
     npm test               # stockage, cartes à trou, planification
     npm run test:e2e       # parcours complets dans l'application Electron (sous Linux sans écran : xvfb-run -a npm run test:e2e)
+
+## Licence
+Apache License 2.0 — voir [LICENSE](LICENSE).

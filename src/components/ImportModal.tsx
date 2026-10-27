@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DocumentItem } from '../types/gemma';
+import { DocumentItem } from '../types/saudade';
 import { createInitialFSRSRecord } from '../lib/fsrs';
 import { ImportedDocument, importWebPage, importHtmlFile, importPdf, importEpub } from '../lib/importers';
 import { Globe, FileText, Upload, X, AlertCircle, Folder } from 'lucide-react';

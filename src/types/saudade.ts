@@ -1,5 +1,5 @@
 /**
- * Gemma Core Domain Types
+ * Saudade Core Domain Types
  * Incremental Reading & Spaced Repetition (FSRS)
  */
 
@@ -87,7 +87,7 @@ export interface ReviewLog {
   state: ItemState;
 }
 
-export interface GemmaStats {
+export interface SaudadeStats {
   totalDocuments: number;
   totalExtracts: number;
   totalClozes: number;

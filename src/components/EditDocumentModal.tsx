@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DocumentItem } from '../types/gemma';
+import { DocumentItem } from '../types/saudade';
 import { renderMarkdown } from '../lib/markdown';
 import {
   X,

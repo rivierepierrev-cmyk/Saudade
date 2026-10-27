@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ClozeItem, ExtractItem, ReviewRating, FSRSRecord } from '../types/gemma';
+import { ClozeItem, ExtractItem, ReviewRating, FSRSRecord } from '../types/saudade';
 import { predictAllRatings, nextTopicInterval, formatInterval } from '../lib/fsrs';
 import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
 import { buildTodayQueue, isDueToday } from '../lib/queue';
@@ -201,10 +201,10 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   useEffect(() => {
     const el = extractTextRef.current;
     const ranges = el && subExtractTexts.length ? findPassages(el, subExtractTexts) : [];
-    setHighlight('gemma-subextracts', ranges.filter((r): r is Range => r !== null));
+    setHighlight('saudade-subextracts', ranges.filter((r): r is Range => r !== null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentEntry?.id, currentEntry?.text, subExtractKey]);
-  useEffect(() => () => clearHighlight('gemma-subextracts'), []);
+  useEffect(() => () => clearHighlight('saudade-subextracts'), []);
 
   // Lancement de l'entraînement libre sans reprogrammation
   const handleStartFreePractice = () => {

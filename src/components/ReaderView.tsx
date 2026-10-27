@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { DocumentItem, ExtractItem, ClozeItem } from '../types/gemma';
+import { DocumentItem, ExtractItem, ClozeItem } from '../types/saudade';
 import { renderMarkdown } from '../lib/markdown';
 import {
   Scissors,
@@ -196,11 +196,11 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
       : [];
     const ranges = findPassages(article, [...passages, ...cardPassages, ...(activePassage ? [activePassage] : [])]);
     const present = (r: Range | null): r is Range => r !== null;
-    setHighlight('gemma-extracts', ranges.slice(0, passages.length).filter(present));
-    setHighlight('gemma-cards', ranges.slice(passages.length, passages.length + cardPassages.length).filter(present));
+    setHighlight('saudade-extracts', ranges.slice(0, passages.length).filter(present));
+    setHighlight('saudade-cards', ranges.slice(passages.length, passages.length + cardPassages.length).filter(present));
     setMissingExtractIds(new Set(showExtractHighlights ? documentExtracts.filter((_, i) => !ranges[i]).map((e) => e.id) : []));
     const active = activePassage ? ranges[ranges.length - 1] : null;
-    setHighlight('gemma-extract-active', active ? [active] : []);
+    setHighlight('saudade-extract-active', active ? [active] : []);
     // Formulas aren't fully painted by text highlights: mark the whole formula.
     article.querySelectorAll('.katex.extract-active-formula').forEach((el) => el.classList.remove('extract-active-formula'));
     if (active) {
@@ -228,9 +228,9 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   }, [currentDocument.id]);
   useEffect(
     () => () => {
-      clearHighlight('gemma-extracts');
-      clearHighlight('gemma-cards');
-      clearHighlight('gemma-extract-active');
+      clearHighlight('saudade-extracts');
+      clearHighlight('saudade-cards');
+      clearHighlight('saudade-extract-active');
     },
     []
   );
