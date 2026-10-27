@@ -344,6 +344,10 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
                 onChange={(e) => setPasteContent(e.target.value)}
                 className="w-full px-3 py-2 text-xs bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--bd-8c5e32)] text-[var(--fg-28231d)] font-mono placeholder-[var(--fg-8c8072)]"
               />
+              <p className="mt-1 text-[11px] text-[var(--fg-695f54)]">
+                Markdown accepté. Formules LaTeX : <code className="font-mono">$E=mc^2$</code> dans le texte,{' '}
+                <code className="font-mono">$$\int_0^1 f(x)\,dx$$</code> sur sa propre ligne.
+              </p>
             </div>
 
             <div className="pt-2 flex justify-end gap-2">

@@ -59,10 +59,71 @@ turndown.addRule('figcaption', {
   replacement: (content) => (content.trim() ? `\n\n*${content.trim()}*\n\n` : ''),
 });
 
+// Formulas in web pages and books (MathML with a TeX annotation, Wikipedia,
+// KaTeX/MathJax output) are kept as LaTeX. Readability drops hidden elements and
+// classes, and Turndown would escape the LaTeX, so each formula is first replaced
+// by a marker and restored as $…$ / $$…$$ in the final Markdown.
+const MATH_SELECTOR = [
+  '.mwe-math-element',
+  '.katex-display',
+  '.katex',
+  'math',
+  'img.mwe-math-fallback-image-inline',
+  'img.mwe-math-fallback-image-display',
+  'script[type^="math/tex"]',
+].join(', ');
+
+function texFromElement(el: Element): { tex: string; display: boolean } | null {
+  const tag = el.tagName.toLowerCase();
+  const tex =
+    (tag === 'script' ? el.textContent : null) ??
+    el.querySelector('annotation[encoding="application/x-tex"]')?.textContent ??
+    (tag === 'math' ? el.getAttribute('alttext') : null) ??
+    el.querySelector('math[alttext]')?.getAttribute('alttext') ??
+    (tag === 'img' ? el.getAttribute('alt') : el.querySelector('img[alt]')?.getAttribute('alt')) ??
+    null;
+  if (!tex?.trim()) return null;
+  const display =
+    el.matches('.katex-display, .mwe-math-fallback-image-display, math[display="block"], script[type*="mode=display"]') ||
+    el.querySelector('.mwe-math-fallback-image-display, .katex-display, math[display="block"]') !== null;
+  // Wikipedia wraps formulas in {\displaystyle …}
+  const cleaned = tex
+    .trim()
+    .replace(/^\{\\(?:display|text)style\s*([\s\S]*)\}$/, '$1')
+    .trim();
+  return { tex: cleaned, display };
+}
+
+const mathMarker = (n: number) => `⟦gemma-math-${n}⟧`;
+
+/** Replaces formulas in `root` by markers; returns the formulas in marker order. */
+function protectMath(root: ParentNode, doc: Document): Array<{ tex: string; display: boolean }> {
+  const formulas: Array<{ tex: string; display: boolean }> = [];
+  for (const el of Array.from(root.querySelectorAll(MATH_SELECTOR))) {
+    if (!el.isConnected || el.parentElement?.closest(MATH_SELECTOR)) continue; // inside another formula
+    const math = texFromElement(el);
+    if (!math) continue;
+    formulas.push(math);
+    el.replaceWith(doc.createTextNode(mathMarker(formulas.length - 1)));
+  }
+  return formulas;
+}
+
+function restoreMath(markdown: string, formulas: Array<{ tex: string; display: boolean }>): string {
+  return markdown.replace(/⟦gemma-math-(\d+)⟧/g, (all, n) => {
+    const math = formulas[Number(n)];
+    if (!math) return all;
+    return math.display ? `$$${math.tex}$$` : `$${math.tex}$`;
+  });
+}
+
 export function sanitizeHtml(html: string): string {
   return DOMPurify.sanitize(html, {
     FORBID_TAGS: ['style', 'form', 'input', 'button', 'iframe', 'object', 'embed'],
     FORBID_ATTR: ['style'],
+    // Keep the LaTeX source of formulas (see the "math" Turndown rule).
+    ADD_TAGS: ['semantics', 'annotation'],
+    ADD_ATTR: ['encoding', 'alttext', 'display'],
   });
 }
 
@@ -136,6 +197,7 @@ function parseHtml(html: string, baseUrl?: string): Document {
 
 function extractArticle(html: string, baseUrl?: string) {
   const doc = parseHtml(html, baseUrl);
+  const formulas = protectMath(doc, doc);
   const fallbackTitle = doc.title?.trim();
   const metaAuthor = doc.querySelector('meta[name="author"]')?.getAttribute('content') ?? undefined;
   const mainHeading = doc.querySelector('h1')?.textContent?.replace(/\s+/g, ' ').trim();
@@ -150,10 +212,12 @@ function extractArticle(html: string, baseUrl?: string) {
       title,
       author: article.byline?.trim() || metaAuthor || article.siteName || undefined,
       html: article.content,
+      formulas,
     };
   }
   // Readability found no article: keep the whole body.
-  return { title: fallbackTitle || 'Sans titre', author: metaAuthor, html: parseHtml(html, baseUrl).body.innerHTML };
+  const whole = parseHtml(html, baseUrl);
+  return { title: fallbackTitle || 'Sans titre', author: metaAuthor, html: whole.body.innerHTML, formulas: protectMath(whole, whole) };
 }
 
 export async function importWebPage(url: string, onProgress?: ProgressCallback): Promise<ImportedDocument> {
@@ -161,7 +225,7 @@ export async function importWebPage(url: string, onProgress?: ProgressCallback):
   const page = await fetchPage(url);
   onProgress?.("Extraction de l'article…");
   const article = extractArticle(page.html, page.url);
-  let content = htmlToMarkdown(article.html);
+  let content = restoreMath(htmlToMarkdown(article.html), article.formulas);
   if (!content) throw new Error("Aucun texte n'a pu être extrait de cette page.");
   content = (await localizeImages(content, page.url, onProgress)).markdown;
   return { title: article.title, author: article.author, sourceUrl: page.url, format: 'article', content };
@@ -170,7 +234,7 @@ export async function importWebPage(url: string, onProgress?: ProgressCallback):
 export async function importHtmlFile(file: File, onProgress?: ProgressCallback): Promise<ImportedDocument> {
   const html = await file.text();
   const article = extractArticle(html);
-  let content = htmlToMarkdown(article.html);
+  let content = restoreMath(htmlToMarkdown(article.html), article.formulas);
   content = (await localizeImages(content, undefined, onProgress)).markdown;
   return { title: article.title || stripExtension(file.name), author: article.author, format: 'article', content };
 }
@@ -344,7 +408,8 @@ export async function importEpub(file: File, onProgress?: ProgressCallback): Pro
       }
     }
 
-    const content = htmlToMarkdown(doc.body?.innerHTML ?? '');
+    const formulas = doc.body ? protectMath(doc.body, doc) : [];
+    const content = restoreMath(htmlToMarkdown(doc.body?.innerHTML ?? ''), formulas);
     const plain = doc.body?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
     // Skip near-empty pages: copyright, table of contents, and the cover image.
     const isShort = plain.length < 200;

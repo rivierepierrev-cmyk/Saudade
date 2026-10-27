@@ -430,7 +430,7 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                   className="w-full p-4 text-sm font-mono text-[var(--fg-28231d)] bg-[var(--bg-ffffff)] leading-relaxed focus:outline-none resize-y"
                 />
                 <div className="flex items-center justify-between px-4 py-2 border-t border-[var(--bd-f3efe8)] text-[11px] font-mono text-[var(--fg-8c8072)] bg-[var(--bg-faf7f2)]">
-                  <span>Markdown supporté (titres, images, listes, clozes)</span>
+                  <span>Markdown (titres, images, listes) · formules LaTeX : $x^2$ dans le texte, $$…$$ en bloc</span>
                   <span>{wordCount} mots · {charCount} caractères</span>
                 </div>
               </div>

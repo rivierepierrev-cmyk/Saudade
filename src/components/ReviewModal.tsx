@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ClozeItem, ExtractItem, ReviewRating, FSRSRecord } from '../types/gemma';
 import { predictAllRatings, nextTopicInterval, formatInterval } from '../lib/fsrs';
 import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
+import { renderClozeCard, renderTextWithMath } from '../lib/math';
+import { safeHtml } from '../lib/markdown';
 import confetti from 'canvas-confetti';
 import {
   Sparkles,
@@ -397,38 +399,6 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   });
 
-  const renderClozeContent = (text: string, revealed: boolean) => {
-    const clozeRegex = /\{\{c\d+::(.*?)(?:::.*?)?\}\}/g;
-
-    if (!revealed) {
-      return text.replace(clozeRegex, '[...]');
-    }
-
-    const parts = [];
-    let lastIndex = 0;
-    let match;
-
-    while ((match = clozeRegex.exec(text)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push(text.slice(lastIndex, match.index));
-      }
-      parts.push(
-        <span
-          key={match.index}
-          className="bg-[var(--bg-f3e6ce)] text-[var(--fg-28231d)] font-bold px-1.5 py-0.5 rounded border border-[var(--bd-decbb0)]"
-        >
-          {match[1]}
-        </span>
-      );
-      lastIndex = match.index + match[0].length;
-    }
-
-    if (lastIndex < text.length) {
-      parts.push(text.slice(lastIndex));
-    }
-
-    return parts;
-  };
 
   // --- Écran : Entraînement express terminé ---
   if (isFreePractice && practiceFinished) {
@@ -728,7 +698,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           {/* Énoncé de la carte */}
           {isCloze ? (
             <div className="text-xl sm:text-2xl font-serif-reading text-[var(--fg-28231d)] leading-relaxed font-normal">
-              {renderClozeContent(currentEntry.text, isAnswerRevealed)}
+              <span
+                dangerouslySetInnerHTML={{ __html: safeHtml(renderClozeCard(currentEntry.text, isAnswerRevealed)) }}
+              />
             </div>
           ) : (
             <div>
@@ -740,7 +712,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                 }}
                 className="text-lg sm:text-xl font-serif-reading text-[var(--fg-28231d)] leading-relaxed whitespace-pre-line select-text"
               >
-                {currentEntry.text}
+                <span dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(currentEntry.text)) }} />
               </div>
               <div className="flex flex-wrap items-center gap-2 mt-5">
                 <button

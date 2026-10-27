@@ -20,6 +20,12 @@ En mode navigateur (`npm run dev`), les données restent dans le localStorage du
     npm run dev            # http://127.0.0.1:3000
     npm run electron:dev   # fenêtre desktop
 
+## Formules mathématiques (LaTeX)
+- `$E=mc^2$` dans le texte, `$$\int_0^1 f(x)\,dx$$` sur sa propre ligne (aussi `\(…\)` et `\[…\]`). Pour écrire un symbole dollar : `\$`.
+- Fonctionne dans le lecteur, l'éditeur, les extraits et les cartes à trou. Une carte peut masquer une formule entière (`{{c1::$E=mc^2$}}`) ou une partie (`$E={{c1::mc^2}}$`).
+- En sélectionnant une formule dans le lecteur, l'extrait ou la carte garde son code LaTeX.
+- Les formules des pages web (Wikipédia…) et des EPUB sont importées en LaTeX. Celles des PDF ne peuvent pas être récupérées.
+
 ## Installation
 - **Linux Mint / Ubuntu / Debian (recommandé)** : `sudo apt install ./Gemma-1.0.0-linux-amd64.deb`, puis lancez Gemma depuis le menu (ou la commande `gemma`).
 - **AppImage** (autres distributions) : `chmod +x Gemma-*.AppImage && ./Gemma-*.AppImage`. Sur Ubuntu 24.04+ et dérivés, où AppArmor bloque le bac à sable de Chromium pour les AppImage, Gemma démarre automatiquement sans ce bac à sable ; le .deb, lui, le conserve.

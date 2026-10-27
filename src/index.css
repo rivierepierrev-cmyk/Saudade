@@ -6,6 +6,7 @@
 @import "@fontsource-variable/newsreader/opsz-italic.css";
 @import "@fontsource-variable/jetbrains-mono/wght.css";
 @import "./theme.css";
+@import "katex/dist/katex.min.css";
 
 /* Chart series: distinct in lightness and hue, at least 3:1 against cards in both themes. */
 :root {
@@ -233,4 +234,41 @@ article p > em:only-child {
 .prose th {
   background: var(--bg-surface-subtle);
   font-weight: 600;
+}
+
+/* LaTeX formulas (KaTeX) */
+.katex {
+  font-size: 1.08em;
+}
+.math-block,
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.1em 0;
+}
+.math-block {
+  margin: 1em 0 1.2em;
+}
+.math-block .katex-display {
+  margin: 0;
+}
+.katex-error {
+  color: var(--fg-a84236) !important;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+/* Revealed cloze answers (also inside a formula) */
+.cloze-answer {
+  background-color: var(--highlight-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--cloze-border);
+  border-radius: 0.3rem;
+  padding: 0.05em 0.3em;
+  font-weight: 650;
+}
+.katex .cloze-answer {
+  padding: 0.05em 0.15em;
+  border: 0;
+  box-shadow: 0 0 0 1px var(--cloze-border);
 }

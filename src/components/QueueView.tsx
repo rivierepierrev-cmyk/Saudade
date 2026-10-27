@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { DocumentItem, ExtractItem, ClozeItem, ItemType } from '../types/gemma';
 import { formatInterval } from '../lib/fsrs';
 import { matchesQuery } from '../lib/search';
+import { parseClozes, renderTextWithMath } from '../lib/math';
+import { safeHtml } from '../lib/markdown';
 import {
   BookOpen,
   FileText,
@@ -109,7 +111,9 @@ export const QueueView: React.FC<QueueViewProps> = ({
         id: clz.id,
         type: 'cloze',
         title: clz.documentTitle || 'Carte de rappel actif Cloze',
-        preview: clz.text.replace(/\{\{c\d+::(.*?)(?:::.*?)?\}\}/g, '[$1]'),
+        preview: parseClozes(clz.text)
+          .map((p) => (p.type === 'cloze' ? `[${p.value}]` : p.value))
+          .join(''),
         sourceDocTitle: clz.documentTitle,
         folder: clz.folder || parentDoc?.folder || 'Général',
         priority: clz.priority,
@@ -397,7 +401,11 @@ export const QueueView: React.FC<QueueViewProps> = ({
                     )}
 
                     <p className="mt-1 text-xs sm:text-sm text-[var(--fg-4a4137)] line-clamp-2 leading-relaxed">
-                      {item.preview}
+                      {item.type === 'document' ? (
+                        item.preview
+                      ) : (
+                        <span dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(item.preview)) }} />
+                      )}
                     </p>
 
                     <div className="flex items-center gap-3 mt-3 text-xs text-[var(--fg-8c8072)] flex-wrap">

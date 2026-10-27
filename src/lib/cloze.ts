@@ -72,16 +72,54 @@ export interface BlockSelection {
 
 const BLOCK_SELECTOR = 'p, li, blockquote, h1, h2, h3, h4, h5, h6, td, th, figcaption, dd, dt, pre';
 
+/** LaTeX source of a rendered formula (KaTeX keeps it in a MathML annotation). */
+function texOf(formula: Element): string | null {
+  return formula.querySelector('annotation[encoding="application/x-tex"]')?.textContent ?? null;
+}
+
+/**
+ * Text of a node as the user wrote it: formulas come back as $…$ / $$…$$ instead
+ * of their rendered characters, line breaks as \n.
+ */
+export function serializeText(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? '';
+  if (node.nodeType === Node.ELEMENT_NODE) {
+    const el = node as Element;
+    if (el.classList.contains('katex-display')) {
+      const tex = texOf(el);
+      if (tex !== null) return `$$${tex}$$`;
+    }
+    if (el.classList.contains('katex')) {
+      const tex = texOf(el);
+      if (tex !== null) return `$${tex}$`;
+    }
+    if (el.tagName === 'BR') return '\n';
+  } else if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
+    return '';
+  }
+  return Array.from(node.childNodes, serializeText).join('');
+}
+
+const formulaAround = (node: Node): Element | null => {
+  const el = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
+  return el?.closest('.katex-display') ?? el?.closest('.katex') ?? null;
+};
+
 /**
  * Locates the current window selection inside `root`. `context` is the text of the
  * closest block element (paragraph, list item…) when the selection stays inside one
- * block, otherwise the text of `root`.
+ * block, otherwise the text of `root`. A selection that starts or ends inside a
+ * formula is widened to the whole formula; formulas are returned as LaTeX.
  */
 export function getBlockSelection(root: HTMLElement | null): BlockSelection | null {
   const selection = window.getSelection();
   if (!root || !selection || selection.isCollapsed || selection.rangeCount === 0) return null;
-  const range = selection.getRangeAt(0);
+  const range = selection.getRangeAt(0).cloneRange();
   if (!root.contains(range.commonAncestorContainer)) return null;
+  const startFormula = formulaAround(range.startContainer);
+  const endFormula = formulaAround(range.endContainer);
+  if (startFormula) range.setStartBefore(startFormula);
+  if (endFormula) range.setEndAfter(endFormula);
 
   const ancestor =
     range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
@@ -93,7 +131,7 @@ export function getBlockSelection(root: HTMLElement | null): BlockSelection | nu
   const pre = document.createRange();
   pre.selectNodeContents(block);
   pre.setEnd(range.startContainer, range.startOffset);
-  const start = pre.toString().length;
-  const text = range.toString();
-  return { text, context: block.textContent ?? '', start, end: start + text.length };
+  const start = serializeText(pre.cloneContents()).length;
+  const text = serializeText(range.cloneContents());
+  return { text, context: serializeText(block), start, end: start + text.length };
 }
