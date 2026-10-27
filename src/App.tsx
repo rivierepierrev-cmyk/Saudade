@@ -269,6 +269,55 @@ export default function App() {
     offerUndo('Carte modifiée', () => updateClozes((prev) => prev.map((c) => (c.id === id ? { ...c, ...previous } : c))));
   };
 
+  // ---- Resetting cards ---------------------------------------------------------
+  /**
+   * Puts cards back to "never reviewed": new schedule and their review history
+   * removed (so statistics forget them too). A single card comes back into the queue
+   * even if it had been retired; a reset of all cards leaves retired cards retired.
+   * Can be undone.
+   */
+  const resetCards = (ids: string[], options: { reviveRetired: boolean }): number => {
+    const targets = new Set(ids);
+    const previousCards = new Map(
+      clozesRef.current.filter((c) => targets.has(c.id)).map((c) => [c.id, { fsrs: c.fsrs, state: c.state }])
+    );
+    if (previousCards.size === 0) return 0;
+    const allLogs = GemmaStorage.getReviewLogs();
+    const removedLogs = allLogs.filter((l) => l.itemType === 'cloze' && targets.has(l.itemId));
+    GemmaStorage.saveReviewLogs(allLogs.filter((l) => !(l.itemType === 'cloze' && targets.has(l.itemId))));
+    const now = new Date().toISOString();
+    updateClozes((prev) =>
+      prev.map((c) =>
+        targets.has(c.id)
+          ? {
+              ...c,
+              fsrs: createInitialFSRSRecord(0),
+              state: c.state === 'dismissed' && !options.reviveRetired ? 'dismissed' : 'new',
+              updatedAt: now,
+            }
+          : c
+      )
+    );
+    const count = previousCards.size;
+    offerUndo(count === 1 ? 'Carte réinitialisée' : `${count} cartes réinitialisées`, () => {
+      updateClozes((prev) => prev.map((c) => (previousCards.has(c.id) ? { ...c, ...previousCards.get(c.id)! } : c)));
+      // Put the removed history back, keeping reviews made since.
+      const merged = [...GemmaStorage.getReviewLogs(), ...removedLogs].sort((a, b) => a.reviewDate.localeCompare(b.reviewDate));
+      GemmaStorage.saveReviewLogs(merged);
+    });
+    return count;
+  };
+
+  const handleResetAllCards = async (): Promise<boolean> => {
+    const snapshotError = await snapshotBefore('avant-reinitialisation-cartes');
+    if (snapshotError) {
+      setStorageErrors((prev) => [...prev, snapshotError]);
+      return false;
+    }
+    resetCards(clozesRef.current.map((c) => c.id), { reviveRetired: false });
+    return true;
+  };
+
   // ---- Viewing extracts and cards (library) ---------------------------------
   const [viewRequest, setViewRequest] = useState<{ type: 'extract' | 'cloze'; id: string } | null>(null);
   // Passage the reader scrolls to and highlights when opened from the viewer.
@@ -314,6 +363,7 @@ export default function App() {
         }}
         onOpenInDocument={doc ? () => openInDocument(viewRequest.type, viewRequest.id) : undefined}
         onView={handleViewItem}
+        onResetCard={viewRequest.type === 'cloze' ? () => resetCards([viewRequest.id], { reviveRetired: true }) : undefined}
         onClose={() => setViewRequest(null)}
       />
     );
@@ -891,7 +941,7 @@ export default function App() {
               onNotFinished={handleNotFinished}
               onLowerPriority={handleLowerPriority}
               onWriteSummary={handleWriteSummary}
-              cardCount={clozes.filter((c) => c.documentId === currentDocument.id && c.state !== 'dismissed').length}
+              documentCards={clozes.filter((c) => c.documentId === currentDocument.id && c.state !== 'dismissed')}
               showExtractHighlights={settings.showExtractHighlights}
               onToggleExtractHighlights={() => {
                 const newSettings: AppSettings = { ...settings, showExtractHighlights: !settings.showExtractHighlights };
@@ -1002,6 +1052,7 @@ export default function App() {
             onExportMarkdownMirror={handleExportMarkdownMirror}
             onResetDemo={handleResetDemo}
             onRestoreBackup={handleRestoreBackup}
+            onResetAllCards={handleResetAllCards}
             onOpenDataFolder={isDesktop ? openDataFolder : undefined}
             dataLocation={dataLocation}
           />
@@ -1011,7 +1062,7 @@ export default function App() {
       {undoAction && (
         <div
           role="status"
-          className="fixed bottom-6 left-6 z-50 flex items-center gap-3 pl-4 pr-2 py-2 bg-[var(--bg-28231d)] text-[var(--fg-faf7f2)] text-xs font-medium rounded-xl shadow-lg border border-[var(--bd-3e3831)]"
+          className="fixed bottom-6 left-6 z-[60] flex items-center gap-3 pl-4 pr-2 py-2 bg-[var(--bg-28231d)] text-[var(--fg-faf7f2)] text-xs font-medium rounded-xl shadow-lg border border-[var(--bd-3e3831)]"
         >
           <span className="max-w-xs truncate">{undoAction.message}</span>
           <button

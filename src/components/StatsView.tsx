@@ -26,6 +26,8 @@ interface StatsViewProps {
   onExportMarkdownMirror: () => void;
   onResetDemo: () => Promise<boolean>;
   onRestoreBackup: (file: File) => Promise<{ ok: boolean; message: string }>;
+  /** Every card back to "never reviewed" (retired cards stay retired). */
+  onResetAllCards: () => Promise<boolean>;
   onOpenDataFolder?: () => void;
   dataLocation?: string;
 }
@@ -43,10 +45,12 @@ export const StatsView: React.FC<StatsViewProps> = ({
   onExportMarkdownMirror,
   onResetDemo,
   onRestoreBackup,
+  onResetAllCards,
   onOpenDataFolder,
   dataLocation,
 }) => {
   const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmResetCards, setConfirmResetCards] = useState(false);
   const [pendingRestore, setPendingRestore] = useState<File | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const restoreInputRef = useRef<HTMLInputElement>(null);
@@ -672,6 +676,41 @@ export const StatsView: React.FC<StatsViewProps> = ({
               >
                 <Upload className="w-3.5 h-3.5" />
                 Restaurer une sauvegarde…
+              </button>
+            )}
+            {confirmResetCards ? (
+              <div className="flex flex-wrap items-center gap-2 p-1.5 bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-xl">
+                <span className="text-xs text-[var(--fg-a84236)] font-medium px-2">
+                  Remettre les {clozes.length} cartes à zéro et effacer leur historique ?
+                </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setConfirmResetCards(false);
+                    if (await onResetAllCards()) showToast('Cartes réinitialisées (sauvegarde créée avant)');
+                  }}
+                  className="px-3 py-1 text-xs font-semibold text-white bg-[var(--bg-a84236)] rounded-lg hover:bg-[var(--bg-8f352b)] transition-colors"
+                >
+                  Oui, réinitialiser
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmResetCards(false)}
+                  className="px-2.5 py-1 text-xs text-[var(--fg-695f54)] hover:bg-[var(--bg-e8e2d5)] rounded-lg transition-colors"
+                >
+                  Annuler
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmResetCards(true)}
+                disabled={clozes.length === 0}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-a84236)] hover:bg-[var(--bg-fdf2f0)] border border-[var(--bd-f2d6d3)] rounded-lg transition-colors disabled:opacity-45"
+                title="Comme si aucune carte n'avait jamais été révisée (les extraits et documents ne changent pas)"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Réinitialiser toutes les cartes
               </button>
             )}
             {confirmReset ? (

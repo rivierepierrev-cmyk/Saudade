@@ -127,6 +127,10 @@ export class GemmaStorage {
     return load<ReviewLog[]>('reviewLogs', isArray, () => [], []);
   }
 
+  static saveReviewLogs(logs: ReviewLog[]): void {
+    save('reviewLogs', logs);
+  }
+
   static appendReviewLog(log: ReviewLog): void {
     save('reviewLogs', [...this.getReviewLogs(), log]);
   }

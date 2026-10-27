@@ -12,21 +12,34 @@
 :root {
   --extract-mark: rgba(196, 140, 60, 0.24);
   --extract-mark-active: rgba(196, 140, 60, 0.5);
+  --card-mark: rgba(95, 133, 80, 0.2);
 }
 :root[data-theme='dark'] {
   --extract-mark: rgba(223, 180, 142, 0.2);
   --extract-mark-active: rgba(223, 180, 142, 0.4);
+  --card-mark: rgba(143, 196, 122, 0.18);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     --extract-mark: rgba(223, 180, 142, 0.2);
     --extract-mark-active: rgba(223, 180, 142, 0.4);
+    --card-mark: rgba(143, 196, 122, 0.18);
   }
 }
 /* Passages already extracted (in the document, or sub-extracts inside an extract) */
 ::highlight(gemma-extracts),
 ::highlight(gemma-subextracts) {
   background-color: var(--extract-mark);
+}
+/* Sentences turned into cards */
+::highlight(gemma-cards) {
+  background-color: var(--card-mark);
+}
+.legend-extract {
+  background-color: var(--extract-mark);
+}
+.legend-card {
+  background-color: var(--card-mark);
 }
 /* The extract opened in the side panel */
 ::highlight(gemma-extract-active) {

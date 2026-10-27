@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { DocumentItem, ExtractItem } from '../types/gemma';
+import { DocumentItem, ExtractItem, ClozeItem } from '../types/gemma';
 import { renderMarkdown } from '../lib/markdown';
 import {
   Scissors,
@@ -18,7 +18,7 @@ import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
 import { formatInterval, nextTopicInterval } from '../lib/fsrs';
 import { isDueToday } from '../lib/queue';
 import { findPassages, setHighlight, clearHighlight } from '../lib/highlight';
-import { renderTextWithMath } from '../lib/math';
+import { renderTextWithMath, parseClozes } from '../lib/math';
 import { safeHtml } from '../lib/markdown';
 
 interface ReaderViewProps {
@@ -45,8 +45,8 @@ interface ReaderViewProps {
   onLowerPriority: (docId: string) => void;
   /** Ending a text with nothing extracted: write a summary card, then the text is finished. */
   onWriteSummary: (docId: string) => void;
-  /** Number of cards made from this document (to warn before finishing an unused text). */
-  cardCount: number;
+  /** Cards made from this document: counted, and their sentence underlined in the text. */
+  documentCards: ClozeItem[];
   /** Extracted passages highlighted in the text (setting). */
   showExtractHighlights: boolean;
   onToggleExtractHighlights: () => void;
@@ -75,7 +75,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   onNotFinished,
   onLowerPriority,
   onWriteSummary,
-  cardCount,
+  documentCards,
   showExtractHighlights,
   onToggleExtractHighlights,
   focusPassage,
@@ -185,13 +185,20 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
 
   // Highlights: every extracted passage lightly, the open one strongly.
   const extractsKey = documentExtracts.map((e) => `${e.id}:${e.text}`).join('\u0001');
+  const cardsKey = documentCards.map((c) => `${c.id}:${c.text}`).join('\u0001');
   useEffect(() => {
     const article = articleRef.current;
     if (!article) return;
+    // Extracts are highlighted, cards (their sentence, answers shown) underlined.
     const passages = showExtractHighlights ? documentExtracts.map((e) => e.text) : [];
-    const ranges = findPassages(article, activePassage ? [...passages, activePassage] : passages);
-    setHighlight('gemma-extracts', ranges.slice(0, passages.length).filter((r): r is Range => r !== null));
-    setMissingExtractIds(new Set(documentExtracts.filter((_, i) => !ranges[i]).map((e) => e.id)));
+    const cardPassages = showExtractHighlights
+      ? documentCards.map((c) => parseClozes(c.text).map((p) => p.value).join(''))
+      : [];
+    const ranges = findPassages(article, [...passages, ...cardPassages, ...(activePassage ? [activePassage] : [])]);
+    const present = (r: Range | null): r is Range => r !== null;
+    setHighlight('gemma-extracts', ranges.slice(0, passages.length).filter(present));
+    setHighlight('gemma-cards', ranges.slice(passages.length, passages.length + cardPassages.length).filter(present));
+    setMissingExtractIds(new Set(showExtractHighlights ? documentExtracts.filter((_, i) => !ranges[i]).map((e) => e.id) : []));
     const active = activePassage ? ranges[ranges.length - 1] : null;
     setHighlight('gemma-extract-active', active ? [active] : []);
     // Formulas aren't fully painted by text highlights: mark the whole formula.
@@ -210,7 +217,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
       window.scrollTo({ top: window.scrollY + rect.top - window.innerHeight / 3, behavior: 'smooth' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [renderedHtml, extractsKey, activePassage, showExtractHighlights]);
+  }, [renderedHtml, extractsKey, cardsKey, activePassage, showExtractHighlights]);
 
   // Resume reading where it was left (unless a passage is being shown).
   useEffect(() => {
@@ -222,6 +229,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   useEffect(
     () => () => {
       clearHighlight('gemma-extracts');
+      clearHighlight('gemma-cards');
       clearHighlight('gemma-extract-active');
     },
     []
@@ -540,7 +548,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
               <span className="flex items-center gap-2">
                 <Bookmark className="w-4 h-4 text-[var(--fg-8c5e32)]" />
                 Position mémorisée · Texte {currentIndex + 1} sur {totalDocuments} · {documentExtracts.length} extrait
-                {documentExtracts.length > 1 ? 's' : ''}, {cardCount} carte{cardCount > 1 ? 's' : ''}
+                {documentExtracts.length > 1 ? 's' : ''}, {documentCards.length} carte{documentCards.length > 1 ? 's' : ''}
               </span>
               <button
                 type="button"
@@ -558,7 +566,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
 
             {confirmRetire ? (
               <div role="alert" className="p-4 rounded-xl border border-[var(--bd-e8e2d5)] bg-[var(--bg-ffffff)] text-xs">
-                {documentExtracts.length === 0 && cardCount === 0 ? (
+                {documentExtracts.length === 0 && documentCards.length === 0 ? (
                   <>
                     <p className="font-semibold text-[var(--fg-28231d)]">Rien n'a été extrait de ce texte.</p>
                     <p className="mt-1 text-[var(--fg-695f54)]">
@@ -571,7 +579,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                   </p>
                 )}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {documentExtracts.length === 0 && cardCount === 0 && (
+                  {documentExtracts.length === 0 && documentCards.length === 0 && (
                     <button
                       onClick={() => {
                         setConfirmRetire(false);
@@ -586,7 +594,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                     onClick={() => onRetireDocument(currentDocument.id)}
                     className="px-3 py-2 font-semibold text-[var(--fg-faf7f2)] bg-[var(--bg-3b3026)] hover:bg-[var(--bg-28211a)] rounded-lg cursor-pointer"
                   >
-                    {documentExtracts.length === 0 && cardCount === 0 ? 'Terminer quand même' : 'Oui, terminer'}
+                    {documentExtracts.length === 0 && documentCards.length === 0 ? 'Terminer quand même' : 'Oui, terminer'}
                   </button>
                   <button
                     onClick={() => setConfirmRetire(false)}
@@ -653,6 +661,12 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                 {documentExtracts.length}
               </span>
             </div>
+            {showExtractHighlights && (documentExtracts.length > 0 || documentCards.length > 0) && (
+              <p className="flex items-center gap-3 mb-3 text-[11px] text-[var(--fg-695f54)]">
+                <span className="legend-extract px-1 rounded-sm">doré</span> = extrait
+                <span className="legend-card px-1 rounded-sm">vert</span> = carte ({documentCards.length})
+              </p>
+            )}
 
             {documentExtracts.length === 0 ? (
               <p className="text-xs text-[var(--fg-8c8072)] italic py-4 text-center">

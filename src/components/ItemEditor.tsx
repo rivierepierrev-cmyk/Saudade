@@ -36,6 +36,17 @@ export const ItemEditor: React.FC<ItemEditorProps> = ({
     textareaRef.current?.focus();
   }, []);
 
+  useEffect(() => {
+    const onWindowKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.defaultPrevented) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onWindowKey);
+    return () => window.removeEventListener('keydown', onWindowKey);
+  }, [onClose]);
+
   const hasCloze = parseClozes(text).some((p) => p.type === 'cloze' && p.value.trim());
 
   const hideSelection = () => {

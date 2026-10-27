@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Pencil, BookOpen, Eye, EyeOff, Sparkles, Scissors } from 'lucide-react';
+import { X, Pencil, BookOpen, Eye, EyeOff, Sparkles, Scissors, RotateCcw } from 'lucide-react';
 import { ClozeItem, DocumentItem, ExtractItem, FSRSRecord } from '../types/gemma';
 import { renderClozeCard, renderTextWithMath, clozePreviewText } from '../lib/math';
 import { safeHtml } from '../lib/markdown';
@@ -22,6 +22,8 @@ interface ItemViewerProps {
   /** Opens the document in the reader, on this passage. */
   onOpenInDocument?: () => void;
   onView: (type: 'extract' | 'cloze', id: string) => void;
+  /** Cards only: back to "never reviewed" (schedule and history). */
+  onResetCard?: () => void;
   onClose: () => void;
 }
 
@@ -44,9 +46,11 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
   onEdit,
   onOpenInDocument,
   onView,
+  onResetCard,
   onClose,
 }) => {
   const [revealed, setRevealed] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const { item } = viewed;
@@ -54,6 +58,7 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
 
   useEffect(() => {
     setRevealed(false);
+    setConfirmReset(false);
     // Focus the window itself (not a button), so Space reveals the answer.
     panelRef.current?.focus();
   }, [item.id]);
@@ -67,6 +72,19 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.id, item.text, childKey, revealed]);
   useEffect(() => () => clearHighlight('gemma-subextracts'), []);
+
+  // Escape closes the window even when the focus has left it (e.g. after a button
+  // that disappeared on click).
+  useEffect(() => {
+    const onWindowKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.defaultPrevented) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onWindowKey);
+    return () => window.removeEventListener('keydown', onWindowKey);
+  }, [onClose]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -212,6 +230,41 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2 px-6 py-3 border-t border-[var(--bd-e8e2d5)] bg-[var(--bg-faf7f2)]">
+          {isCloze && onResetCard && (
+            confirmReset ? (
+              <span role="alert" className="mr-auto flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-[var(--fg-28231d)]">Remettre à zéro ? L'historique de révision sera effacé.</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmReset(false);
+                    onResetCard();
+                  }}
+                  className="px-3 py-1.5 font-semibold text-white bg-[var(--bg-a84236)] hover:bg-[var(--bg-8f352b)] rounded-lg cursor-pointer"
+                >
+                  Réinitialiser
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmReset(false)}
+                  className="px-2 py-1.5 text-[var(--fg-695f54)] hover:bg-[var(--bg-f3efe8)] rounded-lg cursor-pointer"
+                >
+                  Annuler
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmReset(true)}
+                disabled={fsrs.reps === 0 && item.state !== 'dismissed'}
+                className="mr-auto flex items-center gap-1.5 px-3 py-2 text-xs text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)] rounded-lg cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
+                title={fsrs.reps === 0 ? 'Cette carte n’a jamais été révisée' : 'Comme si la carte n’avait jamais été révisée'}
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Réinitialiser
+              </button>
+            )
+          )}
           {onOpenInDocument && (
             <button
               type="button"

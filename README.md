@@ -32,7 +32,8 @@ En mode navigateur (`npm run dev`), les données restent dans le localStorage du
 ## Consulter les extraits et les cartes
 - Bibliothèque (arborescence ou fiches) : cliquer sur un extrait ou une carte l'ouvre en entier (formules, réponse avec Espace, prochaine révision, cartes tirées de l'extrait), avec « Modifier » et « Voir dans le document ».
 - Lecteur, volet « Extraits » : cliquer sur un extrait l'affiche en entier, fait défiler le texte jusqu'au passage et le surligne.
-- Comme dans SuperMemo, les passages déjà extraits sont surlignés dans le texte d'origine (bouton « Surlignage » pour les masquer) ; le surlignage suit les modifications des extraits. Dans un extrait, seuls ses sous-extraits sont surlignés.
+- Comme dans SuperMemo, le texte d'origine montre ce qui en a été tiré : passages extraits en doré, phrases transformées en cartes en vert (bouton « Surlignage » pour les masquer). Les marques suivent les modifications et disparaissent quand l'extrait ou la carte est supprimé (« Annuler » les remet). Dans un extrait, seuls ses sous-extraits sont surlignés.
+- Réinitialiser une carte (fenêtre de la carte) ou toutes les cartes (Analytique) : comme si elles n'avaient jamais été révisées, historique compris. Annulable ; une sauvegarde est créée avant la réinitialisation globale.
 
 ## Fin de lecture d'un texte
 La question n'est pas « m'en souviendrai-je ? » (ce sont les cartes qui servent à retenir) mais « reste-t-il quelque chose à extraire ? » :
