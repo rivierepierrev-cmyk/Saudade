@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { DocumentItem, ExtractItem, ClozeItem } from '../types/gemma';
 import { GemmaStorage } from '../lib/storage';
+import { parseClozes, renderTextWithMath } from '../lib/math';
+import { safeHtml } from '../lib/markdown';
 import {
   Folder,
   FolderOpen,
@@ -22,6 +24,7 @@ import {
   Layers,
   GripVertical,
   CornerDownRight,
+  Pencil,
 } from 'lucide-react';
 
 interface KnowledgeTreeViewProps {
@@ -33,6 +36,8 @@ interface KnowledgeTreeViewProps {
   onDeleteDocument: (docId: string) => void;
   onDeleteExtract: (extractId: string) => void;
   onDeleteCloze: (clozeId: string) => void;
+  onEditItem?: (type: 'extract' | 'cloze', id: string) => void;
+  onViewItem?: (type: 'extract' | 'cloze', id: string) => void;
   onStartReviewWithFolder?: (folderPath: string) => void;
   onOpenEditModal: (doc: DocumentItem) => void;
   onOpenImport?: () => void;
@@ -59,6 +64,8 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
   onDeleteDocument,
   onDeleteExtract,
   onDeleteCloze,
+  onEditItem,
+  onViewItem,
   onStartReviewWithFolder,
   onOpenEditModal,
   onOpenImport,
@@ -1209,16 +1216,31 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                                     key={ext.id}
                                     className="p-2.5 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-xl flex items-start justify-between gap-3 text-xs"
                                   >
-                                    <div className="flex-1">
-                                      <p className="text-[var(--fg-28231d)] leading-relaxed line-clamp-2">
-                                        « {ext.text} »
-                                      </p>
+                                    <div className="flex-1 min-w-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => onViewItem?.('extract', ext.id)}
+                                        title="Lire l'extrait"
+                                        className="block w-full text-left text-[var(--fg-28231d)] leading-relaxed line-clamp-2 rounded hover:bg-[var(--bg-faf7f2)] cursor-pointer"
+                                      >
+                                        « <span dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(ext.text)) }} /> »
+                                      </button>
                                       {ext.note && (
                                         <p className="text-[11px] text-[var(--fg-8c8072)] mt-1">
                                           Note : {ext.note}
                                         </p>
                                       )}
                                     </div>
+                                    {onEditItem && (
+                                      <button
+                                        type="button"
+                                        onClick={() => onEditItem('extract', ext.id)}
+                                        className="p-1 text-[var(--fg-8c8072)] hover:text-[var(--fg-28231d)] rounded cursor-pointer"
+                                        title="Modifier l'extrait (et le passage dans le document)"
+                                      >
+                                        <Pencil className="w-3 h-3" />
+                                      </button>
+                                    )}
                                     <button
                                       type="button"
                                       onClick={() => onDeleteExtract(ext.id)}
@@ -1248,10 +1270,14 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                                       key={clz.id}
                                       className="p-2.5 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-xl flex items-start justify-between gap-3 text-xs"
                                     >
-                                      <div className="flex-1">
-                                        <div className="text-[var(--fg-28231d)] font-mono leading-relaxed line-clamp-2">
-                                          {clz.text}
-                                        </div>
+                                      <div className="flex-1 min-w-0">
+                                        <button
+                                          type="button"
+                                          onClick={() => onViewItem?.('cloze', clz.id)}
+                                          title="Voir la carte"
+                                          className="block w-full text-left text-[var(--fg-28231d)] leading-relaxed line-clamp-2 rounded hover:bg-[var(--bg-faf7f2)] cursor-pointer"
+                                          dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(parseClozes(clz.text).map((p) => (p.type === 'cloze' ? `[${p.value}]` : p.value)).join(''))) }}
+                                        />
                                         <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[var(--fg-8c8072)]">
                                           <span>Stabilité : {clz.fsrs?.stability?.toFixed(1) || 1}j</span>
                                           <span>Répétitions : {clz.fsrs?.reps || 0}</span>
@@ -1262,6 +1288,16 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                                           )}
                                         </div>
                                       </div>
+                                      {onEditItem && (
+                                        <button
+                                          type="button"
+                                          onClick={() => onEditItem('cloze', clz.id)}
+                                          className="p-1 text-[var(--fg-8c8072)] hover:text-[var(--fg-28231d)] rounded cursor-pointer"
+                                          title="Modifier la carte"
+                                        >
+                                          <Pencil className="w-3 h-3" />
+                                        </button>
+                                      )}
                                       <button
                                         type="button"
                                         onClick={() => onDeleteCloze(clz.id)}

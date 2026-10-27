@@ -29,6 +29,10 @@ En mode navigateur (`npm run dev`), les données restent dans le localStorage du
 - Modifier un extrait modifie aussi le passage dans le document d'origine (et dans l'extrait parent) ; seule la partie changée est remplacée, la mise en forme autour est conservée. Si le passage n'est plus retrouvé tel quel, seul l'extrait change (un message le signale). Annulable (Ctrl+Z).
 - Carte à trou sur une phrase entière : l'éditeur s'ouvre pour choisir le mot à masquer (« Masquer la sélection », Alt+C). Syntaxe : `{{c1::réponse}}` ou `{{c1::réponse::indice}}`.
 
+## Consulter les extraits et les cartes
+- Bibliothèque (arborescence ou fiches) : cliquer sur un extrait ou une carte l'ouvre en entier (formules, réponse avec Espace, prochaine révision, cartes tirées de l'extrait), avec « Modifier » et « Voir dans le document ».
+- Lecteur, volet « Extraits » : cliquer sur un extrait l'affiche en entier, fait défiler le texte jusqu'au passage et le surligne. Tous les passages déjà extraits sont légèrement surlignés dans le texte.
+
 ## Formules mathématiques (LaTeX)
 - `$E=mc^2$` dans le texte, `$$\int_0^1 f(x)\,dx$$` sur sa propre ligne (aussi `\(…\)` et `\[…\]`). Pour écrire un symbole dollar : `\$`.
 - Fonctionne dans le lecteur, l'éditeur, les extraits et les cartes à trou. Une carte peut masquer une formule entière (`{{c1::$E=mc^2$}}`) ou une partie (`$E={{c1::mc^2}}$`).

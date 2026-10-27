@@ -8,6 +8,30 @@
 @import "./theme.css";
 @import "katex/dist/katex.min.css";
 
+/* Extracted passages in the reader (CSS Custom Highlight API, see lib/highlight.ts) */
+:root {
+  --extract-mark: rgba(140, 94, 50, 0.1);
+}
+:root[data-theme='dark'] {
+  --extract-mark: rgba(223, 180, 142, 0.12);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --extract-mark: rgba(223, 180, 142, 0.12);
+  }
+}
+::highlight(gemma-extracts) {
+  background-color: var(--extract-mark);
+}
+::highlight(gemma-extract-active) {
+  background-color: var(--highlight-bg);
+  color: var(--text-primary);
+}
+.katex.extract-active-formula {
+  background-color: var(--highlight-bg);
+  border-radius: 0.2em;
+}
+
 /* Chart series: distinct in lightness and hue, at least 3:1 against cards in both themes. */
 :root {
   --chart-clozes: #8c5e32;

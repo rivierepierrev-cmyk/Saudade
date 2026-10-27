@@ -19,6 +19,8 @@ import { applyTheme } from './lib/theme';
 import { buildTodayQueue, isDueToday, nextAfterToday } from './lib/queue';
 import { locatePassage, replacePassage } from './lib/sourceSync';
 import { ItemEditor } from './components/ItemEditor';
+import { ItemViewer } from './components/ItemViewer';
+import { parseClozes } from './lib/math';
 import { onStorageError, isDesktop, dataLocation, takeSnapshot, openDataFolder } from './lib/kv';
 import { createInitialFSRSRecord, applyCardReview, applyTopicReview, firstTopicInterval } from './lib/fsrs';
 import { TopNav } from './components/TopNav';
@@ -257,6 +259,54 @@ export default function App() {
     const previous = { text: card.text, updatedAt: card.updatedAt };
     updateClozes((prev) => prev.map((c) => (c.id === id ? { ...c, text: newText, updatedAt: new Date().toISOString() } : c)));
     offerUndo('Carte modifiée', () => updateClozes((prev) => prev.map((c) => (c.id === id ? { ...c, ...previous } : c))));
+  };
+
+  // ---- Viewing extracts and cards (library) ---------------------------------
+  const [viewRequest, setViewRequest] = useState<{ type: 'extract' | 'cloze'; id: string } | null>(null);
+  // Passage the reader scrolls to and highlights when opened from the viewer.
+  const [focusPassage, setFocusPassage] = useState<{ text: string; extractId?: string; key: number } | null>(null);
+
+  const handleViewItem = (type: 'extract' | 'cloze', id: string) => setViewRequest({ type, id });
+
+  const openInDocument = (type: 'extract' | 'cloze', id: string) => {
+    const ext = type === 'extract' ? extracts.find((e) => e.id === id) : undefined;
+    const card = type === 'cloze' ? clozes.find((c) => c.id === id) : undefined;
+    const source = ext ?? (card?.extractId ? extracts.find((e) => e.id === card.extractId) : undefined);
+    const docId = ext?.documentId ?? card?.documentId ?? source?.documentId;
+    if (!docId) return;
+    // A card is located by its sentence (answers shown), or by its extract.
+    const text = source?.text ?? parseClozes(card!.text).map((p) => p.value).join('');
+    setViewRequest(null);
+    setCurrentDocumentId(docId);
+    setActiveTab('reader');
+    setFocusPassage({ text, extractId: source?.id, key: Date.now() });
+  };
+
+  const renderViewer = () => {
+    if (!viewRequest) return null;
+    const item =
+      viewRequest.type === 'extract'
+        ? extracts.find((e) => e.id === viewRequest.id)
+        : clozes.find((c) => c.id === viewRequest.id);
+    if (!item) return null;
+    const docId = 'documentId' in item ? item.documentId : undefined;
+    const doc = documents.find((d) => d.id === docId);
+    const ext = viewRequest.type === 'extract' ? (item as ExtractItem) : undefined;
+    return (
+      <ItemViewer
+        viewed={viewRequest.type === 'extract' ? { type: 'extract', item: item as ExtractItem } : { type: 'cloze', item: item as ClozeItem }}
+        document={doc}
+        parentExtract={ext?.parentExtractId ? extracts.find((e) => e.id === ext.parentExtractId) : undefined}
+        childCards={ext ? clozes.filter((c) => c.extractId === ext.id) : []}
+        onEdit={() => {
+          setViewRequest(null);
+          handleEditItem(viewRequest.type, viewRequest.id);
+        }}
+        onOpenInDocument={doc ? () => openInDocument(viewRequest.type, viewRequest.id) : undefined}
+        onView={handleViewItem}
+        onClose={() => setViewRequest(null)}
+      />
+    );
   };
 
   const renderEditor = () => {
@@ -779,6 +829,8 @@ export default function App() {
                 openNextDueDocument(docId);
               }}
               onOpenClozeEditor={(docId, sentence) => openClozeEditor({ documentId: docId }, sentence)}
+              onEditItem={handleEditItem}
+              focusPassage={focusPassage}
               onRetireDocument={(docId) => {
                 handleDismissItem('document', docId);
                 openNextDueDocument(docId);
@@ -864,6 +916,7 @@ export default function App() {
             onExportMarkdown={handleExportMarkdownMirror}
             onExportBackup={handleExportBackup}
             onEditItem={handleEditItem}
+            onViewItem={handleViewItem}
           />
         )}
 
@@ -904,6 +957,7 @@ export default function App() {
         </div>
       )}
 
+      {renderViewer()}
       {renderEditor()}
 
       {/* Source Import Modal */}

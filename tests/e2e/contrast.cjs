@@ -43,7 +43,8 @@ const screens = [
   ['reader', async (p) => { await p.keyboard.press('Escape'); await p.getByRole('button', { name: /^Lecteur/ }).first().click(); }],
   ['review-card', async (p) => { await p.getByRole('button', { name: /Révision du jour/ }).first().click(); await p.keyboard.press('Space'); }],
   ['library', async (p) => p.getByRole('button', { name: /Bibliothèque/ }).first().click()],
-  ['stats', async (p) => p.getByRole('button', { name: /Analytique/ }).first().click()],
+  ['viewer', async (p) => { await p.getByRole('button', { name: /Vue Fiches/ }).click(); await p.getByRole('button', { name: /^Extraits/ }).first().click(); await p.getByTitle("Lire l'extrait").first().click(); }],
+  ['stats', async (p) => { await p.keyboard.press('Escape'); await p.getByRole('button', { name: /Analytique/ }).first().click(); }],
   ['import', async (p) => p.getByRole('button', { name: /Ajouter une source/ }).click()],
   ['import-paste', async (p) => p.getByRole('button', { name: 'Coller du texte' }).click()],
 ];

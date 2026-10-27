@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { DocumentItem, ExtractItem, ClozeItem } from '../types/gemma';
 import { matchesQuery } from '../lib/search';
+import { parseClozes, renderTextWithMath } from '../lib/math';
+import { safeHtml } from '../lib/markdown';
 import {
   Search,
   BookOpen,
@@ -35,6 +37,7 @@ interface LibraryViewProps {
   onExportMarkdown?: () => void;
   onExportBackup: () => void;
   onEditItem?: (type: 'extract' | 'cloze', id: string) => void;
+  onViewItem?: (type: 'extract' | 'cloze', id: string) => void;
 }
 
 export const LibraryView: React.FC<LibraryViewProps> = ({
@@ -47,6 +50,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   onDeleteExtract,
   onDeleteCloze,
   onEditItem,
+  onViewItem,
   onStartReviewWithFolder,
   onOpenImport,
   onExportBackup,
@@ -210,6 +214,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           onDeleteDocument={onDeleteDocument}
           onDeleteExtract={onDeleteExtract}
           onDeleteCloze={onDeleteCloze}
+          onEditItem={onEditItem}
+          onViewItem={onViewItem}
           onStartReviewWithFolder={onStartReviewWithFolder}
           onOpenEditModal={(doc) => setDocumentToEdit(doc)}
           onOpenImport={onOpenImport}
@@ -464,9 +470,14 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                         Document source : {ext.documentTitle}
                       </div>
 
-                      <p className="text-xs sm:text-sm text-[var(--fg-28231d)] italic leading-relaxed line-clamp-4 font-serif-reading">
-                        « {ext.text} »
-                      </p>
+                      <button
+                        type="button"
+                        onClick={() => onViewItem?.('extract', ext.id)}
+                        title="Lire l'extrait"
+                        className="block w-full text-left text-xs sm:text-sm text-[var(--fg-28231d)] italic leading-relaxed line-clamp-4 font-serif-reading rounded-md hover:bg-[var(--bg-faf7f2)] cursor-pointer"
+                      >
+                        « <span dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(ext.text)) }} /> »
+                      </button>
                     </div>
 
                     <div className="mt-6 pt-4 border-t border-[var(--bd-f3efe8)] flex items-center justify-between">
@@ -566,9 +577,13 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                         </div>
                       )}
 
-                      <p className="text-xs sm:text-sm text-[var(--fg-28231d)] leading-relaxed line-clamp-4 font-serif-reading font-medium">
-                        {clz.text}
-                      </p>
+                      <button
+                        type="button"
+                        onClick={() => onViewItem?.('cloze', clz.id)}
+                        title="Voir la carte"
+                        className="block w-full text-left text-xs sm:text-sm text-[var(--fg-28231d)] leading-relaxed line-clamp-4 font-serif-reading font-medium rounded-md hover:bg-[var(--bg-faf7f2)] cursor-pointer"
+                        dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(parseClozes(clz.text).map((p) => (p.type === 'cloze' ? `[${p.value}]` : p.value)).join(''))) }}
+                      />
 
                       {clz.note && (
                         <p className="text-[11px] text-[var(--fg-8c8072)] mt-2 italic">

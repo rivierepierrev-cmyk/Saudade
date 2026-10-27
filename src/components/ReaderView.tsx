@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { DocumentItem, ExtractItem } from '../types/gemma';
 import { renderMarkdown } from '../lib/markdown';
 import {
@@ -16,6 +16,9 @@ import { EditDocumentModal } from './EditDocumentModal';
 import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
 import { formatInterval, nextTopicInterval } from '../lib/fsrs';
 import { isDueToday } from '../lib/queue';
+import { findPassages, setHighlight, clearHighlight } from '../lib/highlight';
+import { renderTextWithMath } from '../lib/math';
+import { safeHtml } from '../lib/markdown';
 
 interface ReaderViewProps {
   currentDocument: DocumentItem;
@@ -34,6 +37,9 @@ interface ReaderViewProps {
   onRetireDocument: (docId: string) => void;
   /** The selection is a whole sentence: open the card editor with it. */
   onOpenClozeEditor: (documentId: string, sentence: string) => void;
+  onEditItem: (type: 'extract' | 'cloze', id: string) => void;
+  /** Passage to show when the reader opens (from the library): scrolled to and highlighted. */
+  focusPassage?: { text: string; extractId?: string; key: number } | null;
   onNextQueueItem: () => void;
   onPrevQueueItem: () => void;
   currentIndex: number;
@@ -53,6 +59,8 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   onFinishReading,
   onRetireDocument,
   onOpenClozeEditor,
+  onEditItem,
+  focusPassage,
   onNextQueueItem,
   onPrevQueueItem,
   currentIndex,
@@ -68,6 +76,11 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   const [blockSelection, setBlockSelection] = useState<BlockSelection | null>(null);
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
   const [confirmRetire, setConfirmRetire] = useState(false);
+  // Extract opened in the side panel: shown in full and highlighted in the text.
+  const [activeExtractId, setActiveExtractId] = useState<string | null>(null);
+  const [activePassage, setActivePassage] = useState<string | null>(null);
+  const [missingExtractIds, setMissingExtractIds] = useState<Set<string>>(new Set());
+  const scrollToActive = useRef(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -76,6 +89,8 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   const selectedText = blockSelection?.text.trim() ?? '';
 
   const documentExtracts = extracts.filter((e) => e.documentId === currentDocument.id);
+  // Parsed once per content change (the reader re-renders while scrolling).
+  const renderedHtml = useMemo(() => renderMarkdown(currentDocument.content), [currentDocument.content]);
 
   const clearSelection = () => {
     window.getSelection()?.removeAllRanges();
@@ -123,7 +138,68 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
     };
   }, [currentDocument.id, onUpdateProgress]);
 
-  useEffect(() => setConfirmRetire(false), [currentDocument.id]);
+  useEffect(() => {
+    setConfirmRetire(false);
+    setActiveExtractId(null);
+    setActivePassage(null);
+  }, [currentDocument.id]);
+
+  const openExtract = (ext: ExtractItem) => {
+    if (activeExtractId === ext.id) {
+      setActiveExtractId(null);
+      setActivePassage(null);
+      return;
+    }
+    setActiveExtractId(ext.id);
+    setActivePassage(ext.text);
+    scrollToActive.current = true;
+  };
+
+  // Coming from the library ("Voir dans le document"): open the panel on the passage.
+  useEffect(() => {
+    if (!focusPassage) return;
+    setShowExtractsPanel(true);
+    setActiveExtractId(focusPassage.extractId ?? null);
+    setActivePassage(focusPassage.text);
+    scrollToActive.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusPassage?.key]);
+
+  // Highlights: every extracted passage lightly, the open one strongly.
+  const extractsKey = documentExtracts.map((e) => `${e.id}:${e.text}`).join('\u0001');
+  useEffect(() => {
+    const article = articleRef.current;
+    if (!article) return;
+    const passages = documentExtracts.map((e) => e.text);
+    const ranges = findPassages(article, activePassage ? [...passages, activePassage] : passages);
+    setHighlight('gemma-extracts', ranges.slice(0, passages.length).filter((r): r is Range => r !== null));
+    setMissingExtractIds(new Set(documentExtracts.filter((_, i) => !ranges[i]).map((e) => e.id)));
+    const active = activePassage ? ranges[ranges.length - 1] : null;
+    setHighlight('gemma-extract-active', active ? [active] : []);
+    // Formulas aren't fully painted by text highlights: mark the whole formula.
+    article.querySelectorAll('.katex.extract-active-formula').forEach((el) => el.classList.remove('extract-active-formula'));
+    if (active) {
+      article.querySelectorAll('.katex').forEach((el) => {
+        if (active.intersectsNode(el)) el.classList.add('extract-active-formula');
+      });
+    }
+    if (activeExtractId) {
+      document.querySelector(`[data-extract-card="${activeExtractId}"]`)?.scrollIntoView({ block: 'nearest' });
+    }
+    if (active && scrollToActive.current) {
+      scrollToActive.current = false;
+      const rect = active.getBoundingClientRect();
+      window.scrollTo({ top: window.scrollY + rect.top - window.innerHeight / 3, behavior: 'smooth' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renderedHtml, extractsKey, activePassage]);
+  useEffect(
+    () => () => {
+      clearHighlight('gemma-extracts');
+      clearHighlight('gemma-extract-active');
+    },
+    []
+  );
 
   const showToast = (message: string, error = false) => {
     window.clearTimeout(notificationTimer.current);
@@ -194,7 +270,6 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   const isDue = isDueToday(currentDocument.fsrs);
   const daysUntilNext = (new Date(currentDocument.fsrs.nextReviewDate).getTime() - Date.now()) / 86400000;
 
-  const renderedHtml = renderMarkdown(currentDocument.content);
 
   const widthClass =
     columnWidth === 'narrow'
@@ -472,7 +547,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
         </div>
         {/* Panneau latéral d'extraits */}
         {showExtractsPanel && (
-          <aside className="hidden lg:block w-80 shrink-0 sticky top-36 h-[calc(100vh-10rem)] overflow-y-auto p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs">
+          <aside className="hidden lg:block w-80 shrink-0 sticky top-36 self-start max-h-[calc(100vh-10rem)] overflow-y-auto p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs">
             <div className="flex items-center justify-between mb-3 pb-2 border-b border-[var(--bd-e8e2d5)]">
               <div className="flex items-center gap-2">
                 <Scissors className="w-4 h-4 text-[var(--fg-8c5e32)]" />
@@ -487,24 +562,58 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
 
             {documentExtracts.length === 0 ? (
               <p className="text-xs text-[var(--fg-8c8072)] italic py-4 text-center">
-                Sélectionnez du texte dans le lecteur et cliquez sur "Extraire" pour récolter des connaissances atomiques.
+                Sélectionnez du texte dans le lecteur et cliquez sur « Extraire ». Cliquez ensuite sur un extrait pour le relire et le retrouver dans le texte.
               </p>
             ) : (
               <div className="space-y-3">
-                {documentExtracts.map((ext, idx) => (
-                  <div
-                    key={ext.id}
-                    className="p-3 bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-xl text-xs"
-                  >
-                    <div className="flex items-center justify-between text-[10px] text-[var(--fg-8c8072)] mb-1">
-                      <span>Passage #{idx + 1}</span>
-                      <span className="font-mono tabular-nums">Prio : {ext.priority}%</span>
+                {documentExtracts.map((ext, idx) => {
+                  const open = activeExtractId === ext.id;
+                  return (
+                    <div
+                      key={ext.id}
+                      data-extract-card={ext.id}
+                      className={`text-xs rounded-xl border transition-colors ${
+                        open
+                          ? 'bg-[var(--bg-ffffff)] border-[var(--bd-8c5e32)]'
+                          : 'bg-[var(--bg-faf7f2)] border-[var(--bd-e8e2d5)] hover:border-[var(--bd-ddd6c8)]'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => openExtract(ext)}
+                        aria-expanded={open}
+                        className="block w-full text-left p-3 cursor-pointer"
+                        title={open ? 'Refermer' : 'Lire cet extrait et le situer dans le texte'}
+                      >
+                        <span className="flex items-center justify-between text-[10px] text-[var(--fg-8c8072)] mb-1">
+                          <span>
+                            {ext.parentExtractId ? 'Sous-extrait' : 'Passage'} #{idx + 1}
+                          </span>
+                          <span className="font-mono tabular-nums">Prio : {ext.priority}%</span>
+                        </span>
+                        <span
+                          className={`block text-[var(--fg-28231d)] ${open ? 'text-sm font-serif-reading leading-relaxed' : 'italic line-clamp-3'}`}
+                          dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(ext.text)) }}
+                        />
+                      </button>
+                      {open && (
+                        <div className="flex items-center justify-between gap-2 px-3 pb-3">
+                          <span className="text-[10px] text-[var(--fg-8c8072)]">
+                            {missingExtractIds.has(ext.id) ? 'Passage introuvable dans le texte actuel' : 'Surligné dans le texte'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => onEditItem('extract', ext.id)}
+                            className="flex items-center gap-1 px-2 py-1 rounded-md text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)] cursor-pointer"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                            Modifier
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <p className="text-[var(--fg-28231d)] italic line-clamp-3">
-                      « {ext.text} »
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </aside>
