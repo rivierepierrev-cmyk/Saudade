@@ -27,7 +27,8 @@ En mode navigateur (`npm run dev`), les données restent dans le localStorage du
 ## Modifier un extrait ou une carte
 - Bouton « Modifier » dans la file, la révision (touche E) et la bibliothèque.
 - Modifier un extrait modifie aussi le passage dans le document d'origine (et dans l'extrait parent) ; seule la partie changée est remplacée, la mise en forme autour est conservée. Si le passage n'est plus retrouvé tel quel, seul l'extrait change (un message le signale). Annulable (Ctrl+Z).
-- Carte à trou sur une phrase entière : l'éditeur s'ouvre pour choisir le mot à masquer (« Masquer la sélection », Alt+C). Syntaxe : `{{c1::réponse}}` ou `{{c1::réponse::indice}}`.
+- Carte à trou sur une phrase entière : l'éditeur s'ouvre pour choisir le mot à masquer. Syntaxe : `{{c1::réponse}}` ou `{{c1::réponse::indice}}`.
+- **Une carte par numéro de trou** (comme Anki) : `{{c1::Paris}} est une ville de {{c2::France}}` donne 2 cartes d'un trou chacune ; `{{c1::Paris}} est une ville et {{c1::la capitale}} de {{c2::France}}` donne une carte à 2 trous (c1) et une à 1 trou (c2). Dans l'éditeur : « Masquer · nouvelle carte » (Alt+C) ou « Masquer · même carte » (Alt+Maj+C). Les cartes d'une même note partagent le texte ; chacune a sa propre planification, et elles ne passent pas le même jour. Les anciennes cartes à plusieurs numéros sont découpées automatiquement (la première garde son historique).
 
 ## Consulter les extraits et les cartes
 - Bibliothèque (arborescence ou fiches) : cliquer sur un extrait ou une carte l'ouvre en entier (formules, réponse avec Espace, prochaine révision, cartes tirées de l'extrait), avec « Modifier » et « Voir dans le document ».

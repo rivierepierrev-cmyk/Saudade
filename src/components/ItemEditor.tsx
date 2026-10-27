@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X, EyeOff, Eye, Undo2 } from 'lucide-react';
-import { parseClozes, renderClozeCard, renderTextWithMath } from '../lib/math';
+import { parseClozes, renderClozeCard, renderTextWithMath, clozeNumbers } from '../lib/math';
 import { safeHtml } from '../lib/markdown';
 
 export interface ItemEditorProps {
@@ -11,6 +11,8 @@ export interface ItemEditorProps {
   /** Explanation shown above the text (what saving will change). */
   info?: string;
   initialText: string;
+  /** Cards: the card being edited, previewed first (its deletion number). */
+  initialNumber?: number;
   saveLabel?: string;
   onSave: (text: string) => void;
   onClose: () => void;
@@ -23,6 +25,7 @@ export const ItemEditor: React.FC<ItemEditorProps> = ({
   context,
   info,
   initialText,
+  initialNumber,
   saveLabel = 'Enregistrer',
   onSave,
   onClose,
@@ -30,6 +33,7 @@ export const ItemEditor: React.FC<ItemEditorProps> = ({
   const [text, setText] = useState(initialText);
   const [error, setError] = useState<string | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
+  const [previewNumber, setPreviewNumber] = useState<number | undefined>(initialNumber);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -49,7 +53,14 @@ export const ItemEditor: React.FC<ItemEditorProps> = ({
 
   const hasCloze = parseClozes(text).some((p) => p.type === 'cloze' && p.value.trim());
 
-  const hideSelection = () => {
+  // One card per deletion number: c1, c2… "Nouvelle carte" uses the next number,
+  // "même carte" the highest one already used (both hidden on the same card).
+  const numbers = clozeNumbers(text);
+  const nextNumber = numbers.length ? Math.max(...numbers) + 1 : 1;
+  const sameNumber = numbers.length ? Math.max(...numbers) : 1;
+  const shownNumber = previewNumber !== undefined && numbers.includes(previewNumber) ? previewNumber : numbers[0];
+
+  const hideSelection = (number: number) => {
     const el = textareaRef.current;
     if (!el) return;
     const { selectionStart: start, selectionEnd: end } = el;
@@ -61,12 +72,14 @@ export const ItemEditor: React.FC<ItemEditorProps> = ({
     const lead = selected.match(/^\s*/)![0];
     const trail = selected.match(/\s*$/)![0];
     const core = selected.trim();
-    const next = `${text.slice(0, start)}${lead}{{c1::${core}}}${trail}${text.slice(end)}`;
+    const opening = `{{c${number}::`;
+    const next = `${text.slice(0, start)}${lead}${opening}${core}}}${trail}${text.slice(end)}`;
     setText(next);
+    setPreviewNumber(number);
     setError(null);
     requestAnimationFrame(() => {
       el.focus();
-      const caret = start + lead.length + core.length + 8;
+      const caret = start + lead.length + opening.length + core.length + 2;
       el.setSelectionRange(caret, caret);
     });
   };
@@ -102,12 +115,12 @@ export const ItemEditor: React.FC<ItemEditorProps> = ({
       save();
     } else if (mode === 'cloze' && e.altKey && e.key.toLowerCase() === 'c') {
       e.preventDefault();
-      hideSelection();
+      hideSelection(e.shiftKey ? sameNumber : nextNumber);
     }
   };
 
   const previewHtml =
-    mode === 'cloze' ? renderClozeCard(text, showAnswer) : renderTextWithMath(text);
+    mode === 'cloze' ? renderClozeCard(text, showAnswer, shownNumber) : renderTextWithMath(text);
 
   return (
     <div
@@ -141,13 +154,25 @@ export const ItemEditor: React.FC<ItemEditorProps> = ({
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()} // keep the textarea selection
-                onClick={hideSelection}
+                onClick={() => hideSelection(nextNumber)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[var(--fg-faf7f2)] bg-[var(--bg-3b3026)] hover:bg-[var(--bg-28211a)] rounded-lg cursor-pointer"
-                title="Masquer le texte sélectionné (Alt+C)"
+                title={`Masquer la sélection sur une nouvelle carte, c${nextNumber} (Alt+C)`}
               >
                 <EyeOff className="w-3.5 h-3.5" />
-                Masquer la sélection
+                {numbers.length ? `Masquer · nouvelle carte (c${nextNumber})` : 'Masquer la sélection'}
               </button>
+              {numbers.length > 0 && (
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => hideSelection(sameNumber)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[var(--fg-3b3026)] bg-[var(--bg-f3efe8)] hover:bg-[var(--bg-eae4d9)] border border-[var(--bd-e8e2d5)] rounded-lg cursor-pointer"
+                  title={`Masquer aussi la sélection sur la carte c${sameNumber} (Alt+Maj+C)`}
+                >
+                  <EyeOff className="w-3.5 h-3.5" />
+                  Masquer · même carte (c{sameNumber})
+                </button>
+              )}
               <button
                 type="button"
                 onClick={removeHoles}
@@ -158,7 +183,8 @@ export const ItemEditor: React.FC<ItemEditorProps> = ({
                 Retirer les trous
               </button>
               <span className="text-[11px] text-[var(--fg-8c8072)]">
-                Syntaxe : <code className="font-mono">{'{{c1::réponse}}'}</code> ou{' '}
+                Une carte par numéro : <code className="font-mono">{'{{c1::…}}'}</code>,{' '}
+                <code className="font-mono">{'{{c2::…}}'}</code>… · indice :{' '}
                 <code className="font-mono">{'{{c1::réponse::indice}}'}</code>
               </span>
             </div>
@@ -178,7 +204,30 @@ export const ItemEditor: React.FC<ItemEditorProps> = ({
 
           <div className="border border-[var(--bd-e8e2d5)] rounded-xl">
             <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--bd-f3efe8)] text-[11px] font-semibold uppercase tracking-wider text-[var(--fg-695f54)]">
-              <span>Aperçu{mode === 'cloze' ? (showAnswer ? ' · réponse' : ' · question') : ''}</span>
+              <span className="flex items-center gap-2">
+                Aperçu{mode === 'cloze' ? (showAnswer ? ' · réponse' : ' · question') : ''}
+                {mode === 'cloze' && numbers.length > 1 && (
+                  <span className="flex items-center gap-1 normal-case tracking-normal font-medium" role="tablist" aria-label="Cartes de la note">
+                    · {numbers.length} cartes :
+                    {numbers.map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        role="tab"
+                        aria-selected={n === shownNumber}
+                        onClick={() => setPreviewNumber(n)}
+                        className={`px-1.5 py-0.5 rounded font-mono cursor-pointer ${
+                          n === shownNumber
+                            ? 'bg-[var(--bg-3b3026)] text-[var(--fg-faf7f2)]'
+                            : 'text-[var(--fg-695f54)] hover:bg-[var(--bg-f3efe8)]'
+                        }`}
+                      >
+                        c{n}
+                      </button>
+                    ))}
+                  </span>
+                )}
+              </span>
               {mode === 'cloze' && (
                 <button
                   type="button"

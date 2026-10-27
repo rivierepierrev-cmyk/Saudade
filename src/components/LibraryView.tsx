@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { DocumentItem, ExtractItem, ClozeItem } from '../types/saudade';
 import { matchesQuery } from '../lib/search';
-import { parseClozes, renderTextWithMath } from '../lib/math';
+import { clozeAnswerPreview, renderTextWithMath } from '../lib/math';
 import { safeHtml } from '../lib/markdown';
 import {
   Search,
@@ -582,7 +582,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                         onClick={() => onViewItem?.('cloze', clz.id)}
                         title="Voir la carte"
                         className="block w-full text-left text-xs sm:text-sm text-[var(--fg-28231d)] leading-relaxed line-clamp-4 font-serif-reading font-medium rounded-md hover:bg-[var(--bg-faf7f2)] cursor-pointer"
-                        dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(parseClozes(clz.text).map((p) => (p.type === 'cloze' ? `[${p.value}]` : p.value)).join(''))) }}
+                        dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(clozeAnswerPreview(clz.text, clz.clozeNumber))) }}
                       />
 
                       {clz.note && (

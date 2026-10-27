@@ -15,6 +15,10 @@ interface ItemViewerProps {
   parentExtract?: ExtractItem;
   /** Cards created from this extract. */
   childCards: ClozeItem[];
+  /** In today's queue (see lib/queue.ts). */
+  inTodayQueue: boolean;
+  /** Cards: every card of the same note (one per deletion number), this one included. */
+  noteCards?: ClozeItem[];
   /** Extracts taken from this extract (highlighted in its text). */
   childExtracts: ExtractItem[];
   showExtractHighlights: boolean;
@@ -27,10 +31,14 @@ interface ItemViewerProps {
   onClose: () => void;
 }
 
-function whenLabel(fsrs: FSRSRecord, dismissed: boolean): string {
+function whenLabel(fsrs: FSRSRecord, dismissed: boolean, inTodayQueue: boolean): string {
   if (dismissed) return 'Terminé (hors de la file)';
   const date = new Date(fsrs.nextReviewDate);
-  if (isDueToday(fsrs)) return "Aujourd'hui (dans la file du jour)";
+  if (isDueToday(fsrs)) {
+    return inTodayQueue
+      ? "Aujourd'hui (dans la file du jour)"
+      : "Due, mais pas dans la file d'aujourd'hui (une autre carte de la même note passe aujourd'hui, ou la limite quotidienne est atteinte)";
+  }
   const days = (date.getTime() - Date.now()) / 86400000;
   return `${date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} (dans ${formatInterval(days)})`;
 }
@@ -43,6 +51,8 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
   childCards,
   childExtracts,
   showExtractHighlights,
+  noteCards,
+  inTodayQueue,
   onEdit,
   onOpenInDocument,
   onView,
@@ -96,10 +106,11 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
     }
   };
 
-  const html = isCloze ? renderClozeCard(item.text, revealed) : renderTextWithMath(item.text);
+  const cardNumber = isCloze ? (item as ClozeItem).clozeNumber : undefined;
+  const html = isCloze ? renderClozeCard(item.text, revealed, cardNumber) : renderTextWithMath(item.text);
   const fsrs = item.fsrs;
   const meta: Array<[string, string]> = [
-    [isCloze ? 'Prochaine révision' : 'Prochaine lecture', whenLabel(fsrs, item.state === 'dismissed')],
+    [isCloze ? 'Prochaine révision' : 'Prochaine lecture', whenLabel(fsrs, item.state === 'dismissed', inTodayQueue)],
     ['Priorité', `${item.priority} %`],
     isCloze
       ? ['Révisions', `${fsrs.reps}${fsrs.lapses ? ` · ${fsrs.lapses} oubli${fsrs.lapses > 1 ? 's' : ''}` : ''}${fsrs.reps ? ` · stabilité ${formatInterval(fsrs.stability)}` : ''}`]
@@ -126,7 +137,11 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-semibold text-[var(--fg-8c5e32)]">
               {isCloze ? <Sparkles className="w-3.5 h-3.5" /> : <Scissors className="w-3.5 h-3.5" />}
-              {isCloze ? 'Carte à trou' : parentExtract ? 'Sous-extrait' : 'Extrait'}
+              {isCloze
+                ? `Carte à trou${noteCards && noteCards.length > 1 ? ` c${cardNumber} · note de ${noteCards.length} cartes` : ''}`
+                : parentExtract
+                ? 'Sous-extrait'
+                : 'Extrait'}
             </div>
             <p className="mt-0.5 text-sm font-medium text-[var(--fg-28231d)] truncate">
               {doc?.title ?? item.documentTitle ?? 'Sans document'}
@@ -188,6 +203,33 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
             )}
           </dl>
 
+          {isCloze && noteCards && noteCards.length > 1 && (
+            <div>
+              <h3 className="text-xs font-semibold text-[var(--fg-28231d)] mb-1.5">
+                Les {noteCards.length} cartes de cette note (une par numéro de trou)
+              </h3>
+              <ul className="space-y-1">
+                {noteCards.map((card) => (
+                  <li key={card.id}>
+                    <button
+                      type="button"
+                      onClick={() => onView('cloze', card.id)}
+                      aria-current={card.id === item.id}
+                      className={`w-full text-left px-3 py-1.5 text-xs rounded-lg border cursor-pointer ${
+                        card.id === item.id
+                          ? 'border-[var(--bd-8c5e32)] text-[var(--fg-28231d)]'
+                          : 'border-[var(--bd-e8e2d5)] text-[var(--fg-4a3e31)] hover:bg-[var(--bg-f3efe8)]'
+                      }`}
+                    >
+                      <span className="font-mono mr-2">c{card.clozeNumber}</span>
+                      <span dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(clozePreviewText(card.text, card.clozeNumber))) }} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {!isCloze && childExtracts.length > 0 && (
             <div>
               <h3 className="text-xs font-semibold text-[var(--fg-28231d)] mb-1.5">
@@ -220,7 +262,7 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
                       type="button"
                       onClick={() => onView('cloze', card.id)}
                       className="w-full text-left px-3 py-1.5 text-xs rounded-lg border border-[var(--bd-e8e2d5)] text-[var(--fg-4a3e31)] hover:bg-[var(--bg-f3efe8)] cursor-pointer"
-                      dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(clozePreviewText(card.text))) }}
+                      dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(clozePreviewText(card.text, card.clozeNumber))) }}
                     />
                   </li>
                 ))}

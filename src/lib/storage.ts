@@ -2,6 +2,7 @@ import { DocumentItem, ExtractItem, ClozeItem, ReviewLog, SaudadeStats } from '.
 import { SAMPLE_DOCUMENTS, SAMPLE_EXTRACTS, SAMPLE_CLOZES } from './sampleData';
 import { CollectionName, getRaw, setRaw, reportStorageError } from './kv';
 import type { ThemePreference } from './theme';
+import { splitClozeNotes } from './clozeNotes';
 
 export interface AppSettings {
   readingFont: 'sans' | 'serif' | 'mono';
@@ -106,7 +107,10 @@ export class SaudadeStorage {
   }
 
   static getClozes(): ClozeItem[] {
-    const clzs = load<ClozeItem[]>('clozes', isArray, () => SAMPLE_CLOZES, []);
+    const stored = load<ClozeItem[]>('clozes', isArray, () => SAMPLE_CLOZES, []);
+    // Older cards with several deletion numbers become one card per number.
+    const clzs = splitClozeNotes(stored);
+    if (clzs !== stored) save('clozes', clzs);
     return clzs.map((clz) => ({ ...clz, folder: clz.folder || 'Général' }));
   }
 

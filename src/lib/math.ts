@@ -108,6 +108,8 @@ export interface ClozePart {
   type: 'text' | 'cloze';
   value: string; // the text, or the hidden answer
   hint?: string;
+  /** Deletion number (the N of cN): deletions with the same number form one card. */
+  number?: number;
 }
 
 /**
@@ -116,7 +118,7 @@ export interface ClozePart {
  */
 export function parseClozes(text: string): ClozePart[] {
   const parts: ClozePart[] = [];
-  const open = /\{\{c\d+::/g;
+  const open = /\{\{c(\d+)::/g;
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = open.exec(text)) !== null) {
@@ -142,7 +144,12 @@ export function parseClozes(text: string): ClozePart[] {
     if (m.index > last) parts.push({ type: 'text', value: text.slice(last, m.index) });
     const body = text.slice(m.index + m[0].length, end);
     const sep = body.lastIndexOf('::');
-    parts.push(sep > 0 ? { type: 'cloze', value: body.slice(0, sep), hint: body.slice(sep + 2) } : { type: 'cloze', value: body });
+    const number = Number(m[1]);
+    parts.push(
+      sep > 0
+        ? { type: 'cloze', value: body.slice(0, sep), hint: body.slice(sep + 2), number }
+        : { type: 'cloze', value: body, number }
+    );
     last = end + 2;
     open.lastIndex = last;
   }
@@ -153,11 +160,22 @@ export function parseClozes(text: string): ClozePart[] {
 const PLACEHOLDER = (n: number) => `\u0000${n}\u0000`;
 const PLACEHOLDER_RE = /\u0000(\d+)\u0000/g;
 
+/** Card numbers of a note: {{c1::…}} {{c1::…}} {{c2::…}} → [1, 2]. One card per number. */
+export function clozeNumbers(text: string): number[] {
+  const numbers = new Set<number>();
+  for (const p of parseClozes(text)) if (p.type === 'cloze' && p.number !== undefined) numbers.add(p.number);
+  return [...numbers].sort((a, b) => a - b);
+}
+
+/** Does deletion `p` belong to the card being shown? (no number = every deletion, older cards) */
+const isActive = (p: ClozePart, activeNumber?: number) => activeNumber === undefined || p.number === activeNumber;
+
 /**
- * Card text → HTML. Hidden answers show [...] (or their hint); revealed answers are
- * highlighted. Works for deletions around or inside formulas.
+ * Card text → HTML. On card N, deletions numbered N are hidden ([…] or their hint)
+ * or, once revealed, highlighted; the other deletions are shown as plain text.
+ * Works for deletions around or inside formulas.
  */
-export function renderClozeCard(text: string, revealed: boolean): string {
+export function renderClozeCard(text: string, revealed: boolean, activeNumber?: number): string {
   const parts = parseClozes(text);
   const clozes: ClozePart[] = [];
   const skeleton = parts
@@ -173,6 +191,7 @@ export function renderClozeCard(text: string, revealed: boolean): string {
       if (segment.type === 'math') {
         const tex = segment.tex.replace(PLACEHOLDER_RE, (_, n) => {
           const c = clozes[Number(n)];
+          if (!isActive(c, activeNumber)) return c.value;
           return revealed ? `\\htmlClass{cloze-answer}{${c.value}}` : '\\boxed{\\;?\\;}';
         });
         return renderTex(tex, segment.display);
@@ -181,6 +200,7 @@ export function renderClozeCard(text: string, revealed: boolean): string {
         .replace(/\n/g, '<br>')
         .replace(PLACEHOLDER_RE, (_, n) => {
           const c = clozes[Number(n)];
+          if (!isActive(c, activeNumber)) return renderTextWithMath(c.value);
           return revealed
             ? `<span class="cloze-answer">${renderTextWithMath(c.value)}</span>`
             : `<span class="cloze-blank">${c.hint ? escapeHtml(c.hint) : '[…]'}</span>`;
@@ -189,9 +209,16 @@ export function renderClozeCard(text: string, revealed: boolean): string {
     .join('');
 }
 
-/** Card or extract text for previews (queue, library): answers hidden, TeX kept short. */
-export function clozePreviewText(text: string): string {
+/** Card text for previews with the card's answers hidden: "Paris est une ville de […]". */
+export function clozePreviewText(text: string, activeNumber?: number): string {
   return parseClozes(text)
-    .map((p) => (p.type === 'text' ? p.value : '[…]'))
+    .map((p) => (p.type === 'text' || !isActive(p, activeNumber) ? p.value : '[…]'))
+    .join('');
+}
+
+/** Card text for lists, the card's answers in brackets: "Paris est une ville de [France]". */
+export function clozeAnswerPreview(text: string, activeNumber?: number): string {
+  return parseClozes(text)
+    .map((p) => (p.type === 'text' || !isActive(p, activeNumber) ? p.value : `[${p.value}]`))
     .join('');
 }

@@ -66,6 +66,10 @@ export interface ClozeItem {
   extractId?: string;
   documentTitle?: string;
   folder?: string; // Hérité du document ou dossier propre
+  /** Deletion number shown by this card (the N of {{cN::…}}). Missing on cards from older versions. */
+  clozeNumber?: number;
+  /** Cards made from the same text (one per deletion number) share this id. */
+  noteId?: string;
   text: string; // e.g. "The {{c1::hippocampus}} is essential for memory consolidation."
   note?: string;
   tags: string[];

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { DocumentItem, ExtractItem, ClozeItem, ItemType } from '../types/saudade';
 import { formatInterval } from '../lib/fsrs';
 import { matchesQuery } from '../lib/search';
-import { parseClozes, renderTextWithMath } from '../lib/math';
+import { clozeAnswerPreview, renderTextWithMath } from '../lib/math';
 import { safeHtml } from '../lib/markdown';
 import type { QueueEntry } from '../lib/queue';
 import { projectMarkdown } from '../lib/sourceSync';
@@ -123,9 +123,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
         id: clz.id,
         type: 'cloze',
         title: clz.documentTitle || 'Carte de rappel actif Cloze',
-        preview: parseClozes(clz.text)
-          .map((p) => (p.type === 'cloze' ? `[${p.value}]` : p.value))
-          .join(''),
+        preview: clozeAnswerPreview(clz.text, clz.clozeNumber),
         sourceDocTitle: clz.documentTitle,
         folder: clz.folder || parentDoc?.folder || 'Général',
         priority: clz.priority,

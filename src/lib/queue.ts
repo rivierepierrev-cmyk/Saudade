@@ -3,6 +3,7 @@
  * session, the badge in the top bar and the reader's "next document".
  */
 import { DocumentItem, ExtractItem, ClozeItem, FSRSRecord } from '../types/saudade';
+import { noteKeyOf } from './clozeNotes';
 
 export type QueueEntry =
   | { type: 'document'; item: DocumentItem }
@@ -41,12 +42,17 @@ export function buildTodayQueue({ documents, extracts, clozes, dailyLimit, revie
     b.priority - a.priority || new Date(a.fsrs.nextReviewDate).getTime() - new Date(b.fsrs.nextReviewDate).getTime();
 
   let budget = Math.max(0, dailyLimit - reviewedTodayIds.size);
+  // Like Anki: two cards of the same note are not shown the same day (the second
+  // would be answered from what the first just showed). They stay due.
+  const busyNotes = new Set(clozes.filter((c) => reviewedTodayIds.has(c.id)).map(noteKeyOf));
   const cards = due(clozes)
     .sort(order)
     .filter((c) => {
       if (reviewedTodayIds.has(c.id)) return true;
+      if (busyNotes.has(noteKeyOf(c))) return false;
       if (budget <= 0) return false;
       budget--;
+      busyNotes.add(noteKeyOf(c));
       return true;
     });
 

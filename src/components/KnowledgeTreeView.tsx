@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { DocumentItem, ExtractItem, ClozeItem } from '../types/saudade';
 import { SaudadeStorage } from '../lib/storage';
-import { parseClozes, renderTextWithMath } from '../lib/math';
+import { clozeAnswerPreview, renderTextWithMath } from '../lib/math';
 import { safeHtml } from '../lib/markdown';
 import {
   Folder,
@@ -1276,7 +1276,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                                           onClick={() => onViewItem?.('cloze', clz.id)}
                                           title="Voir la carte"
                                           className="block w-full text-left text-[var(--fg-28231d)] leading-relaxed line-clamp-2 rounded hover:bg-[var(--bg-faf7f2)] cursor-pointer"
-                                          dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(parseClozes(clz.text).map((p) => (p.type === 'cloze' ? `[${p.value}]` : p.value)).join(''))) }}
+                                          dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(clozeAnswerPreview(clz.text, clz.clozeNumber))) }}
                                         />
                                         <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[var(--fg-8c8072)]">
                                           <span>Stabilité : {clz.fsrs?.stability?.toFixed(1) || 1}j</span>

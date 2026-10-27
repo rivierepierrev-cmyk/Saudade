@@ -20,6 +20,7 @@ import { buildTodayQueue, isDueToday, nextAfterToday } from './lib/queue';
 import { locatePassage, replacePassage } from './lib/sourceSync';
 import { ItemEditor } from './components/ItemEditor';
 import { ItemViewer } from './components/ItemViewer';
+import { cardsForNewNote, applyNoteText, noteKeyOf } from './lib/clozeNotes';
 import { parseClozes } from './lib/math';
 import { onStorageError, isDesktop, dataLocation, takeSnapshot, openDataFolder } from './lib/kv';
 import { createInitialFSRSRecord, applyCardReview, applyTopicReview, firstTopicInterval } from './lib/fsrs';
@@ -159,14 +160,15 @@ export default function App() {
   };
 
   // Handler: Create Cloze card. `clozeText` already contains the {{c1::...}} deletion.
-  const handleCreateCloze = (source: { documentId?: string; extractId?: string }, clozeText: string): string => {
+  // Creates the cards of a new note (one per deletion number). Returns their ids.
+  const handleCreateCloze = (source: { documentId?: string; extractId?: string }, clozeText: string): string[] => {
     const ext = source.extractId ? extractsRef.current.find((e) => e.id === source.extractId) : undefined;
     const docId = source.documentId ?? ext?.documentId;
     const doc = docId ? documentsRef.current.find((d) => d.id === docId) : undefined;
     const now = new Date().toISOString();
 
-    const newCloze: ClozeItem = {
-      id: newId('cloze'),
+    const newCards = cardsForNewNote(
+      {
       documentId: doc?.id ?? docId,
       extractId: ext?.id,
       documentTitle: ext?.documentTitle ?? doc?.title ?? 'Note',
@@ -178,9 +180,11 @@ export default function App() {
       updatedAt: now,
       state: 'new',
       fsrs: createInitialFSRSRecord(0), // available for review right away
-    };
-    updateClozes((prev) => [newCloze, ...prev]);
-    return newCloze.id;
+      },
+      () => newId('cloze')
+    );
+    updateClozes((prev) => [...newCards, ...prev]);
+    return newCards.map((c) => c.id);
   };
 
   // ---- Editing extracts and cards -------------------------------------------
@@ -261,12 +265,30 @@ export default function App() {
     });
   };
 
+  // Edits the note of a card: all its cards get the text; a new deletion number adds
+  // a card, a number that disappears removes its card. Can be undone.
   const handleUpdateClozeText = (id: string, newText: string) => {
     const card = clozesRef.current.find((c) => c.id === id);
     if (!card || card.text === newText) return;
-    const previous = { text: card.text, updatedAt: card.updatedAt };
-    updateClozes((prev) => prev.map((c) => (c.id === id ? { ...c, text: newText, updatedAt: new Date().toISOString() } : c)));
-    offerUndo('Carte modifiée', () => updateClozes((prev) => prev.map((c) => (c.id === id ? { ...c, ...previous } : c))));
+    const key = noteKeyOf(card);
+    const previousNote = new Map(
+      clozesRef.current.filter((c) => noteKeyOf(c) === key).map((c) => [c.id, { text: c.text, updatedAt: c.updatedAt }])
+    );
+    const result = applyNoteText(clozesRef.current, id, newText, () => newId('cloze'), new Date().toISOString());
+    updateClozes(result.cards);
+    const changes = [
+      result.created.length ? `${result.created.length} carte${result.created.length > 1 ? 's' : ''} ajoutée${result.created.length > 1 ? 's' : ''}` : '',
+      result.removed.length ? `${result.removed.length} supprimée${result.removed.length > 1 ? 's' : ''}` : '',
+    ].filter(Boolean);
+    const createdIds = new Set(result.created.map((c) => c.id));
+    offerUndo(changes.length ? `Note modifiée : ${changes.join(', ')}` : 'Carte modifiée', () =>
+      updateClozes((prev) =>
+        putBack(
+          prev.filter((c) => !createdIds.has(c.id)).map((c) => (previousNote.has(c.id) ? { ...c, ...previousNote.get(c.id)! } : c)),
+          result.removed
+        )
+      )
+    );
   };
 
   // ---- Resetting cards ---------------------------------------------------------
@@ -356,6 +378,12 @@ export default function App() {
         parentExtract={ext?.parentExtractId ? extracts.find((e) => e.id === ext.parentExtractId) : undefined}
         childCards={ext ? clozes.filter((c) => c.extractId === ext.id) : []}
         childExtracts={ext ? extracts.filter((e) => e.parentExtractId === ext.id) : []}
+        inTodayQueue={todayQueue.some((e) => e.item.id === item.id)}
+        noteCards={
+          viewRequest.type === 'cloze'
+            ? clozes.filter((c) => noteKeyOf(c) === noteKeyOf(item as ClozeItem))
+            : undefined
+        }
         showExtractHighlights={settings.showExtractHighlights}
         onEdit={() => {
           setViewRequest(null);
@@ -406,7 +434,14 @@ export default function App() {
           mode="cloze"
           title="Modifier la carte à trou"
           context={card.documentTitle}
+          info={(() => {
+            const siblings = clozes.filter((c) => noteKeyOf(c) === noteKeyOf(card));
+            return siblings.length > 1
+              ? `Cette note donne ${siblings.length} cartes (${siblings.map((c) => `c${c.clozeNumber}`).join(', ')}) : le texte leur est commun. Un nouveau numéro ajoute une carte, un numéro retiré supprime la sienne.`
+              : undefined;
+          })()}
           initialText={card.text}
+          initialNumber={card.clozeNumber}
           onSave={(text) => {
             handleUpdateClozeText(card.id, text);
             close();
@@ -422,17 +457,19 @@ export default function App() {
         context={editRequest.context}
         info={
           editRequest.info ??
-          "Sélectionnez le mot ou l'expression à masquer puis cliquez sur « Masquer la sélection ». Vous pouvez aussi raccourcir la phrase."
+          "Sélectionnez le mot ou l'expression à masquer, puis « Masquer ». Chaque numéro (c1, c2…) donne une carte : « nouvelle carte » pour une question à part, « même carte » pour masquer plusieurs mots ensemble. Vous pouvez aussi raccourcir la phrase."
         }
         initialText={editRequest.text}
         saveLabel="Créer la carte"
         onSave={(text) => {
-          const id = handleCreateCloze(editRequest.source, text);
+          const ids = new Set(handleCreateCloze(editRequest.source, text));
           close();
           if (editRequest.afterSave) {
             editRequest.afterSave();
           } else {
-            offerUndo('Carte à trou créée', () => updateClozes((prev) => prev.filter((c) => c.id !== id)));
+            offerUndo(ids.size > 1 ? `${ids.size} cartes à trou créées` : 'Carte à trou créée', () =>
+              updateClozes((prev) => prev.filter((c) => !ids.has(c.id)))
+            );
           }
         }}
         onClose={close}

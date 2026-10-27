@@ -5,7 +5,7 @@
 const { spawnSync } = require('child_process');
 const path = require('path');
 
-const SUITES = ['storage', 'reading', 'imports', 'polish', 'math', 'workflow', 'browse', 'finish', 'cleanup', 'contrast'];
+const SUITES = ['storage', 'reading', 'imports', 'polish', 'math', 'workflow', 'browse', 'finish', 'cleanup', 'notes', 'contrast'];
 const TIME_LIMIT_MS = 8 * 60 * 1000;
 const inCi = process.env.GITHUB_ACTIONS === 'true';
 const only = process.argv.slice(2);

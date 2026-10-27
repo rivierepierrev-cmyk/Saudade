@@ -18,7 +18,7 @@
     "dist:deb": "npm run build && npm run build:server && electron-builder --publish never --linux deb",
     "dist:appimage": "npm run build && npm run build:server && electron-builder --publish never --linux AppImage",
     "lint": "tsc --noEmit",
-    "test": "node tests/store.test.cjs && tsx tests/cloze.test.ts && tsx tests/search.test.ts && tsx tests/math.test.ts && tsx tests/sync.test.ts",
+    "test": "node tests/store.test.cjs && tsx tests/cloze.test.ts && tsx tests/search.test.ts && tsx tests/math.test.ts && tsx tests/sync.test.ts && tsx tests/notes.test.ts",
     "dist:win": "npm run build && npm run build:server && electron-builder --publish never --win nsis portable",
     "test:e2e": "npm run build && npm run build:server && node tests/e2e/run.cjs"
   },

@@ -3,6 +3,7 @@ import { ClozeItem, ExtractItem, ReviewRating, FSRSRecord } from '../types/sauda
 import { predictAllRatings, nextTopicInterval, formatInterval } from '../lib/fsrs';
 import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
 import { buildTodayQueue, isDueToday } from '../lib/queue';
+import { noteKeyOf } from '../lib/clozeNotes';
 import { findPassages, setHighlight, clearHighlight } from '../lib/highlight';
 import { renderClozeCard, renderTextWithMath } from '../lib/math';
 import { safeHtml } from '../lib/markdown';
@@ -600,6 +601,8 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   }
 
   const isCloze = currentEntry.type === 'cloze';
+  const currentCard = isCloze ? clozes.find((c) => c.id === currentEntry.id) : undefined;
+  const noteSize = currentCard ? clozes.filter((c) => noteKeyOf(c) === noteKeyOf(currentCard)).length : 0;
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
@@ -684,7 +687,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           <div className="flex items-center justify-between text-xs text-[var(--fg-8c8072)] mb-3">
             <div className="flex items-center gap-2">
               <span className="text-[11px] uppercase tracking-wider font-semibold text-[var(--fg-695f54)]">
-                {isCloze ? 'Carte à trou' : 'Extrait à relire'}
+                {isCloze ? `Carte à trou${noteSize > 1 ? ` · c${currentCard?.clozeNumber} (note de ${noteSize} cartes)` : ''}` : 'Extrait à relire'}
               </span>
               <span aria-hidden="true">·</span>
               {onNavigateToDocument && currentEntry.documentId ? (
@@ -725,7 +728,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           {isCloze ? (
             <div className="text-xl sm:text-2xl font-serif-reading text-[var(--fg-28231d)] leading-relaxed font-normal">
               <span
-                dangerouslySetInnerHTML={{ __html: safeHtml(renderClozeCard(currentEntry.text, isAnswerRevealed)) }}
+                dangerouslySetInnerHTML={{
+                  __html: safeHtml(renderClozeCard(currentEntry.text, isAnswerRevealed, currentCard?.clozeNumber)),
+                }}
               />
             </div>
           ) : (
