@@ -10,6 +10,28 @@ const site = http.createServer((req, res) => {
 (async () => {
   const app = await _electron.launch({ executablePath: require('electron'), args: [APP, '--no-sandbox'], env: { ...process.env, XDG_CONFIG_HOME: cfg } });
   const page = await app.firstWindow(); const errors = [];
+  // Diagnostics (CI): timestamped steps, Electron main-process output (local server),
+  // page console, and the page state if a step never ends.
+  const T0 = Date.now();
+  const step = (label) => console.log(`[${((Date.now() - T0) / 1000).toFixed(1)} s] ${label}`);
+  const relay = (prefix) => (chunk) => String(chunk).split('\n').filter((l) => l.trim() && !/ERROR:.*(dbus|bus\.cc|gpu|viz)/.test(l)).forEach((l) => console.log(`${prefix} ${l}`));
+  app.process().stdout?.on('data', relay('[electron]'));
+  app.process().stderr?.on('data', relay('[electron:err]'));
+  page.on('console', (m) => console.log(`[page ${m.type()}] ${m.text()}`));
+  page.on('crash', () => console.log('[page] CRASHED'));
+  setTimeout(async () => {
+    step('WATCHDOG: no progress, page state:');
+    const state = await Promise.race([
+      page.evaluate(() => ({
+        h1: document.querySelector('h1')?.textContent,
+        overlay: document.querySelector('.fixed.inset-0')?.innerText?.slice(0, 600),
+        alerts: [...document.querySelectorAll('[role=alert]')].map((a) => a.innerText),
+      })),
+      new Promise((r) => setTimeout(() => r('evaluate timed out: renderer blocked'), 5000)),
+    ]);
+    console.log('STATE', JSON.stringify(state));
+    process.exit(1);
+  }, 5 * 60 * 1000).unref();
   page.on('pageerror', e => errors.push(String(e))); page.on('console', m => m.type() === 'error' && !/Failed to load resource/.test(m.text()) && errors.push(m.text()));
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.waitForSelector('nav');
@@ -17,10 +39,12 @@ const site = http.createServer((req, res) => {
   const openImport = async (mode) => { await page.getByRole('button', { name: /Ajouter une source/ }).click(); if (mode) await page.getByRole('button', { name: mode }).click(); };
 
   // 0. API refuses requests without the Saudade header (other websites)
+  step('API guard');
   const denied = await fetch(origin + '/api/fetch-page', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"url":"http://127.0.0.1:8765/article.html"}' });
   assert.equal(denied.status, 403);
 
   // 1. web page: Readability + local images + sanitizing
+  step('web page');
   await openImport();
   await page.getByPlaceholder(/wikipedia/).fill('http://127.0.0.1:8765/article.html');
   await page.getByRole('button', { name: /Capturer/ }).click();
@@ -39,11 +63,19 @@ const site = http.createServer((req, res) => {
   assert.ok(imgs.every(i => !i.onerror));
   const link = await page.$eval('article a[href^="https://example.org"]', a => a.target);
   assert.equal(link, '_blank');
+  // Opening the system browser is replaced by a recorder: a test must never launch a
+  // real browser (on CI machines one is installed, and it takes over the screen).
+  await app.evaluate(({ shell }) => {
+    globalThis.__opened = [];
+    shell.openExternal = async (url) => { globalThis.__opened.push(url); };
+  });
   await page.click('article a[href^="https://example.org"]'); await page.waitForTimeout(300);
   assert.ok(page.url().startsWith(origin), 'app did not navigate away');
+  assert.deepEqual(await app.evaluate(() => globalThis.__opened), ['https://example.org/source'], 'link opened in the system browser');
   await page.screenshot({ path: S + '/import-web.png' });
 
   // 2. pasted markdown with scripts is neutralized when displayed
+  step('pasted markdown');
   await openImport('Coller du texte');
   await page.getByPlaceholder(/Charge Cognitive/).fill('Test XSS');
   await page.locator('textarea').fill('Texte normal.\n\n<script>window.__pwned="s"</script><img src="nope" onerror="window.__pwned=\'i\'"><a href="javascript:window.__pwned=1">lien</a>');
@@ -53,6 +85,7 @@ const site = http.createServer((req, res) => {
   assert.equal(await page.$$eval('article a', as => as.filter(a => /^javascript:/i.test(a.getAttribute('href') || '')).length), 0);
 
   // 3. PDF
+  step('PDF');
   await openImport('Fichier local');
   await page.locator('input[type=file][accept*=epub]').setInputFiles(FX + '/rapport.pdf');
   await page.waitForFunction(() => document.querySelector('h1')?.textContent.includes('Rapport PDF'), null, { timeout: 30000 });
@@ -65,8 +98,10 @@ const site = http.createServer((req, res) => {
   assert.ok(/\\1\. Ceci/.test(doc.content), 'numbered line escaped');
 
   // 4. EPUB: one document per chapter, cover/toc skipped, image stored, chapters staggered
+  step('EPUB');
   await openImport('Fichier local');
   await page.locator('input[type=file][accept*=epub]').setInputFiles(FX + '/livre.epub');
+  step('EPUB file chosen');
   await page.waitForFunction(() => document.querySelector('h1')?.textContent.includes('Les origines'), null, { timeout: 30000 });
   const docs = read('documents'); const book = docs.filter(d => d.folder === 'Livres/Mon Livre de Test');
   assert.deepEqual(book.map(d => d.title), ['01 · Les origines', '02 · La méthode']);
