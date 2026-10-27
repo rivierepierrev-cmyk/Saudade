@@ -45,6 +45,8 @@ async function select(page, rootSel, needleOrNull, blockSel = 'p') {
   const w = await select(page, 'article', 0);
   assert.ok(w, 'found a word to select');
   await page.getByRole('button', { name: 'Carte à trou' }).click();
+  // the editor always opens, the word already hidden
+  await page.getByRole('dialog', { name: 'Nouvelle carte à trou' }).getByRole('button', { name: 'Créer la carte' }).click();
   await page.getByText('Carte à trou créée').waitFor(); await settle(page);
   let clozes = read('clozes'); const c = clozes[0];
   assert.ok(c.text.includes(`{{c1::${w.text}}}`), c.text);
@@ -110,6 +112,7 @@ async function select(page, rootSel, needleOrNull, blockSel = 'p') {
         sawExtract = true;
         const sel = await select(page, 'div.select-text', 0, null);
         await page.getByRole('button', { name: 'Carte à trou', exact: true }).click();
+        await page.getByRole('dialog', { name: 'Nouvelle carte à trou' }).getByRole('button', { name: 'Créer la carte' }).click();
         await page.getByText('Carte à trou créée').first().waitFor();
         const sub = await select(page, 'div.select-text', null, null);
         await page.getByRole('button', { name: 'Extraire la sélection' }).click();

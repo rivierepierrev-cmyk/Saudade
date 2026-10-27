@@ -17,6 +17,10 @@ const abbr = 'Selon M. Dupont, la mémoire est sélective. Autre phrase.';
 const i = abbr.indexOf('sélective');
 assert.deepEqual(buildCloze(abbr, i, i + 9), { ok: true, text: 'Selon M. Dupont, la mémoire est {{c1::sélective}}.' });
 assert.equal(buildCloze('{{c1::x}} y z', 10, 11).ok, false);
+// A heading (block end = line break, no final period) never joins the next sentence
+const blocks = 'Règle 1 : Comprendre avant de mémoriser\nApprendre par cœur sans comprendre est inutile.';
+const w = blocks.indexOf('cœur');
+assert.deepEqual(buildCloze(blocks, w, w + 4), { ok: true, text: 'Apprendre par {{c1::cœur}} sans comprendre est inutile.' });
 
 // Topics: interval grows, faster for low priority
 const now = new Date('2026-10-25T10:00:00Z');

@@ -57,6 +57,7 @@ async function selectRange(page, root, startNeedle, endFormulaTex) {
   // 2. cloze on a formula: keeps the LaTeX, hides it whole, sentence as context
   await selectRange(page, 'article', null, 'E=mc^2');
   await page.getByRole('button', { name: 'Carte à trou' }).click();
+  await page.getByRole('dialog', { name: 'Nouvelle carte à trou' }).getByRole('button', { name: 'Créer la carte' }).click();
   await page.getByText('Carte à trou créée').waitFor(); await page.waitForTimeout(300);
   const cz = read('clozes')[0].text;
   assert.equal(cz, "Selon Einstein, l'énergie vaut {{c1::$E=mc^2$}} pour une masse au repos.");

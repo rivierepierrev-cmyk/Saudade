@@ -52,7 +52,6 @@ interface ReviewModalProps {
   onOpenClozeEditor: (extractId: string, sentence: string) => void;
   onRetireExtract: (id: string) => void;
   onCreateExtractFromExtract: (extractId: string, text: string) => void;
-  onCreateClozeFromExtract: (extractId: string, clozeText: string) => void;
   /** Maximum number of different cards reviewed per day. */
   dailyLimit: number;
   /** Ids of cards already reviewed today (they don't use up the limit again). */
@@ -74,7 +73,6 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   onOpenClozeEditor,
   onRetireExtract,
   onCreateExtractFromExtract,
-  onCreateClozeFromExtract,
   dailyLimit,
   reviewedTodayIds,
   showExtractHighlights,
@@ -350,21 +348,15 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 
   const handleClozeFromSelection = () => {
     if (!currentEntry || !extractSelection) return;
+    // Same as in the reader: the card editor always opens.
     const result = buildCloze(extractSelection.context, extractSelection.start, extractSelection.end);
-    if (!result.ok) {
-      if (result.reason === 'whole-sentence') {
-        onOpenClozeEditor(currentEntry.id, result.sentence);
-        window.getSelection()?.removeAllRanges();
-        setExtractSelection(null);
-      } else {
-        showToast(result.error, true);
-      }
+    if (!result.ok && result.reason !== 'whole-sentence') {
+      showToast(result.error, true);
       return;
     }
-    onCreateClozeFromExtract(currentEntry.id, result.text);
+    onOpenClozeEditor(currentEntry.id, result.ok ? result.text : result.sentence);
     window.getSelection()?.removeAllRanges();
     setExtractSelection(null);
-    showToast('Carte à trou créée');
   };
 
   const handleRate = (rating: ReviewRating) => {

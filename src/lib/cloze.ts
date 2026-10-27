@@ -14,15 +14,16 @@ const CLOZE_PATTERN = /\{\{c\d+::/;
 /** Start/end offsets of the sentences in `text`. */
 function sentenceRanges(text: string): Array<[number, number]> {
   const ranges: Array<[number, number]> = [];
-  // A sentence ends with . ! ? or … (optionally followed by closing quotes/brackets) and whitespace.
-  const re = /[.!?…]+["»”’)\]]*\s+/g;
+  // A sentence ends with . ! ? or … (optionally followed by closing quotes/brackets) and
+  // whitespace, or at a line break: the end of a block (heading, paragraph, list item).
+  const re = /[.!?…]+["»”’)\]]*\s+|\n+/g;
   let start = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     const end = m.index + m[0].length;
     // Don't split after common abbreviations or single initials ("M.", "p.", "J.")
     const before = text.slice(start, m.index + 1);
-    if (/(?:^|\s)(?:[A-Za-zÀ-ÿ]|M|Mme|Dr|St|p|cf|etc|vol|éd|ex|fig|n°|e\.g|i\.e)\.$/.test(before)) continue;
+    if (!m[0].startsWith('\n') && /(?:^|\s)(?:[A-Za-zÀ-ÿ]|M|Mme|Dr|St|p|cf|etc|vol|éd|ex|fig|n°|e\.g|i\.e)\.$/.test(before)) continue;
     ranges.push([start, end]);
     start = end;
   }
@@ -100,11 +101,18 @@ export function serializeText(node: Node): string {
       if (tex !== null) return `$${tex}$`;
     }
     if (el.tagName === 'BR') return '\n';
+    // Blocks end with a line break, so a heading and the paragraph after it never
+    // merge into one sentence.
+    if (SEPARATED_BLOCKS.has(el.tagName) || el.classList.contains('math-block')) {
+      return Array.from(node.childNodes, serializeText).join('') + '\n';
+    }
   } else if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
     return '';
   }
   return Array.from(node.childNodes, serializeText).join('');
 }
+
+const SEPARATED_BLOCKS = new Set(['P', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'PRE', 'TD', 'TH', 'FIGCAPTION', 'DD', 'DT', 'TR']);
 
 const formulaAround = (node: Node): Element | null => {
   const el = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
@@ -127,17 +135,44 @@ export function getBlockSelection(root: HTMLElement | null): BlockSelection | nu
   if (startFormula) range.setStartBefore(startFormula);
   if (endFormula) range.setEndAfter(endFormula);
 
-  const ancestor =
-    range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
-      ? (range.commonAncestorContainer as Element)
-      : range.commonAncestorContainer.parentElement;
-  const closestBlock = ancestor?.closest(BLOCK_SELECTOR);
-  const block = closestBlock && root.contains(closestBlock) ? (closestBlock as HTMLElement) : root;
+  // The blocks (paragraphs, headings, items…) the selection really covers. A
+  // triple-click or a drag often reaches the very start of the next block, or starts
+  // at the end of the previous one, without selecting any of its text: those blocks
+  // are left out, so their text (e.g. a heading) never ends up in the card.
+  const selectedIn = (block: Element) => {
+    const part = document.createRange();
+    part.selectNodeContents(block);
+    if (range.compareBoundaryPoints(Range.START_TO_START, part) > 0) part.setStart(range.startContainer, range.startOffset);
+    if (range.compareBoundaryPoints(Range.END_TO_END, part) < 0) part.setEnd(range.endContainer, range.endOffset);
+    return serializeText(part.cloneContents()).trim() !== '';
+  };
+  const blocks = Array.from(root.querySelectorAll(BLOCK_SELECTOR)).filter(
+    (b) => !b.querySelector(BLOCK_SELECTOR) && range.intersectsNode(b) && selectedIn(b)
+  );
+  let contextRange: Range;
+  if (blocks.length > 0) {
+    const first = blocks[0];
+    const last = blocks[blocks.length - 1];
+    const firstStart = document.createRange();
+    firstStart.selectNodeContents(first);
+    if (range.compareBoundaryPoints(Range.START_TO_START, firstStart) < 0) range.setStart(first, 0);
+    const lastEnd = document.createRange();
+    lastEnd.selectNodeContents(last);
+    if (range.compareBoundaryPoints(Range.END_TO_END, lastEnd) > 0) range.setEnd(last, last.childNodes.length);
+    contextRange = document.createRange();
+    contextRange.setStart(first, 0);
+    contextRange.setEnd(last, last.childNodes.length);
+  } else {
+    // No block inside (e.g. an extract shown as plain text): the whole root.
+    contextRange = document.createRange();
+    contextRange.selectNodeContents(root);
+  }
 
   const pre = document.createRange();
-  pre.selectNodeContents(block);
+  pre.setStart(contextRange.startContainer, contextRange.startOffset);
   pre.setEnd(range.startContainer, range.startOffset);
   const start = serializeText(pre.cloneContents()).length;
-  const text = serializeText(range.cloneContents());
-  return { text, context: serializeText(block), start, end: start + text.length };
+  const text = serializeText(range.cloneContents()).replace(/\n+$/, '');
+  const context = serializeText(contextRange.cloneContents()).replace(/\n+$/, '');
+  return { text, context, start, end: start + text.length };
 }

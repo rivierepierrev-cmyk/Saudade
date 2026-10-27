@@ -18,7 +18,7 @@ import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
 import { formatInterval, nextTopicInterval } from '../lib/fsrs';
 import { isDueToday } from '../lib/queue';
 import { findPassages, setHighlight, clearHighlight } from '../lib/highlight';
-import { renderTextWithMath, parseClozes } from '../lib/math';
+import { renderTextWithMath, parseClozes, renderClozeCard, clozeAnswerPreview } from '../lib/math';
 import { safeHtml } from '../lib/markdown';
 
 interface ReaderViewProps {
@@ -28,17 +28,17 @@ interface ReaderViewProps {
   onSelectDocument: (doc: DocumentItem) => void;
   onUpdateDocument?: (updatedDoc: DocumentItem) => void;
   onCreateExtract: (documentId: string, text: string) => void;
-  /** `clozeText` contains the {{c1::...}} deletion inside its context sentence. */
-  onCreateCloze: (documentId: string, clozeText: string) => void;
   onUpdateProgress: (docId: string, progress: number, offset: number) => void;
   onPostponeDocument: (docId: string, days: number) => void;
   /** Done reading for now: reschedule and move on to the next due document. */
   onFinishReading: (docId: string) => void;
   /** Finished for good: the document leaves the reading queue. */
   onRetireDocument: (docId: string) => void;
-  /** The selection is a whole sentence: open the card editor with it. */
-  onOpenClozeEditor: (documentId: string, sentence: string) => void;
+  /** Opens the card editor on a sentence (with the selected words already hidden). */
+  onOpenClozeEditor: (documentId: string, text: string) => void;
   onEditItem: (type: 'extract' | 'cloze', id: string) => void;
+  /** Opens the card viewer. */
+  onViewItem: (type: 'extract' | 'cloze', id: string) => void;
   /** "Pas fini": back tomorrow, at the same place, without counting as a reading. */
   onNotFinished: (docId: string) => void;
   /** "Moins important": lower priority, so the text comes back less often. */
@@ -51,7 +51,7 @@ interface ReaderViewProps {
   showExtractHighlights: boolean;
   onToggleExtractHighlights: () => void;
   /** Passage to show when the reader opens (from the library): scrolled to and highlighted. */
-  focusPassage?: { text: string; extractId?: string; key: number } | null;
+  focusPassage?: { text: string; extractId?: string; cardId?: string; key: number } | null;
   onNextQueueItem: () => void;
   onPrevQueueItem: () => void;
   currentIndex: number;
@@ -65,13 +65,13 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   onSelectDocument,
   onUpdateDocument,
   onCreateExtract,
-  onCreateCloze,
   onUpdateProgress,
   onPostponeDocument,
   onFinishReading,
   onRetireDocument,
   onOpenClozeEditor,
   onEditItem,
+  onViewItem,
   onNotFinished,
   onLowerPriority,
   onWriteSummary,
@@ -87,7 +87,11 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   const [fontFamily, setFontFamily] = useState<'serif' | 'sans' | 'mono'>('serif');
   const [fontSize, setFontSize] = useState<number>(18);
   const [columnWidth] = useState<'narrow' | 'normal' | 'wide'>('normal');
-  const [showExtractsPanel, setShowExtractsPanel] = useState<boolean>(false);
+  // Side panel: the document's extracts, or its cards.
+  const [panel, setPanel] = useState<'extracts' | 'cards' | null>(null);
+  const showExtractsPanel = panel !== null;
+  const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [missingCardIds, setMissingCardIds] = useState<Set<string>>(new Set());
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
   const [notification, setNotification] = useState<{ message: string; error?: boolean } | null>(null);
 
@@ -159,6 +163,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   useEffect(() => {
     setConfirmRetire(false);
     setActiveExtractId(null);
+    setActiveCardId(null);
     setActivePassage(null);
   }, [currentDocument.id]);
 
@@ -169,15 +174,32 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
       return;
     }
     setActiveExtractId(ext.id);
+    setActiveCardId(null);
     setActivePassage(ext.text);
+    scrollToActive.current = true;
+  };
+
+  // A card's sentence as it is in the text (answers in place).
+  const cardSentence = (card: ClozeItem) => parseClozes(card.text).map((p) => p.value).join('');
+
+  const openCard = (card: ClozeItem) => {
+    if (activeCardId === card.id) {
+      setActiveCardId(null);
+      setActivePassage(null);
+      return;
+    }
+    setActiveCardId(card.id);
+    setActiveExtractId(null);
+    setActivePassage(cardSentence(card));
     scrollToActive.current = true;
   };
 
   // Coming from the library ("Voir dans le document"): open the panel on the passage.
   useEffect(() => {
     if (!focusPassage) return;
-    setShowExtractsPanel(true);
+    setPanel(focusPassage.cardId && !focusPassage.extractId ? 'cards' : 'extracts');
     setActiveExtractId(focusPassage.extractId ?? null);
+    setActiveCardId(focusPassage.extractId ? null : focusPassage.cardId ?? null);
     setActivePassage(focusPassage.text);
     scrollToActive.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -199,6 +221,9 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
     setHighlight('saudade-extracts', ranges.slice(0, passages.length).filter(present));
     setHighlight('saudade-cards', ranges.slice(passages.length, passages.length + cardPassages.length).filter(present));
     setMissingExtractIds(new Set(showExtractHighlights ? documentExtracts.filter((_, i) => !ranges[i]).map((e) => e.id) : []));
+    setMissingCardIds(
+      new Set(showExtractHighlights ? documentCards.filter((_, i) => !ranges[passages.length + i]).map((c) => c.id) : [])
+    );
     const active = activePassage ? ranges[ranges.length - 1] : null;
     setHighlight('saudade-extract-active', active ? [active] : []);
     // Formulas aren't fully painted by text highlights: mark the whole formula.
@@ -208,9 +233,8 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
         if (active.intersectsNode(el)) el.classList.add('extract-active-formula');
       });
     }
-    if (activeExtractId) {
-      document.querySelector(`[data-extract-card="${activeExtractId}"]`)?.scrollIntoView({ block: 'nearest' });
-    }
+    const openItem = activeExtractId ?? activeCardId;
+    if (openItem) document.querySelector(`[data-panel-item="${openItem}"]`)?.scrollIntoView({ block: 'nearest' });
     if (active && scrollToActive.current) {
       scrollToActive.current = false;
       const rect = active.getBoundingClientRect();
@@ -250,18 +274,15 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
 
   const handleClozeSelection = () => {
     if (!blockSelection) return;
+    // The card editor always opens, so what the card will show can be checked:
+    // the selected words already hidden in their sentence, or the whole sentence
+    // when it was all selected (then choose the words to hide).
     const result = buildCloze(blockSelection.context, blockSelection.start, blockSelection.end);
-    if (!result.ok) {
-      if (result.reason === 'whole-sentence') {
-        onOpenClozeEditor(currentDocument.id, result.sentence);
-        clearSelection();
-      } else {
-        showToast(result.error, true);
-      }
+    if (!result.ok && result.reason !== 'whole-sentence') {
+      showToast(result.error, true);
       return;
     }
-    onCreateCloze(currentDocument.id, result.text);
-    showToast('Carte à trou créée !');
+    onOpenClozeEditor(currentDocument.id, result.ok ? result.text : result.sentence);
     clearSelection();
   };
 
@@ -468,15 +489,31 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
 
             {/* Volet des extraits */}
             <button
-              onClick={() => setShowExtractsPanel(!showExtractsPanel)}
+              onClick={() => setPanel(panel === 'extracts' ? null : 'extracts')}
+              aria-pressed={panel === 'extracts'}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border transition-colors cursor-pointer ${
-                showExtractsPanel
+                panel === 'extracts'
                   ? 'bg-[var(--bg-eae4d9)] border-[var(--bd-d6cdbc)] text-[var(--fg-28231d)] font-semibold'
                   : 'bg-[var(--bg-ffffff)] border-[var(--bd-e8e2d5)] text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)]'
               }`}
             >
               <Scissors className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
               <span>Extraits ({documentExtracts.length})</span>
+            </button>
+
+            {/* Cartes à trou du document */}
+            <button
+              onClick={() => setPanel(panel === 'cards' ? null : 'cards')}
+              aria-pressed={panel === 'cards'}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border transition-colors cursor-pointer ${
+                panel === 'cards'
+                  ? 'bg-[var(--bg-eae4d9)] border-[var(--bd-d6cdbc)] text-[var(--fg-28231d)] font-semibold'
+                  : 'bg-[var(--bg-ffffff)] border-[var(--bd-e8e2d5)] text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)]'
+              }`}
+              title="Les textes à trou (cartes) de ce texte"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[var(--fg-5f8550)]" />
+              <span>Textes à trou ({documentCards.length})</span>
             </button>
           </div>
         </div>
@@ -652,13 +689,17 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
           <aside className="hidden lg:block w-80 shrink-0 sticky top-36 self-start max-h-[calc(100vh-10rem)] overflow-y-auto p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs">
             <div className="flex items-center justify-between mb-3 pb-2 border-b border-[var(--bd-e8e2d5)]">
               <div className="flex items-center gap-2">
-                <Scissors className="w-4 h-4 text-[var(--fg-8c5e32)]" />
+                {panel === 'cards' ? (
+                  <Sparkles className="w-4 h-4 text-[var(--fg-5f8550)]" />
+                ) : (
+                  <Scissors className="w-4 h-4 text-[var(--fg-8c5e32)]" />
+                )}
                 <h3 className="text-sm font-semibold text-[var(--fg-28231d)]">
-                  Extraits de ce texte
+                  {panel === 'cards' ? 'Cartes à trou de ce texte' : 'Extraits de ce texte'}
                 </h3>
               </div>
               <span className="text-xs font-mono text-[var(--fg-8c8072)]">
-                {documentExtracts.length}
+                {panel === 'cards' ? documentCards.length : documentExtracts.length}
               </span>
             </div>
             {showExtractHighlights && (documentExtracts.length > 0 || documentCards.length > 0) && (
@@ -668,7 +709,80 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
               </p>
             )}
 
-            {documentExtracts.length === 0 ? (
+            {panel === 'cards' ? (
+              documentCards.length === 0 ? (
+                <p className="text-xs text-[var(--fg-8c8072)] italic py-4 text-center">
+                  Sélectionnez un mot dans le texte puis « Carte à trou » (Alt+C). Cliquez ensuite sur une carte pour la relire et retrouver sa phrase dans le texte.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {documentCards.map((card) => {
+                    const open = activeCardId === card.id;
+                    const siblings = documentCards.filter((c) => (c.noteId ?? c.id) === (card.noteId ?? card.id)).length;
+                    return (
+                      <div
+                        key={card.id}
+                        data-panel-item={card.id}
+                        className={`text-xs rounded-xl border transition-colors ${
+                          open
+                            ? 'bg-[var(--bg-ffffff)] border-[var(--bd-5f8550)]'
+                            : 'bg-[var(--bg-faf7f2)] border-[var(--bd-e8e2d5)] hover:border-[var(--bd-ddd6c8)]'
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => openCard(card)}
+                          aria-expanded={open}
+                          className="block w-full text-left p-3 cursor-pointer"
+                          title={open ? 'Refermer' : 'Relire cette carte et retrouver sa phrase dans le texte'}
+                        >
+                          <span className="flex items-center justify-between text-[10px] text-[var(--fg-8c8072)] mb-1">
+                            <span>Carte{siblings > 1 ? ` c${card.clozeNumber} (note de ${siblings})` : ''}</span>
+                            <span className="font-mono tabular-nums">
+                              {card.fsrs.reps === 0 ? 'nouvelle' : `${card.fsrs.reps} révision${card.fsrs.reps > 1 ? 's' : ''}`}
+                            </span>
+                          </span>
+                          <span
+                            className={`block text-[var(--fg-28231d)] ${open ? 'text-sm font-serif-reading leading-relaxed' : 'line-clamp-3'}`}
+                            dangerouslySetInnerHTML={{
+                              __html: safeHtml(
+                                open
+                                  ? renderClozeCard(card.text, true, card.clozeNumber)
+                                  : renderTextWithMath(clozeAnswerPreview(card.text, card.clozeNumber))
+                              ),
+                            }}
+                          />
+                        </button>
+                        {open && (
+                          <div className="flex items-center justify-between gap-2 px-3 pb-3">
+                            <span className="text-[10px] text-[var(--fg-8c8072)]">
+                              {missingCardIds.has(card.id) ? 'Phrase introuvable dans le texte' : 'Surlignée dans le texte'}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => onViewItem('cloze', card.id)}
+                                className="flex items-center gap-1 px-2 py-1 rounded-md whitespace-nowrap text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)] cursor-pointer"
+                              >
+                                Voir la carte
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onEditItem('cloze', card.id)}
+                                className="flex items-center gap-1 px-2 py-1 rounded-md whitespace-nowrap text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)] cursor-pointer"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                                Modifier
+                              </button>
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            ) : documentExtracts.length === 0 ? (
               <p className="text-xs text-[var(--fg-8c8072)] italic py-4 text-center">
                 Sélectionnez du texte dans le lecteur et cliquez sur « Extraire ». Cliquez ensuite sur un extrait pour le relire et le retrouver dans le texte.
               </p>
@@ -679,7 +793,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                   return (
                     <div
                       key={ext.id}
-                      data-extract-card={ext.id}
+                      data-panel-item={ext.id}
                       className={`text-xs rounded-xl border transition-colors ${
                         open
                           ? 'bg-[var(--bg-ffffff)] border-[var(--bd-8c5e32)]'
@@ -712,7 +826,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onEditItem('extract', ext.id)}
-                            className="flex items-center gap-1 px-2 py-1 rounded-md text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)] cursor-pointer"
+                            className="flex items-center gap-1 px-2 py-1 rounded-md whitespace-nowrap text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)] cursor-pointer"
                           >
                             <Edit3 className="w-3 h-3" />
                             Modifier

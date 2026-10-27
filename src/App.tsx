@@ -211,7 +211,15 @@ export default function App() {
   const openClozeEditor = (source: { documentId?: string; extractId?: string }, sentence: string) => {
     const ext = source.extractId ? extractsRef.current.find((e) => e.id === source.extractId) : undefined;
     const doc = documentsRef.current.find((d) => d.id === (source.documentId ?? ext?.documentId));
-    setEditRequest({ kind: 'new-cloze', source, text: sentence, context: doc?.title ?? ext?.documentTitle ?? '' });
+    setEditRequest({
+      kind: 'new-cloze',
+      source,
+      text: sentence,
+      context: doc?.title ?? ext?.documentTitle ?? '',
+      info: parseClozes(sentence).some((p) => p.type === 'cloze')
+        ? 'Vérifiez la carte : vous pouvez masquer d’autres mots (« nouvelle carte » ou « même carte ») ou raccourcir la phrase, puis « Créer la carte » (Ctrl+Entrée).'
+        : undefined,
+    });
   };
 
   /**
@@ -343,7 +351,7 @@ export default function App() {
   // ---- Viewing extracts and cards (library) ---------------------------------
   const [viewRequest, setViewRequest] = useState<{ type: 'extract' | 'cloze'; id: string } | null>(null);
   // Passage the reader scrolls to and highlights when opened from the viewer.
-  const [focusPassage, setFocusPassage] = useState<{ text: string; extractId?: string; key: number } | null>(null);
+  const [focusPassage, setFocusPassage] = useState<{ text: string; extractId?: string; cardId?: string; key: number } | null>(null);
 
   const handleViewItem = (type: 'extract' | 'cloze', id: string) => setViewRequest({ type, id });
 
@@ -358,7 +366,7 @@ export default function App() {
     setViewRequest(null);
     setCurrentDocumentId(docId);
     setActiveTab('reader');
-    setFocusPassage({ text, extractId: source?.id, key: Date.now() });
+    setFocusPassage({ text, extractId: source?.id, cardId: card?.id, key: Date.now() });
   };
 
   const renderViewer = () => {
@@ -967,7 +975,6 @@ export default function App() {
               }}
               onUpdateDocument={handleUpdateDocument}
               onCreateExtract={(docId, text) => handleCreateExtract({ documentId: docId }, text)}
-              onCreateCloze={(docId, clozeText) => handleCreateCloze({ documentId: docId }, clozeText)}
               onFinishReading={(docId) => {
                 handleTopicNext('document', docId);
                 openNextDueDocument(docId);
@@ -975,6 +982,7 @@ export default function App() {
               onOpenClozeEditor={(docId, sentence) => openClozeEditor({ documentId: docId }, sentence)}
               onEditItem={handleEditItem}
               focusPassage={focusPassage}
+              onViewItem={handleViewItem}
               onNotFinished={handleNotFinished}
               onLowerPriority={handleLowerPriority}
               onWriteSummary={handleWriteSummary}
@@ -1028,7 +1036,6 @@ export default function App() {
               const parent = extractsRef.current.find((e) => e.id === extractId);
               if (parent) handleCreateExtract({ documentId: parent.documentId, parentExtractId: extractId }, text);
             }}
-            onCreateClozeFromExtract={(extractId, clozeText) => handleCreateCloze({ extractId }, clozeText)}
             dailyLimit={settings.dailyReviewLimit}
             reviewedTodayIds={reviewedTodayIds}
             showExtractHighlights={settings.showExtractHighlights}
