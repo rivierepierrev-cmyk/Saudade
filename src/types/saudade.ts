@@ -92,6 +92,8 @@ export interface ReviewLog {
   actualInterval: number;
   reviewDate: string;
   state: ItemState;
+  /** Cards: the target retention used for this review (to replay it on another computer). */
+  retention?: number;
 }
 
 export interface SaudadeStats {

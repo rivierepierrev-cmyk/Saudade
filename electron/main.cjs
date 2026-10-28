@@ -3,10 +3,11 @@
 // optional "web clip" feature (fetching a URL the user types in).
 // Library data lives in JSON files under <userData>/data (see store.cjs), not in
 // the page's localStorage, so it doesn't depend on the port or the page origin.
-const { app, BrowserWindow, shell, Menu, dialog, ipcMain, nativeTheme } = require('electron');
+const { app, BrowserWindow, shell, Menu, dialog, ipcMain, nativeTheme, safeStorage } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { createStore } = require('./store.cjs');
+const { createSync } = require('./sync.cjs');
 
 // Preferred port. Older versions kept the library in localStorage for this exact
 // origin, so we try it first to let the one-time migration find that data.
@@ -16,6 +17,19 @@ const SNAPSHOT_CHECK_MS = 60 * 60 * 1000;
 
 let win;
 let store;
+let sync;
+
+// The sync key is kept protected by the system keychain when there is one.
+const keyStore = {
+  protect(buf) {
+    if (safeStorage.isEncryptionAvailable()) return `safe:${safeStorage.encryptString(buf.toString('hex')).toString('base64')}`;
+    return `hex:${buf.toString('hex')}`;
+  },
+  unprotect(text) {
+    if (text.startsWith('safe:')) return Buffer.from(safeStorage.decryptString(Buffer.from(text.slice(5), 'base64')), 'hex');
+    return Buffer.from(text.replace(/^hex:/, ''), 'hex');
+  },
+};
 
 // The app used to be called Gemma, and Foliole before that. The first time Saudade
 // starts, it takes over the most recent of those profiles: the library files (data/)
@@ -79,6 +93,29 @@ function registerIpc() {
   ipcMain.handle('saudade:write-documents', (_event, metaText, changed) => {
     store.writeDocuments(metaText, changed);
   });
+  // Synchronisation (electron/sync.cjs)
+  ipcMain.on('saudade:sync-initial', (event) => {
+    try {
+      event.returnValue = { status: sync.status(), meta: sync.readMeta() };
+    } catch (e) {
+      event.returnValue = { error: String(e && e.message ? e.message : e) };
+    }
+  });
+  ipcMain.handle('saudade:sync-status', () => sync.status());
+  ipcMain.handle('saudade:sync-choose-folder', async () => {
+    const r = await dialog.showOpenDialog(win, {
+      title: 'Dossier de synchronisation',
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    return r.canceled || !r.filePaths[0] ? null : r.filePaths[0];
+  });
+  ipcMain.handle('saudade:sync-inspect', (_e, folder) => sync.inspect(folder));
+  ipcMain.handle('saudade:sync-enable', (_e, folder, passphrase) => sync.enable(folder, passphrase));
+  ipcMain.handle('saudade:sync-disable', () => sync.disable());
+  ipcMain.handle('saudade:sync-append', (_e, events) => sync.append(events));
+  ipcMain.handle('saudade:sync-pull', () => sync.pull());
+  ipcMain.handle('saudade:sync-ack', (_e, token) => sync.ack(token));
+  ipcMain.handle('saudade:sync-meta', (_e, text) => sync.writeMeta(text));
   ipcMain.handle('saudade:snapshot', (_event, reason) => store.eventSnapshot(reason));
   ipcMain.handle('saudade:open-data-folder', () => shell.openPath(store.dataDir));
 }
@@ -99,6 +136,7 @@ async function start() {
     app.quit();
     return;
   }
+  sync = createSync(store.dataDir, keyStore);
   registerIpc();
   takeDailySnapshot();
   setInterval(takeDailySnapshot, SNAPSHOT_CHECK_MS);

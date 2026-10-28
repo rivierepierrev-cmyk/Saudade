@@ -52,6 +52,21 @@ La question n'est pas « m'en souviendrai-je ? » (ce sont les cartes qui serven
 - En sélectionnant une formule dans le lecteur, l'extrait ou la carte garde son code LaTeX.
 - Les formules des pages web (Wikipédia…) et des EPUB sont importées en LaTeX. Celles des PDF ne peuvent pas être récupérées.
 
+## Synchronisation entre ordinateurs
+
+Réglages (icône ⚙) → Synchronisation. Il faut un dossier que vos ordinateurs partagent déjà grâce à un client de synchronisation (Nextcloud, Syncthing, Dropbox…), par exemple `Nextcloud/Saudade-sync`.
+
+1. Sur le premier ordinateur : choisir ce dossier, choisir une phrase de passe (deux fois), activer. La bibliothèque y est envoyée.
+2. Sur le deuxième : choisir le même dossier (une fois que le client l'a reçu), garder « Prendre la bibliothèque du dossier », saisir la même phrase de passe. Sa propre bibliothèque est sauvegardée dans `data/backups/` avant d'être remplacée.
+
+Ensuite tout est automatique : au démarrage, quand la fenêtre revient au premier plan et toutes les 2 minutes (ou « Synchroniser maintenant »).
+
+- Chaque ordinateur n'écrit que dans son propre fichier du dossier (`<appareil>.log`, en ajout seulement) : jamais de copie en conflit.
+- Tout ce qui est écrit dans le dossier (modifications, images) est chiffré (AES-256-GCM, clé tirée de la phrase de passe par scrypt). La phrase de passe n'est pas enregistrée ; la clé l'est, protégée par le trousseau du système quand il y en a un.
+- Fusion : pour les documents, extraits et cartes, champ par champ, la modification la plus récente gagne ; une suppression l'emporte sur les modifications (sauf si l'élément est recréé ensuite, par exemple par une restauration). Les révisions de cartes faites sur les deux ordinateurs sont toutes gardées : le calendrier de la carte est recalculé en les rejouant dans l'ordre.
+- Les réglages (limite, taux visé, thème) restent propres à chaque ordinateur.
+- Attendez que le client indique que tout est synchronisé avant de passer d'un ordinateur à l'autre.
+
 ## Installation
 - **Linux Mint / Ubuntu / Debian (recommandé)** : `sudo apt install ./Saudade-1.0.0-linux-amd64.deb`, puis lancez Saudade depuis le menu (ou la commande `saudade`).
 - **AppImage** (autres distributions) : `chmod +x Saudade-*.AppImage && ./Saudade-*.AppImage`. Sur Ubuntu 24.04+ et dérivés, où AppArmor bloque le bac à sable de Chromium pour les AppImage, Saudade démarre automatiquement sans ce bac à sable ; le .deb, lui, le conserve.

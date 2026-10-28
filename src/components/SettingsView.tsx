@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Check, Download, FolderOpen, RotateCcw, Upload } from 'lucide-react';
+import { SyncSettings } from './SyncSettings';
 
 interface SettingsViewProps {
   cardCount: number;
@@ -149,6 +150,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               La part des cartes dont vous vous souviendrez au moment de la révision. Plus haut, les révisions sont plus fréquentes ; 90 % est un bon équilibre.
             </p>
           </div>
+        </section>
+
+        {/* Synchronisation */}
+        <section className={SECTION} aria-labelledby="settings-sync">
+          <h2 id="settings-sync" className="text-sm font-semibold text-[var(--fg-28231d)]">
+            Synchronisation
+          </h2>
+          <SyncSettings onDone={showToast} />
         </section>
 
         {/* Sauvegardes et données */}

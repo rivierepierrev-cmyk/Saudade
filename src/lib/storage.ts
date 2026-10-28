@@ -89,11 +89,19 @@ function saveDocumentsSplit(docs: DocumentItem[]): boolean {
   return true;
 }
 
+// Told of every change before it is saved (the synchronisation records them).
+type SaveObserver = (name: CollectionName, prev: unknown, next: unknown) => void;
+let saveObserver: SaveObserver | null = null;
+export function observeSaves(observer: SaveObserver | null): void {
+  saveObserver = observer;
+}
+
 function save(name: CollectionName, value: unknown): void {
   if (unreadable.has(name)) {
     reportStorageError(`Enregistrement de « ${name} » bloqué : les données existantes sont illisibles.`);
     return;
   }
+  saveObserver?.(name, parsedCache.get(name), value);
   if (name === 'documents' && saveDocumentsSplit(value as DocumentItem[])) {
     parsedCache.set(name, value);
     return;

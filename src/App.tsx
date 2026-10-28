@@ -31,6 +31,7 @@ import { ReviewModal } from './components/ReviewModal';
 import { LibraryView } from './components/LibraryView';
 import { StatsView } from './components/StatsView';
 import { SettingsView } from './components/SettingsView';
+import { onLibraryChanged, syncNow, getStatus as getSyncStatus } from './lib/sync/client';
 import { ImportModal } from './components/ImportModal';
 
 export default function App() {
@@ -53,6 +54,31 @@ export default function App() {
       ),
     []
   );
+
+  // Synchronisation: reload what other computers changed; fetch their changes at
+  // start, when the window comes back to the front, and every two minutes.
+  useEffect(() => {
+    const reload = () => {
+      documentsRef.current = SaudadeStorage.getDocuments();
+      extractsRef.current = SaudadeStorage.getExtracts();
+      clozesRef.current = SaudadeStorage.getClozes();
+      setDocuments(documentsRef.current);
+      setExtracts(extractsRef.current);
+      setClozes(clozesRef.current);
+    };
+    const off = onLibraryChanged(reload);
+    const tick = () => {
+      if (getSyncStatus()?.enabled) syncNow().catch((e) => console.error('Synchronisation :', e));
+    };
+    tick();
+    const timer = window.setInterval(tick, 2 * 60 * 1000);
+    window.addEventListener('focus', tick);
+    return () => {
+      off();
+      window.clearInterval(timer);
+      window.removeEventListener('focus', tick);
+    };
+  }, []);
 
   // Initial load from local-first storage
   useEffect(() => {
@@ -529,6 +555,7 @@ export default function App() {
         : 0,
       reviewDate: now.toISOString(),
       state,
+      retention: settings.targetRetention,
     });
     return fsrs;
   };
