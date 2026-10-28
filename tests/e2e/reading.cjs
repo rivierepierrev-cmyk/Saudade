@@ -1,7 +1,8 @@
 const { _electron } = require('playwright'); const fs = require('fs'); const os = require('os'); const path = require('path'); const assert = require('assert');
 const APP = path.resolve(__dirname, '../..'); const OUT = fs.mkdtempSync(path.join(os.tmpdir(), 'saudade-shots-'));
 const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'folir-')); const dataDir = path.join(cfg, 'Saudade', 'data');
-const read = n => JSON.parse(fs.readFileSync(path.join(dataDir, n + '.json'), 'utf8'));
+const { readCollection } = require('./data.cjs');
+const read = (n) => readCollection(dataDir, n);
 const settle = p => p.waitForTimeout(400);
 // Select `needle` (or the whole text of the first matching element) inside `root`, then fire mouseup.
 async function select(page, rootSel, needleOrNull, blockSel = 'p') {
@@ -40,6 +41,15 @@ async function select(page, rootSel, needleOrNull, blockSel = 'p') {
   await page.waitForSelector('article p');
   const docId = await page.evaluate(() => null);
   const docsBefore = read('documents');
+  // Scrolling saves the position without rewriting any text (contents/<id>.md)
+  const contentsDir = path.join(dataDir, 'contents');
+  const mtimes = () => Object.fromEntries(fs.readdirSync(contentsDir).map((f) => [f, fs.statSync(path.join(contentsDir, f)).mtimeMs]));
+  const textsBefore = mtimes();
+  await page.mouse.wheel(0, 900); await page.waitForTimeout(1500);
+  assert.ok(read('documents').some((d) => d.lastReadOffset > 0), 'position saved');
+  assert.ok(!JSON.parse(fs.readFileSync(path.join(dataDir, 'documents.json'), 'utf8')).some((d) => 'content' in d), 'no text in documents.json');
+  assert.deepEqual(mtimes(), textsBefore, 'no text rewritten');
+  await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(1200);
 
   // 1. cloze from a word: context sentence kept, only the word hidden
   const w = await select(page, 'article', 0);

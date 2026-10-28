@@ -23,6 +23,7 @@ interface DesktopInitial {
 interface DesktopBridge {
   initial: DesktopInitial;
   write: (name: CollectionName, text: string) => Promise<void>;
+  writeDocuments?: (metaText: string, changed: Array<[string, string]>) => Promise<void>;
   snapshot: (reason: string) => Promise<string>;
   openDataFolder: () => Promise<string>;
 }
@@ -132,6 +133,20 @@ export function setRaw(name: CollectionName, text: string): void {
         "L'espace du navigateur est peut-être plein : exportez une sauvegarde."
     );
   }
+}
+
+/**
+ * Desktop: saves the documents list without texts, plus only the texts that changed
+ * (each document's text has its own file). Returns false when unavailable (browser
+ * mode), so the caller saves the whole collection instead.
+ */
+export function setDocuments(metaText: string, changed: Array<[string, string]>): boolean {
+  if (!desktop?.writeDocuments) return false;
+  cache.delete('documents');
+  desktop.writeDocuments(metaText, changed).catch((e: unknown) => {
+    reportStorageError(`Échec de l'enregistrement (documents) : ${e instanceof Error ? e.message : String(e)}`);
+  });
+  return true;
 }
 
 /** Saves a full snapshot in the data folder (desktop only). Returns its path. */

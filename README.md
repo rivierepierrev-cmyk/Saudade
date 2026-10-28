@@ -5,7 +5,7 @@ Vos données sont stockées dans des fichiers JSON du dossier de l'application :
 - Linux : `~/.config/Saudade/data/`
 - Windows : `%APPDATA%\Saudade\data\`
 
-Chaque écriture est atomique et garde la version précédente (`*.json.bak`). Une sauvegarde complète est créée chaque jour dans `data/backups/` (7 dernières conservées), ainsi qu'avant chaque restauration ou réinitialisation. Les images importées sont dans `data/media/` : pour une sauvegarde complète, copiez tout le dossier `data`. Ces fichiers ne sont pas supprimés à la désinstallation.
+Le texte de chaque document est dans son propre fichier, `data/contents/<id>.md` ; `documents.json` ne garde que le reste (titre, priorité, position de lecture…), si bien qu'enregistrer la position de lecture ne réécrit jamais les textes. Chaque écriture est atomique et garde la version précédente (`*.json.bak`). Une sauvegarde complète est créée chaque jour dans `data/backups/` (7 dernières conservées), ainsi qu'avant chaque restauration ou réinitialisation. Les images importées sont dans `data/media/` : pour une sauvegarde complète, copiez tout le dossier `data`. Ces fichiers ne sont pas supprimés à la désinstallation.
 Au premier lancement, la bibliothèque des versions précédentes est reprise automatiquement : le profil de l'application lorsqu'elle s'appelait **Gemma** ou, à défaut, **Foliole** (`~/.config/Gemma`, `~/.config/Foliole`, `%APPDATA%\…`, laissés intacts) et l'ancien stockage du navigateur (localStorage). Le paquet .deb `saudade` remplace les paquets `gemma` et `foliole`.
 En mode navigateur (`npm run dev`), les données restent dans le localStorage du navigateur. Seule fonction réseau : la capture d'une page web (l'adresse que vous saisissez) et le téléchargement de ses images.
 

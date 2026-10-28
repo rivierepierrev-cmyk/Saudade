@@ -1,6 +1,6 @@
 import { DocumentItem, ExtractItem, ClozeItem, ReviewLog, SaudadeStats } from '../types/saudade';
 import { SAMPLE_DOCUMENTS, SAMPLE_EXTRACTS, SAMPLE_CLOZES } from './sampleData';
-import { CollectionName, getRaw, setRaw, reportStorageError } from './kv';
+import { CollectionName, getRaw, setRaw, setDocuments, reportStorageError } from './kv';
 import type { ThemePreference } from './theme';
 import { splitClozeNotes } from './clozeNotes';
 
@@ -71,9 +71,31 @@ function load<T>(name: CollectionName, validate: (v: unknown) => boolean, seed: 
   }
 }
 
+// Text of each document as last saved: only the texts that change are written again.
+let savedContents: Map<string, string> | null = null;
+
+function saveDocumentsSplit(docs: DocumentItem[]): boolean {
+  if (!savedContents) {
+    const stored = parsedCache.get('documents') as DocumentItem[] | undefined;
+    savedContents = new Map((stored ?? []).map((d) => [d.id, d.content]));
+  }
+  const changed: Array<[string, string]> = [];
+  const meta = docs.map(({ content, ...rest }) => {
+    if (savedContents!.get(rest.id) !== content) changed.push([rest.id, content]);
+    return rest;
+  });
+  if (!setDocuments(JSON.stringify(meta), changed)) return false;
+  savedContents = new Map(docs.map((d) => [d.id, d.content]));
+  return true;
+}
+
 function save(name: CollectionName, value: unknown): void {
   if (unreadable.has(name)) {
     reportStorageError(`Enregistrement de « ${name} » bloqué : les données existantes sont illisibles.`);
+    return;
+  }
+  if (name === 'documents' && saveDocumentsSplit(value as DocumentItem[])) {
+    parsedCache.set(name, value);
     return;
   }
   parsedCache.set(name, value);

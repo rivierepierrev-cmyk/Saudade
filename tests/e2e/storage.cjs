@@ -10,7 +10,8 @@ async function launch() {
   await page.waitForSelector('nav');
   return { app, page, errors };
 }
-const read = n => JSON.parse(fs.readFileSync(path.join(dataDir, n + '.json'), 'utf8'));
+const { readCollection } = require('./data.cjs');
+const read = (n) => readCollection(dataDir, n);
 (async () => {
   // 1. fresh install: samples seeded into files; then plant legacy localStorage data
   let { app, page, errors } = await launch();

@@ -76,6 +76,9 @@ function registerIpc() {
   ipcMain.handle('saudade:write', (_event, name, text) => {
     store.write(name, text);
   });
+  ipcMain.handle('saudade:write-documents', (_event, metaText, changed) => {
+    store.writeDocuments(metaText, changed);
+  });
   ipcMain.handle('saudade:snapshot', (_event, reason) => store.eventSnapshot(reason));
   ipcMain.handle('saudade:open-data-folder', () => shell.openPath(store.dataDir));
 }

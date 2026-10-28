@@ -2,7 +2,8 @@
 const { _electron } = require('playwright'); const fs = require('fs'); const os = require('os'); const path = require('path'); const assert = require('assert');
 const APP = path.resolve(__dirname, '../..');
 const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'saudade-polish-')); const dataDir = path.join(cfg, 'Saudade', 'data');
-const read = (n) => JSON.parse(fs.readFileSync(path.join(dataDir, n + '.json'), 'utf8'));
+const { readCollection } = require('./data.cjs');
+const read = (n) => readCollection(dataDir, n);
 const launch = async () => {
   const app = await _electron.launch({ executablePath: require('electron'), args: [APP, '--no-sandbox'], env: { ...process.env, XDG_CONFIG_HOME: cfg } });
   const page = await app.firstWindow(); await page.setViewportSize({ width: 1280, height: 900 }); await page.waitForSelector('nav');

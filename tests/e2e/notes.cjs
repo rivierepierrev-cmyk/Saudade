@@ -5,7 +5,8 @@ const { _electron } = require('playwright'); const fs = require('fs'); const os 
 const APP = path.resolve(__dirname, '../..');
 const OUT = process.env.SAUDADE_SHOTS || fs.mkdtempSync(path.join(os.tmpdir(), 'saudade-notes-shots-'));
 const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'saudade-notes-')); const dataDir = path.join(cfg, 'Saudade', 'data');
-const read = (n) => JSON.parse(fs.readFileSync(path.join(dataDir, n + '.json'), 'utf8'));
+const { readCollection } = require('./data.cjs');
+const read = (n) => readCollection(dataDir, n);
 const DAY = 86400000; const now = Date.now();
 const rec = (days, reps = 1) => ({ stability: 5, difficulty: 5, reps, lapses: 0, interval: 5, lastReview: new Date(now - DAY).toISOString(), nextReviewDate: new Date(now + days * DAY).toISOString(), phase: 'review' });
 const base = { tags: [], createdAt: '', updatedAt: '', folder: 'Général', readingProgress: 0, lastReadOffset: 0, format: 'article', state: 'review' };

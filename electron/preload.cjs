@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('saudadeDesktop', {
   // Loaded synchronously so the UI starts with the whole library in memory.
   initial: ipcRenderer.sendSync('saudade:load'),
   write: (name, text) => ipcRenderer.invoke('saudade:write', name, text),
+  // Documents: the list without texts, plus the texts that changed.
+  writeDocuments: (metaText, changed) => ipcRenderer.invoke('saudade:write-documents', metaText, changed),
   snapshot: (reason) => ipcRenderer.invoke('saudade:snapshot', reason),
   openDataFolder: () => ipcRenderer.invoke('saudade:open-data-folder'),
 });

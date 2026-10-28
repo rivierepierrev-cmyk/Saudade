@@ -3,7 +3,8 @@ const { _electron } = require('playwright'); const fs = require('fs'); const os 
 const APP = path.resolve(__dirname, '../..'); const FX = path.join(__dirname, 'fixtures');
 const OUT = process.env.SAUDADE_SHOTS || fs.mkdtempSync(path.join(os.tmpdir(), 'saudade-math-shots-'));
 const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'saudade-math-')); const dataDir = path.join(cfg, 'Saudade', 'data');
-const read = (n) => JSON.parse(fs.readFileSync(path.join(dataDir, n + '.json'), 'utf8'));
+const { readCollection } = require('./data.cjs');
+const read = (n) => readCollection(dataDir, n);
 const write = (n, v) => fs.writeFileSync(path.join(dataDir, n + '.json'), JSON.stringify(v));
 const site = http.createServer((req, res) => {
   if (req.url === '/math.html') { res.setHeader('content-type', 'text/html; charset=utf-8'); return res.end(fs.readFileSync(path.join(FX, 'math.html'))); }
