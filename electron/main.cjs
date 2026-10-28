@@ -115,6 +115,7 @@ function registerIpc() {
   ipcMain.handle('saudade:sync-append', (_e, events) => sync.append(events));
   ipcMain.handle('saudade:sync-pull', () => sync.pull());
   ipcMain.handle('saudade:sync-ack', (_e, token) => sync.ack(token));
+  ipcMain.handle('saudade:sync-compact', (_e, events) => sync.compact(events));
   ipcMain.handle('saudade:sync-meta', (_e, text) => sync.writeMeta(text));
   ipcMain.handle('saudade:snapshot', (_event, reason) => store.eventSnapshot(reason));
   ipcMain.handle('saudade:open-data-folder', () => shell.openPath(store.dataDir));

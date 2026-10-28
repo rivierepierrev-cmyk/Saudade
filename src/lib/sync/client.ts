@@ -6,7 +6,7 @@
 import { SaudadeStorage, AppSettings, observeSaves } from '../storage';
 import { takeSnapshot } from '../kv';
 import {
-  Change, Library, LibraryKey, SyncEvent, SyncMeta, applyRemote, diffCollection, emptyMeta, eventsFromChanges, noteLocal, snapshotEvents,
+  Change, Library, LibraryKey, SyncEvent, SyncMeta, applyRemote, compactEvents, diffCollection, emptyMeta, eventsFromChanges, noteLocal, snapshotEvents,
 } from './model';
 
 export interface SyncStatus {
@@ -16,6 +16,8 @@ export interface SyncStatus {
   lastSync: string | null;
   pending: number;
   others: number;
+  /** Size of this computer's log in the folder (compacted when it grows). */
+  ownLogBytes?: number;
   error: string | null;
 }
 
@@ -29,6 +31,7 @@ interface SyncBridge {
   append: (events: SyncEvent[]) => Promise<void>;
   pull: () => Promise<{ events: SyncEvent[]; token: Record<string, number> | null }>;
   ack: (token: Record<string, number> | null) => Promise<void>;
+  compact: (events: SyncEvent[]) => Promise<{ ok: boolean; bytes?: number }>;
   saveMeta: (text: string) => Promise<void>;
 }
 
@@ -173,12 +176,32 @@ export function syncNow(): Promise<number> {
       }
       await bridge.ack(token);
       await refreshStatus();
+      await compactIfLarge();
       return events.length;
     })().finally(() => {
       pulling = null;
     });
   }
   return pulling;
+}
+
+// ---- Keeping the log small -----------------------------------------------------------
+
+const COMPACT_FROM_BYTES = 4 * 1024 * 1024;
+
+/**
+ * This computer's log only grows (every saved reading position is a line). Past
+ * 4 MB, it is rewritten as the current state when that is at most half its size.
+ */
+async function compactIfLarge(): Promise<void> {
+  if (!bridge || !meta || !status?.enabled || (status.ownLogBytes ?? 0) < COMPACT_FROM_BYTES) return;
+  flushBatch();
+  const events = compactEvents(currentLibrary(), meta);
+  // Encrypted lines: base64 of the JSON plus 28 bytes, about 4/3 of the JSON.
+  const estimate = events.reduce((n, e) => n + (JSON.stringify(e).length + 28) * 1.34 + 1, 0);
+  if (estimate > (status.ownLogBytes ?? 0) / 2) return;
+  await bridge.compact(events);
+  await refreshStatus();
 }
 
 // ---- Turning it on and off ----------------------------------------------------------

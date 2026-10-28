@@ -11,6 +11,8 @@ interface SettingsViewProps {
   onUpdateTopicLimit: (limit: number) => void;
   leechThreshold: number;
   leechSuspend: boolean;
+  shuffleQueue: boolean;
+  onToggleShuffle: (on: boolean) => void;
   onUpdateLeechSettings: (patch: { leechThreshold?: number; leechSuspend?: boolean }) => void;
   autoPostpone: boolean;
   onToggleAutoPostpone: (on: boolean) => void;
@@ -66,6 +68,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onUpdateTopicLimit,
   leechThreshold,
   leechSuspend,
+  shuffleQueue,
+  onToggleShuffle,
   onUpdateLeechSettings,
   autoPostpone,
   onToggleAutoPostpone,
@@ -152,6 +156,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <span className="block text-xs text-[var(--fg-8c8072)]">
                 Les moins prioritaires sont reprogrammés plus tard (de 1 jour à environ deux semaines selon leur priorité), pour que la file
                 du jour reste faisable. Sinon, ils attendent dans l’ordre des priorités.
+              </span>
+            </span>
+          </label>
+
+          <label className="mt-4 flex items-start gap-2 text-sm text-[var(--fg-4a4137)] cursor-pointer">
+            <input type="checkbox" checked={shuffleQueue} onChange={(e) => onToggleShuffle(e.target.checked)} className="mt-1" />
+            <span>
+              Mélanger légèrement l’ordre de la file
+              <span className="block text-xs text-[var(--fg-8c8072)]">
+                Comme SuperMemo : chaque élément gagne ou perd jusqu’à 10 points de priorité, différemment chaque jour, pour varier
+                l’ordre sans bousculer les priorités. Les limites du jour gardent toujours les plus importants.
               </span>
             </span>
           </label>

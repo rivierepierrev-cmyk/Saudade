@@ -57,6 +57,20 @@ A.pull(); B.pull();
 assert.deepEqual([...fs.readFileSync(path.join(dataB, 'media', img))], [1, 2, 3, 4]);
 assert.ok(fs.existsSync(path.join(shared, 'media', img + '.enc')));
 
+// Compaction: the log is replaced under a new name; the other computer reads it from its start
+const oldName = `${A.status().deviceId}.log`;
+assert.ok(A.status().ownLogBytes > 0);
+A.append([{ c: '5', t: 'unlog', id: 'l3' }]);
+assert.equal(A.compact([{ c: '1', t: 'folders', list: ['Général'] }, { c: '5', t: 'unlog', id: 'l3' }]).ok, true);
+const logs = fs.readdirSync(shared).filter((f) => f.endsWith('.log'));
+assert.ok(!logs.includes(oldName) && logs.includes(`${A.status().deviceId}-g1.log`), logs.join());
+assert.equal(A.status().pending, 0); assert.equal(B.status().others, 1, 'still one other computer');
+r = B.pull(); B.ack(r.token);
+assert.deepEqual(r.events.map((e) => e.c), ['1', '5'], 'read from the start');
+A.append([{ c: '6', t: 'unlog', id: 'l4' }]); // appended to the new file
+r = B.pull(); B.ack(r.token);
+assert.deepEqual(r.events.map((e) => e.c), ['6']);
+
 // Key kept across restarts; turning it off forgets the folder and the key
 const A2 = createSync(dataA, plain);
 assert.equal(A2.status().enabled, true); assert.equal(A2.status().deviceId, A.status().deviceId);

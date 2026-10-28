@@ -24,6 +24,8 @@ export interface AppSettings {
   leechThreshold: number;
   /** Leeches leave the queue until reworded or reset. */
   leechSuspend: boolean;
+  /** Today's queue in a slightly shuffled order (±10 priority points, the same all day). */
+  shuffleQueue: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -39,6 +41,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoPostpone: true,
   leechThreshold: 8,
   leechSuspend: false,
+  shuffleQueue: false,
 };
 
 export type RestoreResult = { ok: true; counts: { documents: number; extracts: number; clozes: number } } | { ok: false; error: string };

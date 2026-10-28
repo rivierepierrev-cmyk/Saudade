@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import { locatePassage, replacePassage, projectMarkdown } from '../src/lib/sourceSync';
-import { buildTodayQueue, topicSurplus, cardBacklog, postponeDays, postponeTopic } from '../src/lib/queue';
+import { buildTodayQueue, topicSurplus, cardBacklog, postponeDays, postponeTopic, shuffleOffset } from '../src/lib/queue';
 
 const md = `# Titre principal
 
@@ -61,5 +61,20 @@ const moved = postponeTopic(many[0].fsrs, 10, now);
 assert.equal(new Date(moved.nextReviewDate).getTime(), new Date('2026-10-27T00:00:00').getTime() + 6 * day, 'start of the day, 6 days later');
 assert.equal(moved.interval, 10, 'interval kept when longer');
 assert.equal(postponeTopic({ ...many[0].fsrs, interval: 0 }, 0, now).interval, 2, 'interval at least the delay');
+
+// shuffle: ±10 points, the same all day, different from day to day; far priorities never swap
+for (const id of ['a', 'b', 'c', 'zz']) {
+  const o = shuffleOffset(id, '2026-10-27');
+  assert.ok(o >= -10 && o <= 10); assert.equal(shuffleOffset(id, '2026-10-27'), o);
+}
+assert.notEqual(shuffleOffset('a', '2026-10-27'), shuffleOffset('a', '2026-10-28'));
+const close: any[] = Array.from({ length: 12 }, (_, i) => ({ ...base, id: 'p' + i, priority: 50 + (i % 3), state: 'review', fsrs: rec(-1) }));
+const far: any[] = [{ ...base, id: 'top', priority: 95, state: 'review', fsrs: rec(-1) }, { ...base, id: 'low', priority: 20, state: 'review', fsrs: rec(-1) }];
+const plain = buildTodayQueue({ documents: [...close, ...far], extracts: [], clozes: [], dailyLimit: 9, reviewedTodayIds: new Set(), now }).map((e) => e.item.id);
+const mixed = buildTodayQueue({ documents: [...close, ...far], extracts: [], clozes: [], dailyLimit: 9, shuffle: true, reviewedTodayIds: new Set(), now }).map((e) => e.item.id);
+assert.notDeepEqual(mixed, plain, 'close priorities mixed');
+assert.equal(mixed[0], 'top'); assert.equal(mixed.at(-1), 'low');
+assert.deepEqual([...mixed].sort(), [...plain].sort(), 'same items');
+assert.deepEqual(buildTodayQueue({ documents: [...close, ...far], extracts: [], clozes: [], dailyLimit: 9, shuffle: true, reviewedTodayIds: new Set(), now }).map((e) => e.item.id), mixed, 'stable during the day');
 
 console.log('sync/queue tests OK');

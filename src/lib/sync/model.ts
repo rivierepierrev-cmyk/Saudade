@@ -184,6 +184,51 @@ export function snapshotEvents(lib: Library, now: Date, device: string, meta: Sy
   return [...eventsFromChanges(logs, now, device, meta), ...eventsFromChanges(rest, now, device, meta)];
 }
 
+// ---- Compacting a log -------------------------------------------------------
+
+/** Older than any real clock: for data no clock was ever recorded for. */
+const ORIGIN: Clock = '1970-01-01T00:00:00.000Z|0000000000000000|0000000000';
+
+/**
+ * This computer's knowledge as few events, each change keeping its ORIGINAL clock:
+ * the log can be replaced by them without making old values look new. Another
+ * computer applying them keeps its own more recent changes.
+ */
+export function compactEvents(lib: Library, meta: SyncMeta): SyncEvent[] {
+  const events: SyncEvent[] = [];
+  for (const coll of ITEM_COLLS) {
+    for (const item of lib[coll] as unknown as AnyItem[]) {
+      const clocks = meta.clocks[coll][item.id] ?? {};
+      const fields = Object.keys(item).filter((k) => k !== 'id' && !(coll === 'clozes' && k === 'fsrs'));
+      const clockOf = (k: string) => clocks[k] ?? clocks._ ?? meta.born[coll][item.id] ?? ORIGIN;
+      const born = meta.born[coll][item.id] ?? fields.map(clockOf).reduce((a, b) => (b < a ? b : a), clockOf(fields[0] ?? 'id'));
+      // Created with every field at its oldest clock, then each later change at its own.
+      events.push({ c: born, t: 'put', coll, id: item.id, f: Object.fromEntries(fields.map((k) => [k, item[k]])), n: 1 });
+      const later = new Map<Clock, Record<string, unknown>>();
+      for (const k of fields) {
+        const c = clockOf(k);
+        if (c > born) later.set(c, { ...(later.get(c) ?? {}), [k]: item[k] });
+      }
+      for (const [c, f] of later) events.push({ c, t: 'put', coll, id: item.id, f });
+      if (coll === 'clozes') {
+        const base = meta.bases[item.id];
+        events.push(base ? { c: base.c, t: 'base', id: item.id, fsrs: base.fsrs } : { c: born, t: 'base', id: item.id, fsrs: item.fsrs as FSRSRecord });
+      }
+    }
+    for (const [id, c] of Object.entries(meta.dead[coll])) events.push({ c, t: 'del', coll, id });
+  }
+  for (const log of lib.reviewLogs) events.push({ c: `${log.reviewDate}|${ORIGIN.slice(25)}`, t: 'log', log });
+  for (const [id, c] of Object.entries(meta.unlogged)) events.push({ c, t: 'unlog', id });
+  events.push({ c: meta.folders ?? ORIGIN, t: 'folders', list: [...lib.folders] });
+  const settingsByClock = new Map<Clock, Record<string, unknown>>();
+  for (const [k, v] of Object.entries(lib.settings)) {
+    const c = meta.settings[k] ?? ORIGIN;
+    settingsByClock.set(c, { ...(settingsByClock.get(c) ?? {}), [k]: v });
+  }
+  for (const [c, f] of settingsByClock) events.push({ c, t: 'settings', f });
+  return events;
+}
+
 // ---- Recording and applying events ----------------------------------------
 
 const itemClock = (meta: SyncMeta, coll: ItemColl, id: string, field: string): Clock => {

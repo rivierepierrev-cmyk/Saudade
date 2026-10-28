@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('saudadeDesktop', {
     append: (events) => ipcRenderer.invoke('saudade:sync-append', events),
     pull: () => ipcRenderer.invoke('saudade:sync-pull'),
     ack: (token) => ipcRenderer.invoke('saudade:sync-ack', token),
+    compact: (events) => ipcRenderer.invoke('saudade:sync-compact', events),
     saveMeta: (text) => ipcRenderer.invoke('saudade:sync-meta', text),
   },
 });

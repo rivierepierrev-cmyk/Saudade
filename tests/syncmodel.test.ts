@@ -1,7 +1,7 @@
 // Two simulated computers exchanging events (src/lib/sync/model.ts).
 import assert from 'assert';
 import {
-  Library, LibraryKey, SyncEvent, SyncMeta, emptyMeta, diffCollection, eventsFromChanges, noteLocal, snapshotEvents, applyRemote,
+  Library, LibraryKey, SyncEvent, SyncMeta, emptyMeta, diffCollection, eventsFromChanges, noteLocal, snapshotEvents, applyRemote, compactEvents,
 } from '../src/lib/sync/model';
 import { applyCardReview, createInitialFSRSRecord } from '../src/lib/fsrs';
 import { ClozeItem, DocumentItem, ExtractItem, ReviewLog, ReviewRating } from '../src/types/saudade';
@@ -189,5 +189,21 @@ const once = clone(B.lib);
 B.receive(batch);
 assert.deepEqual(clone(B.lib), once, 'idempotent');
 void replayAll;
+
+// 11. Compacting a log: a new computer gets the same library from it alone…
+exchange(A, B);
+const C = new Device('cccc', { documents: [], extracts: [], clozes: [], reviewLogs: [], folders: [], settings: {} });
+C.receive(compactEvents(A.lib, A.meta));
+assert.deepEqual(clone(norm(C.lib)), clone(norm(A.lib)), 'compacted log = whole library, schedules included');
+// …and a computer with changes not yet synced keeps them (old values keep their old clocks)
+B.act(at(200), (lib) => { lib.documents[0].title = 'Titre B, plus récent'; });
+A.act(at(201), (lib) => { lib.documents[0].priority = 33; });
+const compacted = compactEvents(A.lib, A.meta);
+assert.ok(compacted.length < 200, `few events (${compacted.length})`);
+B.receive(compacted);
+assert.equal(B.lib.documents[0].title, 'Titre B, plus récent', 'B’s newer edit survives A’s compacted log');
+assert.equal(B.lib.documents[0].priority, 33);
+A.receive(B.out.splice(0)); A.out.splice(0);
+assert.deepEqual(clone(norm(A.lib)), clone(norm(B.lib)));
 
 console.log('sync model tests OK');

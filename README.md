@@ -24,6 +24,10 @@ En mode navigateur (`npm run dev`), les données restent dans le localStorage du
 - La file ne contient que ce qui est à faire aujourd'hui (documents, extraits et cartes dus, avec la même limite quotidienne de cartes que la révision). Chaque élément la quitte une fois lu ou révisé ; quand tout est fait, elle est vide et indique la date du prochain élément. Les réponses des cartes y restent masquées ; priorité et historique s'affichent au survol. Le badge, la file et les Statistiques donnent le même compte.
 - Un document ou un extrait déjà programmé pour plus tard n'est jamais reprogrammé une seconde fois : « Lu » / « Suivant » passe simplement à la suite (« déjà prévu dans N j »).
 
+### Ordre de la file
+
+- Réglages › « Mélanger légèrement l'ordre de la file » (désactivé par défaut) : comme dans SuperMemo, chaque élément gagne ou perd jusqu'à 10 points de priorité, différemment chaque jour (mais le même toute la journée, et sur tous les ordinateurs). Deux éléments à plus de 20 points d'écart ne s'inversent jamais ; les limites du jour gardent toujours les plus importants.
+
 ### Surcharge
 
 - Limites par jour (Réglages) : cartes à trou différentes (50 par défaut) et documents + extraits (20 par défaut). La file ne montre que les plus prioritaires ; une ligne indique ce qui attend au-delà.
@@ -96,6 +100,7 @@ Ensuite tout est automatique : au démarrage, quand la fenêtre revient au premi
 - Fusion : pour les documents, extraits et cartes, champ par champ, la modification la plus récente gagne ; une suppression l'emporte sur les modifications (sauf si l'élément est recréé ensuite, par exemple par une restauration). Les révisions de cartes faites sur les deux ordinateurs sont toutes gardées : le calendrier de la carte est recalculé en les rejouant dans l'ordre.
 - Les réglages (limite par jour, taux visé, thème…) sont synchronisés aussi, réglage par réglage : le plus récent gagne. Le deuxième ordinateur prend ceux du dossier en le rejoignant.
 - Attendez que le client indique que tout est synchronisé avant de passer d'un ordinateur à l'autre.
+- Le journal de chaque ordinateur est compacté quand il dépasse 4 Mo : il est réécrit sous forme d'état (chaque modification garde sa date d'origine), sous un nouveau nom. L'autre ordinateur le relit sans rien perdre, y compris ses propres modifications pas encore synchronisées.
 
 ## Installation
 - **Linux Mint / Ubuntu / Debian (recommandé)** : `sudo apt install ./Saudade-1.0.0-linux-amd64.deb`, puis lancez Saudade depuis le menu (ou la commande `saudade`).

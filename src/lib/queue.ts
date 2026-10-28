@@ -28,6 +28,8 @@ interface QueueInput {
   dailyLimit: number;
   /** Maximum number of documents and extracts per day (the most important first). */
   topicLimit?: number;
+  /** Order slightly shuffled (±10 priority points), the same all day: see shuffleKey. */
+  shuffle?: boolean;
   /** Cards already reviewed today: they come back (learning steps) without using the limit. */
   reviewedTodayIds: Set<string>;
   now?: Date;
@@ -37,7 +39,7 @@ interface QueueInput {
  * Everything to do today, in queue order (highest priority first, then the
  * longest overdue). Cards not yet seen today are capped by the daily limit.
  */
-export function buildTodayQueue({ documents, extracts, clozes, dailyLimit, topicLimit = Infinity, reviewedTodayIds, now = new Date() }: QueueInput): QueueEntry[] {
+export function buildTodayQueue({ documents, extracts, clozes, dailyLimit, topicLimit = Infinity, shuffle = false, reviewedTodayIds, now = new Date() }: QueueInput): QueueEntry[] {
 
   let budget = Math.max(0, dailyLimit - reviewedTodayIds.size);
   // Like Anki: two cards of the same note are not shown the same day (the second
@@ -58,7 +60,23 @@ export function buildTodayQueue({ documents, extracts, clozes, dailyLimit, topic
     ...dueTopics(documents, extracts, now).slice(0, Math.max(0, topicLimit)),
     ...cards.map((item) => ({ type: 'cloze' as const, item })),
   ];
-  return entries.sort((a, b) => order(a.item, b.item));
+  if (!shuffle) return entries.sort((a, b) => order(a.item, b.item));
+  const day = localDay(now);
+  const key = new Map(entries.map((e) => [e.item.id, e.item.priority + shuffleOffset(e.item.id, day)]));
+  return entries.sort((a, b) => key.get(b.item.id)! - key.get(a.item.id)! || order(a.item, b.item));
+}
+
+const localDay = (d: Date) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+
+/**
+ * Offset in [-10, 10] priority points of an item on a given day, from a hash of
+ * both: the queue order varies from day to day (as SuperMemo's randomisation),
+ * stays put during the day, and is the same on every computer.
+ */
+export function shuffleOffset(id: string, day: string): number {
+  let h = 2166136261;
+  for (const ch of `${id}|${day}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  return ((h >>> 0) / 0xffffffff) * 20 - 10;
 }
 
 const due = <T extends { state: string; fsrs: FSRSRecord }>(list: T[], now: Date) =>

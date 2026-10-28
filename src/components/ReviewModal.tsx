@@ -63,6 +63,7 @@ interface ReviewModalProps {
   /** With the daily limit of documents and extracts, so the session plays the queue's extracts. */
   documents: DocumentItem[];
   topicLimit: number;
+  shuffle: boolean;
   leechThreshold: number;
   /** Texts being written: an extract can be poured into one (incremental writing). */
   writingTexts: DocumentItem[];
@@ -90,6 +91,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   dailyLimit,
   documents,
   topicLimit,
+  shuffle,
   leechThreshold,
   writingTexts,
   onAddToWriting,
@@ -165,7 +167,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         ...extracts.filter((e) => e.state !== 'dismissed').map((e) => toEntry(e, 'extract')),
       ].sort((a, b) => b.priority - a.priority);
     } else {
-      entries = buildTodayQueue({ documents, extracts, clozes, dailyLimit, topicLimit, reviewedTodayIds })
+      entries = buildTodayQueue({ documents, extracts, clozes, dailyLimit, topicLimit, shuffle, reviewedTodayIds })
         .filter((q) => q.type !== 'document') // documents are read in the reader
         .map((q) => toEntry(q.item as ClozeItem | ExtractItem, q.type as 'cloze' | 'extract'));
     }

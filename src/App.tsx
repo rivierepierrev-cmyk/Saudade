@@ -155,6 +155,7 @@ export default function App() {
     clozes,
     dailyLimit: settings.dailyReviewLimit,
     topicLimit: settings.dailyTopicLimit,
+    shuffle: settings.shuffleQueue,
     reviewedTodayIds,
   });
   // Beyond today's limits: shown in the queue, the documents and extracts postponed.
@@ -1362,6 +1363,7 @@ export default function App() {
             dailyLimit={settings.dailyReviewLimit}
             documents={documents}
             topicLimit={settings.dailyTopicLimit}
+            shuffle={settings.shuffleQueue}
             leechThreshold={settings.leechThreshold}
             writingTexts={writingTexts}
             onAddToWriting={handleAddToWriting}
@@ -1436,6 +1438,12 @@ export default function App() {
             onUpdateDailyLimit={handleUpdateDailyLimit}
             leechThreshold={settings.leechThreshold}
             leechSuspend={settings.leechSuspend}
+            shuffleQueue={settings.shuffleQueue}
+            onToggleShuffle={(on) => {
+              const newSettings: AppSettings = { ...settings, shuffleQueue: on };
+              setSettings(newSettings);
+              SaudadeStorage.saveSettings(newSettings);
+            }}
             onUpdateLeechSettings={handleUpdateLeechSettings}
             dailyTopicLimit={settings.dailyTopicLimit}
             onUpdateTopicLimit={handleUpdateTopicLimit}

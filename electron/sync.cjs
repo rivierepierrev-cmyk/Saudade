@@ -4,7 +4,8 @@
 // In the shared folder:
 //   saudade-sync.json   salt of the key + a check value (no data)
 //   <device>.log        this computer's events, one encrypted line each, only ever
-//                       appended to, and only by this computer: no sync conflicts
+//                       appended to, and only by this computer: no sync conflicts.
+//                       Once compacted (see compact), <device>-g<N>.log replaces it.
 //   media/<name>.enc    imported images, encrypted
 // Locally, in <dataDir>/sync/: config.json (folder, key, how far each other log was
 // read), outbox.jsonl (events not yet in the folder, e.g. folder unreachable) and
@@ -20,7 +21,8 @@ const crypto = require('crypto');
 const HEADER = 'saudade-sync.json';
 const CHECK = 'saudade-sync-ok';
 const SCRYPT = { N: 1 << 15, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
-const LOG_RE = /^[0-9a-f]{16}\.log$/;
+const LOG_RE = /^[0-9a-f]{16}(-g\d+)?\.log$/;
+const deviceOf = (name) => name.slice(0, 16);
 const MEDIA_RE = /^[0-9a-f]{32}\.[a-z0-9]{2,5}$/;
 
 function encrypt(key, buf) {
@@ -91,9 +93,12 @@ function createSync(dataDir, keyStore) {
   }
 
   const enabled = () => Boolean(config.folder && key);
-  const ownLog = () => path.join(config.folder, `${config.deviceId}.log`);
+  const ownLogName = (generation = config.generation || 0) =>
+    generation > 0 ? `${config.deviceId}-g${generation}.log` : `${config.deviceId}.log`;
+  const ownLog = () => path.join(config.folder, ownLogName());
   const otherLogs = (folder) =>
-    fs.existsSync(folder) ? fs.readdirSync(folder).filter((f) => LOG_RE.test(f) && f !== `${config.deviceId}.log`) : [];
+    fs.existsSync(folder) ? fs.readdirSync(folder).filter((f) => LOG_RE.test(f) && deviceOf(f) !== config.deviceId) : [];
+  const otherDevices = (folder) => new Set(otherLogs(folder).map(deviceOf)).size;
 
   /** What a folder holds: a sync header (another computer already uses it) and logs. */
   function inspect(folder) {
@@ -101,7 +106,7 @@ function createSync(dataDir, keyStore) {
       return { ok: false, error: 'Dossier introuvable.' };
     }
     const header = readJson(path.join(folder, HEADER), null);
-    return { ok: true, used: Boolean(header && header.salt), others: otherLogs(folder).length };
+    return { ok: true, used: Boolean(header && header.salt), others: otherDevices(folder) };
   }
 
   /** Turns synchronisation on with this folder: creates its header, or checks the passphrase. */
@@ -130,6 +135,7 @@ function createSync(dataDir, keyStore) {
     config.key = keyStore.protect(k);
     config.offsets = {};
     config.lastSync = null;
+    config.generation = 0;
     saveConfig();
     lastError = null;
     return { ok: true, joined: info.used && info.others > 0 };
@@ -238,6 +244,28 @@ function createSync(dataDir, keyStore) {
     return { events, token };
   }
 
+  /**
+   * Replaces this computer's log by `events` (the page's compactEvents: the whole
+   * state, each change with its original clock) under a new name, then removes the
+   * old one. The other computers read the new file from its start; applying it
+   * again is harmless. The outbox is part of that state, so it is emptied.
+   */
+  function compact(events) {
+    if (!enabled() || !Array.isArray(events) || events.length === 0) return { ok: false };
+    const previous = ownLog();
+    const generation = (config.generation || 0) + 1;
+    const next = path.join(config.folder, ownLogName(generation));
+    const lines = events.map((e) => encrypt(key, Buffer.from(JSON.stringify(e))).toString('base64')).join('\n') + '\n';
+    const tmp = path.join(config.folder, `.${ownLogName(generation)}.tmp`);
+    fs.writeFileSync(tmp, lines);
+    fs.renameSync(tmp, next);
+    config.generation = generation;
+    saveConfig();
+    fs.rmSync(outboxFile, { force: true });
+    if (previous !== next) fs.rmSync(previous, { force: true });
+    return { ok: true, bytes: Buffer.byteLength(lines) };
+  }
+
   function ack(token) {
     if (!enabled()) return;
     if (token) Object.assign(config.offsets, token);
@@ -248,12 +276,14 @@ function createSync(dataDir, keyStore) {
   function status() {
     const pending = fs.existsSync(outboxFile) ? fs.readFileSync(outboxFile, 'utf8').split('\n').filter(Boolean).length : 0;
     let others = 0;
+    let ownLogBytes = 0;
     try {
-      others = enabled() ? otherLogs(config.folder).length : 0;
+      others = enabled() ? otherDevices(config.folder) : 0;
+      ownLogBytes = enabled() && fs.existsSync(ownLog()) ? fs.statSync(ownLog()).size : 0;
     } catch {
       // folder unreachable: shown through lastError
     }
-    return { enabled: enabled(), folder: config.folder || null, deviceId: config.deviceId, lastSync: config.lastSync || null, pending, others, error: lastError };
+    return { enabled: enabled(), folder: config.folder || null, deviceId: config.deviceId, lastSync: config.lastSync || null, pending, others, ownLogBytes, error: lastError };
   }
 
   const readMeta = () => {
@@ -265,7 +295,7 @@ function createSync(dataDir, keyStore) {
   };
   const writeMeta = (text) => writeAtomic(metaFile, String(text));
 
-  return { inspect, enable, disable, append, flush, pull, ack, status, readMeta, writeMeta, dir };
+  return { inspect, enable, disable, append, flush, pull, ack, compact, status, readMeta, writeMeta, dir };
 }
 
 module.exports = { createSync, encrypt, decrypt, deriveKey };
