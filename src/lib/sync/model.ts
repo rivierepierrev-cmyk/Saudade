@@ -11,7 +11,8 @@
  *   computer, in time order. FSRS is deterministic, so both computers agree, and
  *   reviews made on two computers the same day are all kept;
  * - review history: union (a removed entry stays removed);
- * - folder list: the most recent list wins.
+ * - folder list: the most recent list wins;
+ * - settings (daily limit, target retention, theme…): field by field, the most recent wins.
  * Everything here is pure: tested without files or windows.
  */
 import { ClozeItem, DocumentItem, ExtractItem, FSRSRecord, ReviewLog } from '../../types/saudade';
@@ -30,7 +31,8 @@ export type SyncEvent =
   | { c: Clock; t: 'base'; id: string; fsrs: FSRSRecord }
   | { c: Clock; t: 'log'; log: ReviewLog }
   | { c: Clock; t: 'unlog'; id: string }
-  | { c: Clock; t: 'folders'; list: string[] };
+  | { c: Clock; t: 'folders'; list: string[] }
+  | { c: Clock; t: 'settings'; f: Record<string, unknown> };
 
 /** What this computer knows about the clocks of its data (saved locally, never shared). */
 export interface SyncMeta {
@@ -46,6 +48,8 @@ export interface SyncMeta {
   /** Removed review log entries. */
   unlogged: Record<string, Clock>;
   folders?: Clock;
+  /** Clock of each setting. */
+  settings: Record<string, Clock>;
 }
 
 export interface Library {
@@ -54,6 +58,7 @@ export interface Library {
   clozes: ClozeItem[];
   reviewLogs: ReviewLog[];
   folders: string[];
+  settings: Record<string, unknown>;
 }
 export type LibraryKey = keyof Library;
 
@@ -64,6 +69,7 @@ export const emptyMeta = (): SyncMeta => ({
   born: { documents: {}, extracts: {}, clozes: {} },
   bases: {},
   unlogged: {},
+  settings: {},
 });
 
 export function makeClock(now: Date, device: string, seq: number): Clock {
@@ -83,13 +89,19 @@ export type Change =
   | { t: 'fsrs'; id: string; fsrs: FSRSRecord; created: boolean }
   | { t: 'log'; log: ReviewLog }
   | { t: 'unlog'; id: string; itemId?: string }
-  | { t: 'folders'; list: string[] };
+  | { t: 'folders'; list: string[] }
+  | { t: 'settings'; f: Record<string, unknown> };
 
 type AnyItem = { id: string } & Record<string, unknown>;
 
 /** Changes between two versions of a saved collection. */
 export function diffCollection(name: LibraryKey, prev: unknown, next: unknown): Change[] {
   if (name === 'folders') return same(prev, next) ? [] : [{ t: 'folders', list: [...(next as string[])] }];
+  if (name === 'settings') {
+    const before = (prev ?? {}) as Record<string, unknown>;
+    const f = Object.fromEntries(Object.entries(next as Record<string, unknown>).filter(([k, v]) => !same(before[k], v)));
+    return Object.keys(f).length > 0 ? [{ t: 'settings', f }] : [];
+  }
   if (name === 'reviewLogs') {
     const before = new Set((prev as ReviewLog[]).map((l) => l.id));
     const after = new Set((next as ReviewLog[]).map((l) => l.id));
@@ -128,7 +140,7 @@ export function diffCollection(name: LibraryKey, prev: unknown, next: unknown): 
 export function eventsFromChanges(changes: Change[], now: Date, device: string, meta: SyncMeta): SyncEvent[] {
   const reviewed = new Set(changes.flatMap((c) => (c.t === 'log' && c.log.itemType === 'cloze' ? [c.log.itemId] : [])));
   const unreviewed = new Set(changes.flatMap((c) => (c.t === 'unlog' && c.itemId ? [c.itemId] : [])));
-  const order = { put: 0, del: 1, fsrs: 2, log: 3, unlog: 4, folders: 5 } as const;
+  const order = { put: 0, del: 1, fsrs: 2, log: 3, unlog: 4, folders: 5, settings: 6 } as const;
   const sorted = [...changes].sort((a, b) => order[a.t] - order[b.t]);
   const events: SyncEvent[] = [];
   const clock = () => makeClock(now, device, ++meta.seq);
@@ -154,6 +166,9 @@ export function eventsFromChanges(changes: Change[], now: Date, device: string, 
       case 'folders':
         events.push({ c: clock(), t: 'folders', list: ch.list });
         break;
+      case 'settings':
+        events.push({ c: clock(), t: 'settings', f: ch.f });
+        break;
     }
   }
   return events;
@@ -161,7 +176,7 @@ export function eventsFromChanges(changes: Change[], now: Date, device: string, 
 
 /** Everything in the library as events: the first time a computer synchronises. */
 export function snapshotEvents(lib: Library, now: Date, device: string, meta: SyncMeta): SyncEvent[] {
-  const empty: Library = { documents: [], extracts: [], clozes: [], reviewLogs: [], folders: [] };
+  const empty: Library = { documents: [], extracts: [], clozes: [], reviewLogs: [], folders: [], settings: {} };
   const changes = (Object.keys(empty) as LibraryKey[]).flatMap((k) => diffCollection(k, empty[k], lib[k]));
   // History first in time: the bases are taken after it, so it is never replayed.
   const logs = changes.filter((c) => c.t === 'log');
@@ -203,6 +218,9 @@ export function noteLocal(meta: SyncMeta, events: SyncEvent[]): void {
       case 'folders':
         meta.folders = e.c;
         break;
+      case 'settings':
+        for (const k of Object.keys(e.f)) meta.settings[k] = e.c;
+        break;
     }
   }
 }
@@ -236,6 +254,7 @@ export function applyRemote(
   };
   const logs = new Map(lib.reviewLogs.map((l) => [l.id, l]));
   let folders = lib.folders;
+  let settings = lib.settings;
   const replay = new Set<string>();
   // Items created here: listed first, newest first, as the app does.
   const created: Record<ItemColl, string[]> = { documents: [], extracts: [], clozes: [] };
@@ -317,6 +336,16 @@ export function applyRemote(
           changed.add('folders');
         }
         break;
+      case 'settings':
+        for (const [k, v] of Object.entries(e.f)) {
+          if ((meta.settings[k] ?? '') >= e.c) continue;
+          meta.settings[k] = e.c;
+          if (!same(settings[k], v)) {
+            settings = { ...settings, [k]: v };
+            changed.add('settings');
+          }
+        }
+        break;
     }
   }
 
@@ -326,7 +355,8 @@ export function applyRemote(
     const card = items.clozes.get(id);
     const base = meta.bases[id];
     if (!card || !base) continue;
-    const fsrs = replayCard(base, allLogs.filter((l) => l.itemType === 'cloze' && l.itemId === id), defaultRetention);
+    const retention = typeof settings.targetRetention === 'number' ? settings.targetRetention : defaultRetention;
+    const fsrs = replayCard(base, allLogs.filter((l) => l.itemType === 'cloze' && l.itemId === id), retention);
     if (!same(card.fsrs, fsrs)) {
       items.clozes.set(id, { ...card, fsrs });
       changed.add('clozes');
@@ -353,6 +383,7 @@ export function applyRemote(
       clozes: changed.has('clozes') ? (list('clozes') as unknown as ClozeItem[]) : lib.clozes,
       reviewLogs: changed.has('reviewLogs') ? allLogs : lib.reviewLogs,
       folders,
+      settings,
     },
     changed,
   };

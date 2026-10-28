@@ -55,6 +55,7 @@ const norm = (lib: Library) => ({
   clozes: [...lib.clozes].sort((x, y) => x.id.localeCompare(y.id)),
   reviewLogs: [...lib.reviewLogs].sort((x, y) => x.id.localeCompare(y.id)),
   folders: lib.folders,
+  settings: lib.settings,
 });
 
 const base = { tags: [], createdAt: '', updatedAt: '', state: 'new' as const };
@@ -62,11 +63,11 @@ const doc: DocumentItem = { ...base, id: 'd1', title: 'Doc', content: '# Texte',
 const ext: ExtractItem = { ...base, id: 'e1', documentId: 'd1', documentTitle: 'Doc', text: 'Un passage', priority: 50, fsrs: createInitialFSRSRecord(0) };
 const card = (id: string): ClozeItem => ({ ...base, id, documentId: 'd1', text: `Le {{c1::${id}}}`, priority: 50, fsrs: { ...createInitialFSRSRecord(0), nextReviewDate: at(0).toISOString() } });
 const oldLog: ReviewLog = { id: 'old', itemId: 'c1', itemType: 'cloze', rating: 3, scheduledInterval: 1, actualInterval: 0, reviewDate: '2025-12-01T00:00:00.000Z', state: 'review' };
-const initial: Library = { documents: [doc], extracts: [ext], clozes: [card('c1'), card('c2')], reviewLogs: [oldLog], folders: ['Général'] };
+const initial: Library = { documents: [doc], extracts: [ext], clozes: [card('c1'), card('c2')], reviewLogs: [oldLog], folders: ['Général'], settings: { dailyReviewLimit: 50, targetRetention: 0.9, theme: 'system' } };
 
 // 1. A starts syncing; B joins with an empty library ("replace") and gets everything
 const A = new Device('aaaa', initial);
-const B = new Device('bbbb', { documents: [], extracts: [], clozes: [], reviewLogs: [], folders: [] });
+const B = new Device('bbbb', { documents: [], extracts: [], clozes: [], reviewLogs: [], folders: [], settings: { dailyReviewLimit: 20, targetRetention: 0.85, theme: 'dark' } });
 A.start(at(0));
 exchange(A, B);
 assert.deepEqual(norm(B.lib), norm(A.lib), 'B has A’s library');
@@ -160,6 +161,15 @@ A.act(at(100), (lib) => { lib.clozes.unshift(card('c3')); lib.folders = ['Géné
 exchange(A, B);
 assert.equal(B.lib.clozes[0].id, 'c3', 'new card listed first'); assert.deepEqual(B.lib.folders, ['Général', 'Livres']);
 assert.deepEqual(norm(B.lib), norm(A.lib), 'still the same library');
+
+// 9b. Settings: field by field, the latest wins
+assert.deepEqual(B.lib.settings, initial.settings, 'B took A’s settings when joining');
+A.act(at(101), (lib) => { lib.settings = { ...lib.settings, dailyReviewLimit: 30 }; });
+B.act(at(102), (lib) => { lib.settings = { ...lib.settings, theme: 'dark' }; });
+B.act(at(103), (lib) => { lib.settings = { ...lib.settings, dailyReviewLimit: 40 }; });
+exchange(A, B);
+assert.deepEqual(A.lib.settings, { dailyReviewLimit: 40, targetRetention: 0.9, theme: 'dark' });
+assert.deepEqual(B.lib.settings, A.lib.settings);
 
 // 10. Applying the same events twice changes nothing
 const replayAll = [...A.out];

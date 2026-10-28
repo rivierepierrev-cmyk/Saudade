@@ -3,7 +3,7 @@
  * to the main process (electron/sync.cjs writes them to the shared folder), and
  * applies the other computers' events (merge rules: ./model.ts).
  */
-import { SaudadeStorage, observeSaves } from '../storage';
+import { SaudadeStorage, AppSettings, observeSaves } from '../storage';
 import { takeSnapshot } from '../kv';
 import {
   Change, Library, LibraryKey, SyncEvent, SyncMeta, applyRemote, diffCollection, emptyMeta, eventsFromChanges, noteLocal, snapshotEvents,
@@ -47,7 +47,7 @@ if (status?.enabled) {
   }
 }
 
-const LIBRARY_KEYS: LibraryKey[] = ['documents', 'extracts', 'clozes', 'reviewLogs', 'folders'];
+const LIBRARY_KEYS: LibraryKey[] = ['documents', 'extracts', 'clozes', 'reviewLogs', 'folders', 'settings'];
 const isLibraryKey = (name: string): name is LibraryKey => (LIBRARY_KEYS as string[]).includes(name);
 
 // ---- Listeners ----------------------------------------------------------------
@@ -135,6 +135,7 @@ const currentLibrary = (): Library => ({
   clozes: SaudadeStorage.getClozes(),
   reviewLogs: SaudadeStorage.getReviewLogs(),
   folders: SaudadeStorage.getFolders(),
+  settings: { ...SaudadeStorage.getSettings() },
 });
 
 function saveLibrary(lib: Library, which: Iterable<LibraryKey>) {
@@ -146,6 +147,7 @@ function saveLibrary(lib: Library, which: Iterable<LibraryKey>) {
       if (key === 'clozes') SaudadeStorage.saveClozes(lib.clozes);
       if (key === 'reviewLogs') SaudadeStorage.saveReviewLogs(lib.reviewLogs);
       if (key === 'folders') SaudadeStorage.saveFolders(lib.folders.length > 0 ? lib.folders : ['Général']);
+      if (key === 'settings') SaudadeStorage.saveSettings({ ...SaudadeStorage.getSettings(), ...(lib.settings as Partial<AppSettings>) });
     }
   } finally {
     applying = false;
@@ -197,7 +199,9 @@ export async function enableSync(folder: string, passphrase: string, replace: bo
   meta = emptyMeta();
   if (replace) {
     await takeSnapshot('avant-synchronisation');
-    saveLibrary({ documents: [], extracts: [], clozes: [], reviewLogs: [], folders: ['Général'] }, LIBRARY_KEYS);
+    // The library is replaced; settings stay until the folder's arrive.
+    const empty = { documents: [], extracts: [], clozes: [], reviewLogs: [], folders: ['Général'], settings: {} };
+    saveLibrary(empty, LIBRARY_KEYS.filter((k) => k !== 'settings'));
     libraryListeners.forEach((l) => l());
   } else {
     const events = snapshotEvents(currentLibrary(), new Date(), status!.deviceId, meta);

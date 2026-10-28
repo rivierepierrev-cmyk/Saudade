@@ -65,6 +65,9 @@ export default function App() {
       setDocuments(documentsRef.current);
       setExtracts(extractsRef.current);
       setClozes(clozesRef.current);
+      const synced = SaudadeStorage.getSettings();
+      setSettings(synced);
+      applyTheme(synced.theme);
     };
     const off = onLibraryChanged(reload);
     const tick = () => {

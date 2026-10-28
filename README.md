@@ -64,7 +64,7 @@ Ensuite tout est automatique : au démarrage, quand la fenêtre revient au premi
 - Chaque ordinateur n'écrit que dans son propre fichier du dossier (`<appareil>.log`, en ajout seulement) : jamais de copie en conflit.
 - Tout ce qui est écrit dans le dossier (modifications, images) est chiffré (AES-256-GCM, clé tirée de la phrase de passe par scrypt). La phrase de passe n'est pas enregistrée ; la clé l'est, protégée par le trousseau du système quand il y en a un.
 - Fusion : pour les documents, extraits et cartes, champ par champ, la modification la plus récente gagne ; une suppression l'emporte sur les modifications (sauf si l'élément est recréé ensuite, par exemple par une restauration). Les révisions de cartes faites sur les deux ordinateurs sont toutes gardées : le calendrier de la carte est recalculé en les rejouant dans l'ordre.
-- Les réglages (limite, taux visé, thème) restent propres à chaque ordinateur.
+- Les réglages (limite par jour, taux visé, thème…) sont synchronisés aussi, réglage par réglage : le plus récent gagne. Le deuxième ordinateur prend ceux du dossier en le rejoignant.
 - Attendez que le client indique que tout est synchronisé avant de passer d'un ordinateur à l'autre.
 
 ## Installation

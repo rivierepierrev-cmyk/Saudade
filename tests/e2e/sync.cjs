@@ -25,7 +25,7 @@ const A = profile('a', {
 });
 const B = profile('b', {
   documents: [{ ...base, id: 'b-doc', title: 'Brouillon du portable', content: 'Rien', priority: 10, fsrs: due }],
-  extracts: [], clozes: [], reviewLogs: [], settings: {}, folders: ['Général'],
+  extracts: [], clozes: [], reviewLogs: [], settings: { dailyReviewLimit: 20, theme: 'dark' }, folders: ['Général'],
 });
 
 async function launch(p) {
@@ -79,6 +79,8 @@ async function syncNow(page) {
   assert.deepEqual(B.read('documents').map((d) => [d.id, d.content]), A.read('documents').map((d) => [d.id, d.content]), 'B has A’s library');
   assert.deepEqual(B.read('clozes'), A.read('clozes'));
   assert.ok(fs.readdirSync(path.join(B.dataDir, 'backups')).some((f) => f.includes('avant-synchronisation')), 'B’s own library saved');
+  assert.equal(B.read('settings').dailyReviewLimit, 50, 'B took A’s settings');
+  assert.equal(await b.page.evaluate(() => document.documentElement.dataset.theme ?? 'system'), 'system', 'and its theme, on screen');
   // B's screen shows it too
   await b.page.getByRole('button', { name: /^Bibliothèque/ }).first().click();
   await b.page.getByText('Géographie').first().waitFor();
@@ -96,6 +98,13 @@ async function syncNow(page) {
     assert.equal(P.read('reviewLogs').length, 1);
   }
   assert.deepEqual(A.read('clozes'), B.read('clozes'), 'same schedule on both');
+
+  // 3b. A setting changed on A reaches B (and its screen)
+  await a.page.getByRole('button', { name: 'Réglages' }).click();
+  await a.page.getByLabel('Cartes différentes par jour').fill('30'); await settle(a.page);
+  await syncNow(a.page); await syncNow(b.page);
+  assert.equal(B.read('settings').dailyReviewLimit, 30);
+  assert.equal(await b.page.getByLabel('Cartes différentes par jour').inputValue(), '30');
 
   // 4. A deletes the extract: gone on B too
   await a.page.getByRole('button', { name: /File de lecture/ }).first().click();
