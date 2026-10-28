@@ -9,6 +9,18 @@ contextBridge.exposeInMainWorld('saudadeDesktop', {
   writeDocuments: (metaText, changed) => ipcRenderer.invoke('saudade:write-documents', metaText, changed),
   snapshot: (reason) => ipcRenderer.invoke('saudade:snapshot', reason),
   openDataFolder: () => ipcRenderer.invoke('saudade:open-data-folder'),
+  // Automatic updates (electron/updater.cjs).
+  updates: {
+    get: () => ipcRenderer.invoke('saudade:update-get'),
+    check: () => ipcRenderer.invoke('saudade:update-check'),
+    install: () => ipcRenderer.invoke('saudade:update-install'),
+    setEnabled: (enabled) => ipcRenderer.invoke('saudade:update-enabled', enabled),
+    onChange: (listener) => {
+      const handler = (_e, state) => listener(state);
+      ipcRenderer.on('saudade:update-state', handler);
+      return () => ipcRenderer.removeListener('saudade:update-state', handler);
+    },
+  },
   // Synchronisation through a shared folder (electron/sync.cjs).
   sync: {
     initial: ipcRenderer.sendSync('saudade:sync-initial'),

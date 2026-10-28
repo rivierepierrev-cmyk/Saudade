@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Check, Download, FolderOpen, RotateCcw, Upload } from 'lucide-react';
 import { SyncSettings } from './SyncSettings';
+import { checkForUpdates, installUpdate, setAutoUpdates, useUpdates } from '../lib/updates';
 
 interface SettingsViewProps {
   cardCount: number;
@@ -32,6 +33,54 @@ const SECONDARY =
 const DANGER =
   'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-a84236)] hover:bg-[var(--bg-fdf2f0)] border border-[var(--bd-f2d6d3)] rounded-lg transition-colors cursor-pointer disabled:opacity-45';
 const RETENTION_MARKS = [70, 75, 80, 85, 90, 95, 98];
+
+/** Réglages › Mises à jour: version, automatic updates, check now. */
+const UpdatesSection: React.FC = () => {
+  const updates = useUpdates();
+  if (!updates) return null;
+  const line =
+    !updates.supported
+      ? 'Mises à jour automatiques indisponibles pour cette version (portable ou développement) : installez les nouvelles versions à la main.'
+      : updates.status === 'checking'
+        ? 'Recherche d’une nouvelle version…'
+        : updates.status === 'downloading'
+          ? `Téléchargement de la version ${updates.version} : ${updates.percent} %`
+          : updates.status === 'ready'
+            ? `La version ${updates.version} est prête : elle s’installera au prochain démarrage.`
+            : updates.status === 'none'
+              ? 'Saudade est à jour.'
+              : updates.status === 'error'
+                ? `Vérification impossible : ${updates.error}`
+                : '';
+  return (
+    <section className={SECTION} aria-labelledby="settings-updates">
+      <h2 id="settings-updates" className="text-sm font-semibold text-[var(--fg-28231d)]">
+        Mises à jour
+      </h2>
+      <p className="mt-1 text-xs text-[var(--fg-8c8072)]">Version {updates.current}</p>
+      {updates.supported && (
+        <label className="mt-3 flex items-center gap-2 text-sm text-[var(--fg-4a4137)] cursor-pointer">
+          <input type="checkbox" checked={updates.enabled} onChange={(e) => setAutoUpdates(e.target.checked)} />
+          Télécharger et installer les nouvelles versions automatiquement
+        </label>
+      )}
+      {line && <p className={`mt-2 text-xs ${updates.status === 'error' ? 'text-[var(--fg-a84236)]' : 'text-[var(--fg-695f54)]'}`}>{line}</p>}
+      {updates.supported && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {updates.status === 'ready' ? (
+            <button type="button" onClick={() => installUpdate()} className={SECONDARY}>
+              Redémarrer et installer
+            </button>
+          ) : (
+            <button type="button" onClick={() => checkForUpdates()} disabled={updates.status === 'checking' || updates.status === 'downloading'} className={SECONDARY}>
+              Vérifier maintenant
+            </button>
+          )}
+        </div>
+      )}
+    </section>
+  );
+};
 
 /** Confirmation inline, in place of a destructive button. */
 const Confirm: React.FC<{ question: string; confirmLabel: string; onConfirm: () => void; onCancel: () => void }> = ({
@@ -252,6 +301,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </h2>
           <SyncSettings onDone={showToast} />
         </section>
+
+        {/* Mises à jour */}
+        <UpdatesSection />
 
         {/* Sauvegardes et données */}
         <section className={SECTION} aria-labelledby="settings-data">

@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const { createStore } = require('./store.cjs');
 const { createSync } = require('./sync.cjs');
+const { setupUpdates } = require('./updater.cjs');
 
 // Preferred port. Older versions kept the library in localStorage for this exact
 // origin, so we try it first to let the one-time migration find that data.
@@ -139,6 +140,7 @@ async function start() {
   }
   sync = createSync(store.dataDir, keyStore);
   registerIpc();
+  setupUpdates(() => win);
   takeDailySnapshot();
   setInterval(takeDailySnapshot, SNAPSHOT_CHECK_MS);
 

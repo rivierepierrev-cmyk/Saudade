@@ -26,6 +26,7 @@ import { OcclusionEditor, OcclusionNote } from './components/OcclusionEditor';
 import { fetchImage } from './lib/importers';
 import { isLeech, lapseMakesLeech } from './lib/leech';
 import { isWriting } from './lib/formats';
+import { installUpdate, useUpdates } from './lib/updates';
 import { parseClozes } from './lib/math';
 import { onStorageError, isDesktop, dataLocation, takeSnapshot, openDataFolder } from './lib/kv';
 import { createInitialFSRSRecord, applyCardReview, applyTopicReview, firstTopicInterval } from './lib/fsrs';
@@ -966,6 +967,10 @@ export default function App() {
     }
   };
 
+  // A new version downloaded: offer to restart (or it installs when the app quits).
+  const update = useUpdates();
+  const [updateDismissed, setUpdateDismissed] = useState(false);
+
   // A card just became a leech: a notice offering to reword it.
   const [leechNotice, setLeechNotice] = useState<{ id: string; lapses: number; suspended: boolean } | null>(null);
   const clearLeech = (id: string) =>
@@ -1473,6 +1478,30 @@ export default function App() {
             title="Annuler (Ctrl+Z)"
           >
             Annuler
+          </button>
+        </div>
+      )}
+
+      {update?.status === 'ready' && !updateDismissed && (
+        <div
+          role="status"
+          className="fixed top-20 right-6 z-[60] flex items-center gap-3 pl-4 pr-2 py-2 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-xl shadow-lg text-xs text-[var(--fg-4a4137)]"
+        >
+          <span>Saudade {update.version} est prête.</span>
+          <button
+            type="button"
+            onClick={() => installUpdate()}
+            className="px-3 py-1.5 rounded-lg font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] cursor-pointer"
+          >
+            Redémarrer
+          </button>
+          <button
+            type="button"
+            onClick={() => setUpdateDismissed(true)}
+            className="px-2 py-1.5 rounded-lg text-[var(--fg-695f54)] hover:bg-[var(--bg-f3efe8)] cursor-pointer"
+            title="Elle s’installera à la fermeture de Saudade"
+          >
+            Plus tard
           </button>
         </div>
       )}

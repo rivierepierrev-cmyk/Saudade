@@ -46,17 +46,38 @@ jobs:
       - uses: actions/setup-node@v6
         with: { node-version: 22, cache: npm }
       - run: npm ci
+      # Windows code signing, as soon as a certificate is stored in the repository's
+      # secrets (WIN_CSC_LINK: the .pfx in base64, WIN_CSC_KEY_PASSWORD). Without
+      # them the installers are built unsigned.
+      - name: Signing certificate
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          if [ -n "$WIN_CSC_LINK" ]; then
+            echo "CSC_LINK=$WIN_CSC_LINK" >> "$GITHUB_ENV"
+            echo "CSC_KEY_PASSWORD=$WIN_CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo "Installers will be signed."
+          else
+            echo "No certificate: installers are not signed."
+          fi
       - run: npm run ${{ matrix.script }}
       - uses: actions/upload-artifact@v6
         with:
           name: saudade-${{ matrix.os }}
           if-no-files-found: error
+          # latest*.yml and .blockmap: what the installed apps read to update themselves
           path: |
             release/*.exe
             release/*.deb
             release/*.AppImage
+            release/latest*.yml
+            release/*.blockmap
 
-  # Pushing a tag such as v1.0.1 publishes a GitHub release with the installers.
+  # Pushing a tag such as v1.1.0 publishes a GitHub release with the installers and
+  # the update files; installed apps update from it (the repository must be public).
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [build, e2e]

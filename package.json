@@ -1,7 +1,7 @@
 {
   "name": "saudade",
   "productName": "Saudade",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
@@ -108,7 +108,14 @@
       "deleteAppDataOnUninstall": false
     },
     "artifactName": "Saudade-${version}-${os}-${arch}.${ext}",
-    "publish": null,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "rivierepierrev-cmyk",
+        "repo": "Saudade",
+        "releaseType": "release"
+      }
+    ],
     "deb": {
       "fpm": [
         "--replaces=gemma",
@@ -127,5 +134,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/rivierepierrev-cmyk/saudade.git"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
   }
 }

@@ -103,9 +103,19 @@ Ensuite tout est automatique : au démarrage, quand la fenêtre revient au premi
 - Le journal de chaque ordinateur est compacté quand il dépasse 4 Mo : il est réécrit sous forme d'état (chaque modification garde sa date d'origine), sous un nouveau nom. L'autre ordinateur le relit sans rien perdre, y compris ses propres modifications pas encore synchronisées.
 
 ## Installation
-- **Linux Mint / Ubuntu / Debian (recommandé)** : `sudo apt install ./Saudade-1.0.0-linux-amd64.deb`, puis lancez Saudade depuis le menu (ou la commande `saudade`).
+- **Linux Mint / Ubuntu / Debian (recommandé)** : `sudo apt install ./Saudade-1.1.0-linux-amd64.deb`, puis lancez Saudade depuis le menu (ou la commande `saudade`).
 - **AppImage** (autres distributions) : `chmod +x Saudade-*.AppImage && ./Saudade-*.AppImage`. Sur Ubuntu 24.04+ et dérivés, où AppArmor bloque le bac à sable de Chromium pour les AppImage, Saudade démarre automatiquement sans ce bac à sable ; le .deb, lui, le conserve.
-- **Windows** : lancez `Saudade-1.0.0-win-x64.exe` (installateur) ou la version portable. L'application n'est pas signée : au premier lancement, Windows SmartScreen affiche un avertissement → « Informations complémentaires » → « Exécuter quand même ».
+- **Windows** : lancez `Saudade-1.1.0-win-x64.exe` (installateur) ou la version portable. Tant qu'aucun certificat n'est configuré (voir plus bas), l'application n'est pas signée : au premier lancement, Windows SmartScreen affiche un avertissement → « Informations complémentaires » → « Exécuter quand même ».
+
+### Mises à jour automatiques
+
+Les versions publiées sur GitHub (« Releases ») sont téléchargées en arrière-plan et installées au redémarrage ; un message propose « Redémarrer ». Réglages › Mises à jour : version actuelle, interrupteur, « Vérifier maintenant ». Fonctionne pour l'installateur Windows, l'AppImage et le .deb (qui demande le mot de passe administrateur pour s'installer) ; pas pour la version portable. Le dépôt GitHub doit être public.
+
+Publier une version : changer `version` dans `package.json`, puis `git tag v1.2.0 && git push origin v1.2.0` ; la CI construit et publie la release avec les fichiers de mise à jour.
+
+### Signature Windows
+
+La CI signe les installateurs Windows dès que deux secrets existent dans le dépôt (Settings › Secrets and variables › Actions) : `WIN_CSC_LINK` (le certificat .pfx encodé en base64) et `WIN_CSC_KEY_PASSWORD` (son mot de passe). Sans eux, les installateurs sont construits non signés.
 
 Les données (Linux : `~/.config/Saudade/data/`, Windows : `%APPDATA%\Saudade\data\`) sont conservées lors d'une mise à jour ou d'une désinstallation.
 Sauvegarde / restauration : Réglages (icône ⚙ en haut) → « Exporter une sauvegarde » et « Restaurer une sauvegarde… » (accepte aussi les fichiers de `data/backups/`).
