@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { DocumentItem, ExtractItem, ClozeItem } from '../types/saudade';
 import { matchesQuery } from '../lib/search';
-import { clozeAnswerPreview, renderTextWithMath } from '../lib/math';
+import { renderTextWithMath } from '../lib/math';
+import { cardAnswerPreview, cardKindLabel } from '../lib/cards';
 import { safeHtml } from '../lib/markdown';
 import {
   Search,
@@ -204,7 +205,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           }`}
         >
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Cartes à trou ({clozes.length})</span>
+          <span>Cartes ({clozes.length})</span>
         </button>
       </div>
 
@@ -343,7 +344,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                             <button
                               onClick={() => handleDeleteDocConfirm(doc.id)}
                               className="px-2 py-1 text-[10px] font-semibold text-white bg-red-600 hover:bg-red-700 rounded cursor-pointer"
-                              title="Supprimer ce document et tous ses extraits et cartes à trou"
+                              title="Supprimer ce document et tous ses extraits et cartes"
                             >
                               Confirmer
                             </button>
@@ -488,7 +489,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 Aucune carte cloze enregistrée
               </h3>
               <p className="text-xs text-[var(--fg-695f54)] max-w-sm mx-auto mt-1 mb-4">
-                Créez des cartes à trou depuis le lecteur ou vos extraits pour alimenter vos révisions.
+                Créez des cartes (à trou ou question/réponse) depuis le lecteur ou vos extraits pour alimenter vos révisions.
               </p>
             </div>
           ) : (
@@ -504,7 +505,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                     <div>
                       <div className="flex items-center justify-between text-xs text-[var(--fg-8c8072)] mb-2">
                         <span className="font-semibold text-[var(--fg-8c5e32)] uppercase tracking-wider text-[10px]">
-                          Carte à trou
+                          {cardKindLabel(clz)}
                         </span>
                         <span className="font-mono tabular-nums">Prio : {clz.priority}%</span>
                       </div>
@@ -520,7 +521,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                         onClick={() => onViewItem?.('cloze', clz.id)}
                         title="Voir la carte"
                         className="block w-full text-left text-xs sm:text-sm text-[var(--fg-28231d)] leading-relaxed line-clamp-4 font-serif-reading font-medium rounded-md hover:bg-[var(--bg-faf7f2)] cursor-pointer"
-                        dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(clozeAnswerPreview(clz.text, clz.clozeNumber))) }}
+                        dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(cardAnswerPreview(clz))) }}
                       />
 
                       {clz.note && (
@@ -573,7 +574,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                           )}
                           <button
                             onClick={() => setPendingDeleteId(clz.id)}
-                            title="Supprimer cette carte à trou"
+                            title="Supprimer cette carte"
                             className="p-1.5 text-[var(--fg-8c8072)] hover:text-red-600 rounded transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />

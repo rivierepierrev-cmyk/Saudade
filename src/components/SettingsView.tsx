@@ -112,7 +112,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               className="w-20 px-2 py-1 tabular-nums text-[var(--fg-28231d)] bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-md"
               aria-label="Cartes différentes par jour"
             />
-            cartes à trou différentes par jour
+            cartes différentes par jour
           </label>
           <p className="mt-1 text-xs text-[var(--fg-8c8072)]">
             Une carte ratée revient dans la journée sans compter à nouveau. Les cartes au-delà attendent le lendemain.

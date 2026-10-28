@@ -21,6 +21,7 @@ import { locatePassage, replacePassage } from './lib/sourceSync';
 import { ItemEditor } from './components/ItemEditor';
 import { ItemViewer } from './components/ItemViewer';
 import { cardsForNewNote, applyNoteText, noteKeyOf, cardPassages } from './lib/clozeNotes';
+import { isQA } from './lib/cards';
 import { parseClozes } from './lib/math';
 import { onStorageError, isDesktop, dataLocation, takeSnapshot, openDataFolder } from './lib/kv';
 import { createInitialFSRSRecord, applyCardReview, applyTopicReview, firstTopicInterval } from './lib/fsrs';
@@ -231,6 +232,47 @@ export default function App() {
     return newCards.map((c) => c.id);
   };
 
+  // A question/answer card, from a document or an extract. Returns its id.
+  const handleCreateQA = (
+    source: { documentId?: string; extractId?: string },
+    question: string,
+    answer: string,
+    sourceText?: string
+  ): string => {
+    const ext = source.extractId ? extractsRef.current.find((e) => e.id === source.extractId) : undefined;
+    const docId = source.documentId ?? ext?.documentId;
+    const doc = docId ? documentsRef.current.find((d) => d.id === docId) : undefined;
+    const now = new Date().toISOString();
+    const card: ClozeItem = {
+      id: newId('cloze'),
+      kind: 'qa',
+      documentId: doc?.id ?? docId,
+      extractId: ext?.id,
+      documentTitle: ext?.documentTitle ?? doc?.title ?? 'Note',
+      folder: ext?.folder ?? doc?.folder,
+      text: question,
+      answer,
+      sourceText,
+      tags: [...(ext?.tags ?? doc?.tags ?? [])],
+      priority: ext?.priority ?? doc?.priority ?? 85,
+      createdAt: now,
+      updatedAt: now,
+      state: 'new',
+      fsrs: createInitialFSRSRecord(0),
+    };
+    updateClozes((prev) => [card, ...prev]);
+    return card.id;
+  };
+
+  const handleUpdateQA = (id: string, question: string, answer: string) => {
+    const card = clozesRef.current.find((c) => c.id === id);
+    if (!card || (card.text === question && card.answer === answer)) return;
+    const previous = { text: card.text, answer: card.answer, updatedAt: card.updatedAt };
+    const updatedAt = new Date().toISOString();
+    updateClozes((prev) => prev.map((c) => (c.id === id ? { ...c, text: question, answer, updatedAt } : c)));
+    offerUndo('Question modifiée', () => updateClozes((prev) => prev.map((c) => (c.id === id ? { ...c, ...previous } : c))));
+  };
+
   // ---- Editing extracts and cards -------------------------------------------
   type EditRequest =
     | { kind: 'extract'; id: string }
@@ -245,6 +287,13 @@ export default function App() {
         info?: string;
         /** Runs once the card is created (e.g. finishing the document after a summary card). */
         afterSave?: () => void;
+      }
+    | {
+        kind: 'new-qa';
+        source: { documentId?: string; extractId?: string };
+        /** The selected passage: the answer to start from, and where the card is found again. */
+        passage: string;
+        context: string;
       };
   const [editRequest, setEditRequest] = useState<EditRequest | null>(null);
 
@@ -267,6 +316,13 @@ export default function App() {
         ? 'Vérifiez la carte : vous pouvez masquer d’autres mots (« nouvelle carte » ou « même carte ») ou raccourcir la phrase, puis « Créer la carte » (Ctrl+Entrée).'
         : undefined,
     });
+  };
+
+  // A passage selected for a question: it becomes the answer to start from.
+  const openQAEditor = (source: { documentId?: string; extractId?: string }, passage: string) => {
+    const ext = source.extractId ? extractsRef.current.find((e) => e.id === source.extractId) : undefined;
+    const doc = documentsRef.current.find((d) => d.id === (source.documentId ?? ext?.documentId));
+    setEditRequest({ kind: 'new-qa', source, passage: passage.trim(), context: doc?.title ?? ext?.documentTitle ?? '' });
   };
 
   /**
@@ -484,6 +540,22 @@ export default function App() {
     if (editRequest.kind === 'cloze') {
       const card = clozes.find((c) => c.id === editRequest.id);
       if (!card) return null;
+      if (isQA(card)) {
+        return (
+          <ItemEditor
+            mode="qa"
+            title="Modifier la question"
+            context={card.documentTitle}
+            initialText={card.text}
+            initialAnswer={card.answer}
+            onSave={(question, answer) => {
+              handleUpdateQA(card.id, question, answer ?? '');
+              close();
+            }}
+            onClose={close}
+          />
+        );
+      }
       return (
         <ItemEditor
           mode="cloze"
@@ -500,6 +572,25 @@ export default function App() {
           onSave={(text) => {
             handleUpdateClozeText(card.id, text);
             close();
+          }}
+          onClose={close}
+        />
+      );
+    }
+    if (editRequest.kind === 'new-qa') {
+      return (
+        <ItemEditor
+          mode="qa"
+          title="Nouvelle question"
+          context={editRequest.context}
+          info="Écrivez la question à laquelle le passage sélectionné répond, et raccourcissez la réponse à l’essentiel. Une seule chose à retenir par carte."
+          initialText=""
+          initialAnswer={editRequest.passage}
+          saveLabel="Créer la carte"
+          onSave={(question, answer) => {
+            const id = handleCreateQA(editRequest.source, question, answer ?? '', editRequest.passage);
+            close();
+            offerUndo('Question créée', () => updateClozes((prev) => prev.filter((c) => c.id !== id)));
           }}
           onClose={close}
         />
@@ -1078,6 +1169,7 @@ export default function App() {
                 openNextDueDocument(docId);
               }}
               onOpenClozeEditor={(docId, sentence) => openClozeEditor({ documentId: docId }, sentence)}
+              onOpenQAEditor={(docId, passage) => openQAEditor({ documentId: docId }, passage)}
               onEditItem={handleEditItem}
               focusPassage={focusPassage}
               onViewItem={handleViewItem}
@@ -1129,6 +1221,7 @@ export default function App() {
             onExtractNext={(id) => handleTopicNext('extract', id)}
             onEditItem={handleEditItem}
             onOpenClozeEditor={(extractId, sentence) => openClozeEditor({ extractId }, sentence)}
+            onOpenQAEditor={(extractId, passage) => openQAEditor({ extractId }, passage)}
             onRetireExtract={(id) => handleDismissItem('extract', id)}
             onCreateExtractFromExtract={(extractId, text) => {
               const parent = extractsRef.current.find((e) => e.id === extractId);

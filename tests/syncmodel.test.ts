@@ -171,6 +171,15 @@ exchange(A, B);
 assert.deepEqual(A.lib.settings, { dailyReviewLimit: 40, targetRetention: 0.9, theme: 'dark' });
 assert.deepEqual(B.lib.settings, A.lib.settings);
 
+// 9c. A question/answer card travels with its answer
+A.act(at(104), (lib) => { lib.clozes.unshift({ ...card('q1'), kind: 'qa', text: 'Que produit la mitochondrie ?', answer: "L'ATP" }); });
+exchange(A, B);
+const q1 = B.lib.clozes.find((c) => c.id === 'q1')!;
+assert.equal(q1.kind, 'qa'); assert.equal(q1.answer, "L'ATP");
+B.review('q1', 3, at(105));
+exchange(A, B);
+assert.equal(A.lib.clozes.find((c) => c.id === 'q1')!.fsrs.reps, 1, 'its review reaches A');
+
 // 10. Applying the same events twice changes nothing
 const replayAll = [...A.out];
 A.act(at(110), (lib) => { lib.documents[0].priority = 61; });

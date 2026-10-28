@@ -34,8 +34,14 @@ En mode navigateur (`npm run dev`), les données restent dans le localStorage du
 - Modifier un extrait modifie aussi le passage dans le document d'origine (et dans l'extrait parent) ; seule la partie changée est remplacée, la mise en forme autour est conservée. Si le passage n'est plus retrouvé tel quel, seul l'extrait change (un message le signale). Annulable (Ctrl+Z).
 - « Carte à trou » (Alt+C) ouvre toujours l'éditeur : les mots sélectionnés y sont déjà masqués (ou, pour une phrase entière, rien n'est masqué et vous choisissez). Seuls les blocs réellement sélectionnés servent de contexte : un titre voisin effleuré par la sélection n'entre pas dans la carte. Syntaxe : `{{c1::réponse}}` ou `{{c1::réponse::indice}}`.
 - Une carte garde la phrase d'origine dont elle vient : même reformulée ensuite, elle reste surlignée sur cette phrase dans le document.
-- Bouton « Textes à trou (N) » du lecteur : les cartes du document ; un clic relit la carte et surligne sa phrase dans le texte, puis « Voir la carte » ou « Modifier ».
+- Bouton « Cartes (N) » du lecteur : les cartes du document ; un clic relit la carte et surligne sa phrase dans le texte, puis « Voir la carte » ou « Modifier ».
 - **Une carte par numéro de trou** (comme Anki) : `{{c1::Paris}} est une ville de {{c2::France}}` donne 2 cartes d'un trou chacune ; `{{c1::Paris}} est une ville et {{c1::la capitale}} de {{c2::France}}` donne une carte à 2 trous (c1) et une à 1 trou (c2). Dans l'éditeur : « Masquer · nouvelle carte » (Alt+C) ou « Masquer · même carte » (Alt+Maj+C). Les cartes d'une même note partagent le texte ; chacune a sa propre planification, et elles ne passent pas le même jour. Les anciennes cartes à plusieurs numéros sont découpées automatiquement (la première garde son historique).
+
+## Cartes question/réponse
+
+- Dans le lecteur ou en relisant un extrait : sélectionnez un passage puis « Question » (Alt+Q). Le passage pré-remplit la réponse ; écrivez la question et raccourcissez la réponse à l'essentiel.
+- En révision, la question s'affiche seule ; Espace montre la réponse sous un trait, puis 1 à 4 comme pour les cartes à trou (même calendrier FSRS, même file, même synchronisation).
+- La carte garde le passage d'où elle vient : elle y est surlignée dans le lecteur (panneau « Cartes »). Modifiable depuis la file, la bibliothèque ou la révision (E), avec annulation.
 
 ## Consulter les extraits et les cartes
 - Bibliothèque (arborescence ou fiches) : cliquer sur un extrait ou une carte l'ouvre en entier (formules, réponse avec Espace, prochaine révision, cartes tirées de l'extrait), avec « Modifier » et « Voir dans le document ».

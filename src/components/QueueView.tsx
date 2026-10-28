@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { DocumentItem, ExtractItem, ClozeItem, ItemType } from '../types/saudade';
 import { formatInterval } from '../lib/fsrs';
 import { matchesQuery } from '../lib/search';
-import { clozePreviewText, renderTextWithMath } from '../lib/math';
+import { renderTextWithMath } from '../lib/math';
+import { cardKindLabel, cardPreview } from '../lib/cards';
 import { safeHtml } from '../lib/markdown';
 import type { QueueEntry } from '../lib/queue';
 import { projectMarkdown } from '../lib/sourceSync';
@@ -134,9 +135,9 @@ export const QueueView: React.FC<QueueViewProps> = ({
       queueItems.push({
         id: clz.id,
         type: 'cloze',
-        title: clz.documentTitle || 'Carte à trou',
+        title: clz.documentTitle || 'Carte',
         // The answer stays hidden until the review.
-        preview: clozePreviewText(clz.text, clz.clozeNumber),
+        preview: cardPreview(clz),
         sourceDocTitle: clz.documentTitle,
         folder: clz.folder || parentDoc?.folder || 'Général',
         priority: clz.priority,
@@ -222,7 +223,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
           <button
             onClick={() => onStartReview()}
             className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg shadow-xs transition-all cursor-pointer"
-            title="Réviser les extraits et cartes à trou du jour (les documents se lisent dans le lecteur)"
+            title="Réviser les extraits et cartes du jour (les documents se lisent dans le lecteur)"
           >
             <Sparkles className="w-4 h-4" />
             <span>Réviser ({dueCount})</span>
@@ -277,7 +278,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
                 : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
             }`}
           >
-            Cartes à trou ({countOf('cloze')})
+            Cartes ({countOf('cloze')})
           </button>
         </div>
 
@@ -372,7 +373,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 text-xs text-[var(--fg-695f54)] mb-1 flex-wrap">
                       <span className="font-semibold text-[var(--fg-3b3026)] uppercase tracking-wider text-[10px]">
-                        {TYPE_LABEL[item.type]}
+                        {isCloze ? cardKindLabel(item.originalItem as ClozeItem) : TYPE_LABEL[item.type]}
                       </span>
                       <span aria-hidden="true">·</span>
                       <span className="inline-flex items-center gap-1">

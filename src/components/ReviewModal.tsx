@@ -5,7 +5,8 @@ import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
 import { buildTodayQueue, isDueToday } from '../lib/queue';
 import { noteKeyOf } from '../lib/clozeNotes';
 import { findPassages, setHighlight, clearHighlight } from '../lib/highlight';
-import { renderClozeCard, renderTextWithMath } from '../lib/math';
+import { renderTextWithMath } from '../lib/math';
+import { isQA, renderCard } from '../lib/cards';
 import { safeHtml } from '../lib/markdown';
 import confetti from 'canvas-confetti';
 import {
@@ -22,6 +23,7 @@ import {
   BookOpen,
   Filter,
   Pencil,
+  HelpCircle,
 } from 'lucide-react';
 
 export interface ReviewQueueEntry {
@@ -50,6 +52,8 @@ interface ReviewModalProps {
   onEditItem: (type: 'extract' | 'cloze', id: string) => void;
   /** The selection is a whole sentence: open the card editor with it. */
   onOpenClozeEditor: (extractId: string, sentence: string) => void;
+  /** A question/answer card from the passage selected in an extract. */
+  onOpenQAEditor: (extractId: string, passage: string) => void;
   onRetireExtract: (id: string) => void;
   onCreateExtractFromExtract: (extractId: string, text: string) => void;
   /** Maximum number of different cards reviewed per day. */
@@ -74,6 +78,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   onExtractNext,
   onEditItem,
   onOpenClozeEditor,
+  onOpenQAEditor,
   onRetireExtract,
   onCreateExtractFromExtract,
   dailyLimit,
@@ -351,6 +356,13 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     showToast('Sous-extrait créé');
   };
 
+  const handleQAFromSelection = () => {
+    if (!currentEntry || !extractSelection || !extractSelection.text.trim()) return;
+    onOpenQAEditor(currentEntry.id, extractSelection.text);
+    window.getSelection()?.removeAllRanges();
+    setExtractSelection(null);
+  };
+
   const handleClozeFromSelection = () => {
     if (!currentEntry || !extractSelection) return;
     // Same as in the reader: the card editor always opens.
@@ -400,6 +412,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
       } else if (e.altKey && e.key.toLowerCase() === 'c') {
         e.preventDefault();
         handleClozeFromSelection();
+      } else if (e.altKey && e.key.toLowerCase() === 'q') {
+        e.preventDefault();
+        handleQAFromSelection();
       } else if (e.key === 'Enter' && !(e.target instanceof HTMLButtonElement)) {
         e.preventDefault();
         handleExtractNext();
@@ -689,7 +704,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           <div className="flex items-center justify-between text-xs text-[var(--fg-8c8072)] mb-3">
             <div className="flex items-center gap-2">
               <span className="text-[11px] uppercase tracking-wider font-semibold text-[var(--fg-695f54)]">
-                {isCloze ? `Carte à trou${noteSize > 1 ? ` · c${currentCard?.clozeNumber} (note de ${noteSize} cartes)` : ''}` : 'Extrait à relire'}
+                {isCloze ? (currentCard && isQA(currentCard) ? 'Question' : `Carte à trou${noteSize > 1 ? ` · c${currentCard?.clozeNumber} (note de ${noteSize} cartes)` : ''}`) : 'Extrait à relire'}
               </span>
               <span aria-hidden="true">·</span>
               {onNavigateToDocument && currentEntry.documentId ? (
@@ -730,7 +745,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
             <div className="text-xl sm:text-2xl font-serif-reading text-[var(--fg-28231d)] leading-relaxed font-normal">
               <span
                 dangerouslySetInnerHTML={{
-                  __html: safeHtml(renderClozeCard(currentEntry.text, isAnswerRevealed, currentCard?.clozeNumber)),
+                  __html: safeHtml(renderCard(currentCard ?? { text: currentEntry.text }, isAnswerRevealed)),
                 }}
               />
             </div>
@@ -765,9 +780,18 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                   <Sparkles className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
                   <span>Carte à trou</span>
                 </button>
+                <button
+                  onClick={handleQAFromSelection}
+                  disabled={!extractSelection}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[var(--fg-3b3026)] bg-[var(--bg-f3efe8)] hover:bg-[var(--bg-eae4d9)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer"
+                  title="Carte question/réponse : la sélection sert de réponse, écrivez la question (Alt+Q)"
+                >
+                  <HelpCircle className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
+                  <span>Question</span>
+                </button>
                 {!extractSelection && (
                   <span className="text-[11px] text-[var(--fg-8c8072)]">
-                    Sélectionnez un passage (à extraire) ou un mot (à masquer).
+                    Sélectionnez un passage (à extraire ou à questionner) ou un mot (à masquer).
                   </span>
                 )}
               </div>

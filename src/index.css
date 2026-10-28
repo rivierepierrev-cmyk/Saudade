@@ -330,6 +330,17 @@ article p > em:only-child {
   font-size: 0.85em;
 }
 
+/* Question/answer cards: the answer under a rule, once revealed */
+.qa-separator {
+  border: 0;
+  border-top: 1px solid var(--bd-e8e2d5);
+  margin: 0.9em 0 0.7em;
+}
+.qa-answer {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
 /* Revealed cloze answers (also inside a formula) */
 .cloze-answer {
   background-color: var(--highlight-bg);

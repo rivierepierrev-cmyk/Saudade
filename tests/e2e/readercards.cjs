@@ -1,5 +1,5 @@
 // Reader: "Texte à trou" always opens the editor, never takes in a heading that
-// wasn't selected; the "Textes à trou (N)" panel lists the document's cards.
+// wasn't selected; the "Cartes (N)" panel lists the document's cards.
 const { _electron } = require('playwright'); const fs = require('fs'); const os = require('os'); const path = require('path'); const assert = require('assert');
 const APP = path.resolve(__dirname, '../..');
 const OUT = process.env.SAUDADE_SHOTS || fs.mkdtempSync(path.join(os.tmpdir(), 'saudade-readercards-shots-'));
@@ -64,9 +64,9 @@ const selectBetween = (page, a, b) => page.evaluate(([a, b]) => {
   assert.equal(read('clozes').length, 2);
 
   // 4. The panel: counter, a card highlights its sentence, view and edit it
-  const btn = page.getByRole('button', { name: 'Textes à trou (2)' });
+  const btn = page.getByRole('button', { name: 'Cartes (2)' });
   await btn.click();
-  await page.getByRole('heading', { name: 'Cartes à trou de ce texte' }).waitFor();
+  await page.getByRole('heading', { name: 'Cartes de ce texte' }).waitFor();
   await page.getByTitle('Relire cette carte et retrouver sa phrase dans le texte').filter({ hasText: 'Mont Blanc' }).click();
   await page.getByText('Surlignée dans le texte').waitFor();
   await page.waitForTimeout(200);

@@ -15,10 +15,11 @@ export const noteKeyOf = (card: ClozeItem) => card.noteId ?? card.id;
  * the other numbers become new cards. Returns the same array when nothing changes.
  */
 export function splitClozeNotes(cards: ClozeItem[]): ClozeItem[] {
-  if (cards.every((c) => c.clozeNumber !== undefined)) return cards;
+  // Question/answer cards have no deletion number.
+  if (cards.every((c) => c.clozeNumber !== undefined || c.kind === 'qa')) return cards;
   const out: ClozeItem[] = [];
   for (const card of cards) {
-    if (card.clozeNumber !== undefined) {
+    if (card.clozeNumber !== undefined || card.kind === 'qa') {
       out.push(card);
       continue;
     }
@@ -40,7 +41,9 @@ export function splitClozeNotes(cards: ClozeItem[]): ClozeItem[] {
 
 /** New cards for a new note: one per deletion number. */
 /** What to look for in the source to find a card: its original sentence, then its current one. */
-export function cardPassages(card: Pick<ClozeItem, 'text' | 'sourceText'>): string[] {
+export function cardPassages(card: Pick<ClozeItem, 'text' | 'sourceText' | 'kind'>): string[] {
+  // A question is written by hand: only the passage it was made from is in the text.
+  if (card.kind === 'qa') return card.sourceText ? [card.sourceText] : [];
   const current = parseClozes(card.text).map((p) => p.value).join('');
   return card.sourceText && card.sourceText !== current ? [card.sourceText, current] : [current];
 }

@@ -183,7 +183,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
           stats.totalDocuments + stats.totalExtracts,
           `${stats.totalDocuments} document${stats.totalDocuments > 1 ? 's' : ''} · ${stats.totalExtracts} extrait${stats.totalExtracts > 1 ? 's' : ''}`
         )}
-        {tile('Cartes à trou', stats.totalClozes, `dont ${newCards} jamais révisée${newCards > 1 ? 's' : ''}`)}
+        {tile('Cartes', stats.totalClozes, `dont ${newCards} jamais révisée${newCards > 1 ? 's' : ''}`)}
         {tile(
           'Rappel réel (30 j)',
           stats.averageRetention === null ? '—' : `${stats.averageRetention} %`,
@@ -307,7 +307,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
 
           <div className="flex items-center gap-3 text-xs text-[var(--fg-695f54)]">
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-xs bg-[var(--chart-clozes)]" /> Cartes à trou
+              <span className="w-2.5 h-2.5 rounded-xs bg-[var(--chart-clozes)]" /> Cartes
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-xs bg-[var(--chart-extracts)]" /> Extraits

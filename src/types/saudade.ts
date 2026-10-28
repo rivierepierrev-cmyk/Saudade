@@ -73,7 +73,11 @@ export interface ClozeItem {
   /** The sentence as it stood in the document or extract when the card was made: the card
    *  is found there by it, even after being reworded. */
   sourceText?: string;
+  /** 'qa': a question/answer card (question in `text`, answer in `answer`). Missing: a cloze card. */
+  kind?: 'qa';
   text: string; // e.g. "The {{c1::hippocampus}} is essential for memory consolidation."
+  /** Question/answer cards: the answer (Markdown-free text, LaTeX allowed). */
+  answer?: string;
   note?: string;
   tags: string[];
   priority: number;

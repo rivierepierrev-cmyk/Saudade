@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { DocumentItem, ExtractItem, ClozeItem } from '../types/saudade';
 import { SaudadeStorage } from '../lib/storage';
-import { clozeAnswerPreview, renderTextWithMath } from '../lib/math';
+import { renderTextWithMath } from '../lib/math';
+import { cardAnswerPreview } from '../lib/cards';
 import { safeHtml } from '../lib/markdown';
 import {
   Folder,
@@ -891,7 +892,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                 type="button"
                 onClick={() => onStartReviewWithFolder(selectedFolder)}
                 className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-xl shadow-xs transition-colors cursor-pointer"
-                title="Réviser les extraits et cartes à trou de ce dossier"
+                title="Réviser les extraits et cartes de ce dossier"
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
                 <span>Réviser ce dossier ({selectedNode.dueCount})</span>
@@ -1094,7 +1095,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                           </span>
                           <span className="inline-flex items-center gap-1">
                             <Sparkles className="w-3.5 h-3.5 text-[var(--fg-5f8550)]" />
-                            {docClozes.length} carte{docClozes.length > 1 ? 's' : ''} à trou
+                            {docClozes.length} carte{docClozes.length > 1 ? 's' : ''}
                           </span>
                           <span className="text-[var(--fg-8c8072)] tabular-nums">lu à {doc.readingProgress || 0} %</span>
                         </div>
@@ -1235,7 +1236,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                             <div>
                               <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--fg-5f8550)] mb-2">
                                 <Sparkles className="w-3.5 h-3.5" />
-                                <span>Cartes à trou ({docClozes.length})</span>
+                                <span>Cartes ({docClozes.length})</span>
                               </div>
                               <div className="space-y-1.5">
                                 {docClozes.map((clz) => {
@@ -1251,7 +1252,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                                           onClick={() => onViewItem?.('cloze', clz.id)}
                                           title="Voir la carte"
                                           className="block w-full text-left text-[var(--fg-28231d)] leading-relaxed line-clamp-2 rounded hover:bg-[var(--bg-faf7f2)] cursor-pointer"
-                                          dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(clozeAnswerPreview(clz.text, clz.clozeNumber))) }}
+                                          dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(cardAnswerPreview(clz))) }}
                                         />
                                         <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[var(--fg-8c8072)]">
                                           <span>Stabilité : {clz.fsrs?.stability?.toFixed(1) || 1}j</span>
@@ -1277,7 +1278,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                                         type="button"
                                         onClick={() => onDeleteCloze(clz.id)}
                                         className="p-1 text-[var(--fg-8c8072)] hover:text-red-600 rounded cursor-pointer"
-                                        title="Supprimer cette carte à trou"
+                                        title="Supprimer cette carte"
                                       >
                                         <Trash2 className="w-3 h-3" />
                                       </button>

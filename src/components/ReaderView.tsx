@@ -12,6 +12,7 @@ import {
   Edit3,
   AlertCircle,
   Highlighter,
+  HelpCircle,
 } from 'lucide-react';
 import { EditDocumentModal } from './EditDocumentModal';
 import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
@@ -19,7 +20,8 @@ import { cardPassages } from '../lib/clozeNotes';
 import { formatInterval, nextTopicInterval } from '../lib/fsrs';
 import { isDueToday } from '../lib/queue';
 import { findPassages, setHighlight, clearHighlight } from '../lib/highlight';
-import { renderTextWithMath, renderClozeCard, clozeAnswerPreview } from '../lib/math';
+import { renderTextWithMath } from '../lib/math';
+import { cardAnswerPreview, isQA, renderCard } from '../lib/cards';
 import { safeHtml } from '../lib/markdown';
 
 interface ReaderViewProps {
@@ -37,6 +39,8 @@ interface ReaderViewProps {
   onRetireDocument: (docId: string) => void;
   /** Opens the card editor on a sentence (with the selected words already hidden). */
   onOpenClozeEditor: (documentId: string, text: string) => void;
+  /** A question/answer card from the selected passage (its answer to start from). */
+  onOpenQAEditor: (documentId: string, passage: string) => void;
   onEditItem: (type: 'extract' | 'cloze', id: string) => void;
   /** Opens the card viewer. */
   onViewItem: (type: 'extract' | 'cloze', id: string) => void;
@@ -71,6 +75,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   onFinishReading,
   onRetireDocument,
   onOpenClozeEditor,
+  onOpenQAEditor,
   onEditItem,
   onViewItem,
   onNotFinished,
@@ -310,7 +315,13 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
     clearSelection();
   };
 
-  // Shortcuts: Alt+X extract the selection, Alt+C cloze from the selection,
+  const handleQASelection = () => {
+    if (!blockSelection || !blockSelection.text.trim()) return;
+    onOpenQAEditor(currentDocument.id, blockSelection.text);
+    clearSelection();
+  };
+
+  // Shortcuts: Alt+X extract the selection, Alt+C cloze, Alt+Q question from the selection,
   // L done reading ("Lu"), ← / → previous / next text.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -345,6 +356,9 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
       } else if (key === 'c') {
         e.preventDefault();
         handleClozeSelection();
+      } else if (key === 'q') {
+        e.preventDefault();
+        handleQASelection();
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -538,7 +552,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
               <span>Extraits ({documentExtracts.length})</span>
             </button>
 
-            {/* Cartes à trou du document */}
+            {/* Cartes du document */}
             <button
               onClick={() => setPanel(panel === 'cards' ? null : 'cards')}
               aria-pressed={panel === 'cards'}
@@ -547,10 +561,10 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                   ? 'bg-[var(--bg-eae4d9)] border-[var(--bd-d6cdbc)] text-[var(--fg-28231d)] font-semibold'
                   : 'bg-[var(--bg-ffffff)] border-[var(--bd-e8e2d5)] text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)]'
               }`}
-              title="Les textes à trou (cartes) de ce texte"
+              title="Les cartes de ce texte (à trou et questions)"
             >
               <Sparkles className="w-3.5 h-3.5 text-[var(--fg-5f8550)]" />
-              <span>Textes à trou ({documentCards.length})</span>
+              <span>Cartes ({documentCards.length})</span>
             </button>
           </div>
         </div>
@@ -718,7 +732,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
             Raccourcis : <kbd className="font-mono">P</kbd> pas fini · <kbd className="font-mono">L</kbd> il reste à
             extraire · <kbd className="font-mono">T</kbd> terminer · <kbd className="font-mono">←</kbd>{' '}
             <kbd className="font-mono">→</kbd> textes · <kbd className="font-mono">Alt+X</kbd> extraire ·{' '}
-            <kbd className="font-mono">Alt+C</kbd> carte à trou
+            <kbd className="font-mono">Alt+C</kbd> carte à trou · <kbd className="font-mono">Alt+Q</kbd> question
           </p>
         </div>
         {/* Panneau latéral d'extraits */}
@@ -732,7 +746,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                   <Scissors className="w-4 h-4 text-[var(--fg-8c5e32)]" />
                 )}
                 <h3 className="text-sm font-semibold text-[var(--fg-28231d)]">
-                  {panel === 'cards' ? 'Cartes à trou de ce texte' : 'Extraits de ce texte'}
+                  {panel === 'cards' ? 'Cartes de ce texte' : 'Extraits de ce texte'}
                 </h3>
               </div>
               <span className="text-xs font-mono text-[var(--fg-8c8072)]">
@@ -749,7 +763,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
             {panel === 'cards' ? (
               documentCards.length === 0 ? (
                 <p className="text-xs text-[var(--fg-8c8072)] italic py-4 text-center">
-                  Sélectionnez un mot dans le texte puis « Carte à trou » (Alt+C). Cliquez ensuite sur une carte pour la relire et retrouver sa phrase dans le texte.
+                  Sélectionnez un passage puis « Carte à trou » (Alt+C) ou « Question » (Alt+Q). Cliquez ensuite sur une carte pour la relire et retrouver son passage dans le texte.
                 </p>
               ) : (
                 <div className="space-y-3">
@@ -774,7 +788,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                           title={open ? 'Refermer' : 'Relire cette carte et retrouver sa phrase dans le texte'}
                         >
                           <span className="flex items-center justify-between text-[10px] text-[var(--fg-8c8072)] mb-1">
-                            <span>Carte{siblings > 1 ? ` c${card.clozeNumber} (note de ${siblings})` : ''}</span>
+                            <span>{isQA(card) ? 'Question' : `Carte${siblings > 1 ? ` c${card.clozeNumber} (note de ${siblings})` : ''}`}</span>
                             <span className="font-mono tabular-nums">
                               {card.fsrs.reps === 0 ? 'nouvelle' : `${card.fsrs.reps} révision${card.fsrs.reps > 1 ? 's' : ''}`}
                             </span>
@@ -784,8 +798,8 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                             dangerouslySetInnerHTML={{
                               __html: safeHtml(
                                 open
-                                  ? renderClozeCard(card.text, true, card.clozeNumber)
-                                  : renderTextWithMath(clozeAnswerPreview(card.text, card.clozeNumber))
+                                  ? renderCard(card, true)
+                                  : renderTextWithMath(cardAnswerPreview(card))
                               ),
                             }}
                           />
@@ -901,6 +915,15 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
           >
             <Sparkles className="w-3.5 h-3.5 text-[var(--fg-e6c280)]" />
             <span>Carte à trou</span>
+          </button>
+
+          <button
+            onClick={handleQASelection}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium hover:bg-[var(--bg-3e3831)] rounded-lg transition-colors whitespace-nowrap cursor-pointer text-[var(--fg-faf7f2)]"
+            title="Carte question/réponse : le passage sélectionné sert de réponse, écrivez la question (Alt+Q)"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-[var(--fg-e6c280)]" />
+            <span>Question</span>
           </button>
 
         </div>

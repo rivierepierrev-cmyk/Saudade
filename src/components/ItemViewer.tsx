@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X, Pencil, BookOpen, Eye, EyeOff, Sparkles, Scissors, RotateCcw } from 'lucide-react';
 import { ClozeItem, DocumentItem, ExtractItem, FSRSRecord } from '../types/saudade';
-import { renderClozeCard, renderTextWithMath, clozePreviewText } from '../lib/math';
+import { renderTextWithMath } from '../lib/math';
+import { cardPreview, isQA, renderCard } from '../lib/cards';
 import { safeHtml } from '../lib/markdown';
 import { formatInterval } from '../lib/fsrs';
 import { isDueToday } from '../lib/queue';
@@ -107,7 +108,7 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
   };
 
   const cardNumber = isCloze ? (item as ClozeItem).clozeNumber : undefined;
-  const html = isCloze ? renderClozeCard(item.text, revealed, cardNumber) : renderTextWithMath(item.text);
+  const html = isCloze ? renderCard(item as ClozeItem, revealed) : renderTextWithMath(item.text);
   const fsrs = item.fsrs;
   const meta: Array<[string, string]> = [
     [isCloze ? 'Prochaine révision' : 'Prochaine lecture', whenLabel(fsrs, item.state === 'dismissed', inTodayQueue)],
@@ -126,7 +127,7 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
       }}
       role="dialog"
       aria-modal="true"
-      aria-label={isCloze ? 'Carte à trou' : 'Extrait'}
+      aria-label={isCloze ? (isQA(item as ClozeItem) ? 'Question' : 'Carte à trou') : 'Extrait'}
     >
       <div
         ref={panelRef}
@@ -138,7 +139,9 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
             <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-semibold text-[var(--fg-8c5e32)]">
               {isCloze ? <Sparkles className="w-3.5 h-3.5" /> : <Scissors className="w-3.5 h-3.5" />}
               {isCloze
-                ? `Carte à trou${noteCards && noteCards.length > 1 ? ` c${cardNumber} · note de ${noteCards.length} cartes` : ''}`
+                ? isQA(item as ClozeItem)
+                  ? 'Question'
+                  : `Carte à trou${noteCards && noteCards.length > 1 ? ` c${cardNumber} · note de ${noteCards.length} cartes` : ''}`
                 : parentExtract
                 ? 'Sous-extrait'
                 : 'Extrait'}
@@ -222,7 +225,7 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
                       }`}
                     >
                       <span className="font-mono mr-2">c{card.clozeNumber}</span>
-                      <span dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(clozePreviewText(card.text, card.clozeNumber))) }} />
+                      <span dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(cardPreview(card))) }} />
                     </button>
                   </li>
                 ))}
@@ -262,7 +265,7 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
                       type="button"
                       onClick={() => onView('cloze', card.id)}
                       className="w-full text-left px-3 py-1.5 text-xs rounded-lg border border-[var(--bd-e8e2d5)] text-[var(--fg-4a3e31)] hover:bg-[var(--bg-f3efe8)] cursor-pointer"
-                      dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(clozePreviewText(card.text, card.clozeNumber))) }}
+                      dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(cardPreview(card))) }}
                     />
                   </li>
                 ))}

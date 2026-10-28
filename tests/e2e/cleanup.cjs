@@ -57,7 +57,7 @@ const toLibraryGrid = async (page, objects) => {
 
   // 3. Deleting a card removes its underline
   await toLibraryGrid(page, /^(Cartes|Clozes|Cloze)/);
-  await page.getByTitle('Supprimer cette carte à trou').first().click();
+  await page.getByTitle('Supprimer cette carte').first().click();
   await page.getByRole('button', { name: 'Confirmer' }).first().click(); await page.waitForTimeout(200);
   const left = read('clozes').map((c) => c.id);
   await toReader(page);

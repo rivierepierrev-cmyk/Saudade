@@ -2,19 +2,22 @@ import React, { useEffect, useRef, useState } from 'react';
 import { X, EyeOff, Eye, Undo2 } from 'lucide-react';
 import { parseClozes, renderClozeCard, renderTextWithMath, clozeNumbers } from '../lib/math';
 import { safeHtml } from '../lib/markdown';
+import { renderCard } from '../lib/cards';
 
 export interface ItemEditorProps {
-  mode: 'extract' | 'cloze';
+  mode: 'extract' | 'cloze' | 'qa';
   title: string;
   /** Where the item comes from (document title…). */
   context?: string;
   /** Explanation shown above the text (what saving will change). */
   info?: string;
   initialText: string;
+  /** Question/answer cards: the answer. */
+  initialAnswer?: string;
   /** Cards: the card being edited, previewed first (its deletion number). */
   initialNumber?: number;
   saveLabel?: string;
-  onSave: (text: string) => void;
+  onSave: (text: string, answer?: string) => void;
   onClose: () => void;
 }
 
@@ -25,12 +28,14 @@ export const ItemEditor: React.FC<ItemEditorProps> = ({
   context,
   info,
   initialText,
+  initialAnswer = '',
   initialNumber,
   saveLabel = 'Enregistrer',
   onSave,
   onClose,
 }) => {
   const [text, setText] = useState(initialText);
+  const [answer, setAnswer] = useState(initialAnswer);
   const [error, setError] = useState<string | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [previewNumber, setPreviewNumber] = useState<number | undefined>(initialNumber);
@@ -96,11 +101,19 @@ export const ItemEditor: React.FC<ItemEditorProps> = ({
   const save = () => {
     const value = text.trim();
     if (!value) {
-      setError('Le texte ne peut pas être vide.');
+      setError(mode === 'qa' ? 'La question ne peut pas être vide.' : 'Le texte ne peut pas être vide.');
       return;
     }
     if (mode === 'cloze' && !hasCloze) {
       setError('Ajoutez au moins un trou : sélectionnez un mot puis « Masquer la sélection ».');
+      return;
+    }
+    if (mode === 'qa') {
+      if (!answer.trim()) {
+        setError('La réponse ne peut pas être vide.');
+        return;
+      }
+      onSave(value, answer.trim());
       return;
     }
     onSave(value);
@@ -120,7 +133,12 @@ export const ItemEditor: React.FC<ItemEditorProps> = ({
   };
 
   const previewHtml =
-    mode === 'cloze' ? renderClozeCard(text, showAnswer, shownNumber) : renderTextWithMath(text);
+    mode === 'cloze'
+      ? renderClozeCard(text, showAnswer, shownNumber)
+      : mode === 'qa'
+        ? renderCard({ kind: 'qa', text, answer }, showAnswer)
+        : renderTextWithMath(text);
+  const withAnswer = mode !== 'extract';
 
   return (
     <div
@@ -190,22 +208,47 @@ export const ItemEditor: React.FC<ItemEditorProps> = ({
             </div>
           )}
 
+          {mode === 'qa' && (
+            <label htmlFor="item-editor-text" className="block text-xs font-semibold text-[var(--fg-695f54)]">
+              Question
+            </label>
+          )}
           <textarea
+            id="item-editor-text"
             ref={textareaRef}
             value={text}
             onChange={(e) => {
               setText(e.target.value);
               setError(null);
             }}
-            rows={mode === 'cloze' ? 5 : 8}
-            aria-label="Texte"
+            rows={mode === 'cloze' ? 5 : mode === 'qa' ? 3 : 8}
+            aria-label={mode === 'qa' ? 'Question' : 'Texte'}
+            placeholder={mode === 'qa' ? 'Une question courte, qui n’appelle qu’une réponse' : undefined}
             className="w-full px-3 py-2 text-sm font-mono leading-relaxed bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-lg text-[var(--fg-28231d)] focus:outline-none focus:ring-1 focus:ring-[var(--bd-8c5e32)] resize-y"
           />
+          {mode === 'qa' && (
+            <>
+              <label htmlFor="item-editor-answer" className="block text-xs font-semibold text-[var(--fg-695f54)]">
+                Réponse
+              </label>
+              <textarea
+                id="item-editor-answer"
+                value={answer}
+                onChange={(e) => {
+                  setAnswer(e.target.value);
+                  setError(null);
+                }}
+                rows={3}
+                aria-label="Réponse"
+                className="w-full px-3 py-2 text-sm font-mono leading-relaxed bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-lg text-[var(--fg-28231d)] focus:outline-none focus:ring-1 focus:ring-[var(--bd-8c5e32)] resize-y"
+              />
+            </>
+          )}
 
           <div className="border border-[var(--bd-e8e2d5)] rounded-xl">
             <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--bd-f3efe8)] text-[11px] font-semibold uppercase tracking-wider text-[var(--fg-695f54)]">
               <span className="flex items-center gap-2">
-                Aperçu{mode === 'cloze' ? (showAnswer ? ' · réponse' : ' · question') : ''}
+                Aperçu{withAnswer ? (showAnswer ? ' · réponse' : ' · question') : ''}
                 {mode === 'cloze' && numbers.length > 1 && (
                   <span className="flex items-center gap-1 normal-case tracking-normal font-medium" role="tablist" aria-label="Cartes de la note">
                     · {numbers.length} cartes :
@@ -228,7 +271,7 @@ export const ItemEditor: React.FC<ItemEditorProps> = ({
                   </span>
                 )}
               </span>
-              {mode === 'cloze' && (
+              {withAnswer && (
                 <button
                   type="button"
                   onClick={() => setShowAnswer((v) => !v)}
