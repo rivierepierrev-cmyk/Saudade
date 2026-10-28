@@ -10,6 +10,8 @@ interface StatsViewProps {
   targetRetention: number;
   /** Today's queue by type: the same numbers as the reading queue. */
   today: { documents: number; extracts: number; cards: number };
+  /** Leeches among the cards in use. */
+  leeches: number;
 }
 
 export const StatsView: React.FC<StatsViewProps> = ({
@@ -19,6 +21,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
   clozes,
   targetRetention,
   today,
+  leeches,
 }) => {
   const [forecastPeriod, setForecastPeriod] = useState<'1d' | '7d' | '30d'>('7d');
   const [hoveredDayIndex, setHoveredDayIndex] = useState<number | null>(null);
@@ -183,7 +186,11 @@ export const StatsView: React.FC<StatsViewProps> = ({
           stats.totalDocuments + stats.totalExtracts,
           `${stats.totalDocuments} document${stats.totalDocuments > 1 ? 's' : ''} · ${stats.totalExtracts} extrait${stats.totalExtracts > 1 ? 's' : ''}`
         )}
-        {tile('Cartes', stats.totalClozes, `dont ${newCards} jamais révisée${newCards > 1 ? 's' : ''}`)}
+        {tile(
+          'Cartes',
+          stats.totalClozes,
+          `dont ${newCards} jamais révisée${newCards > 1 ? 's' : ''}${leeches > 0 ? ` · ${leeches} sangsue${leeches > 1 ? 's' : ''}` : ''}`
+        )}
         {tile(
           'Rappel réel (30 j)',
           stats.averageRetention === null ? '—' : `${stats.averageRetention} %`,

@@ -43,6 +43,18 @@ En mode navigateur (`npm run dev`), les données restent dans le localStorage du
 - En révision, la question s'affiche seule ; Espace montre la réponse sous un trait, puis 1 à 4 comme pour les cartes à trou (même calendrier FSRS, même file, même synchronisation).
 - La carte garde le passage d'où elle vient : elle y est surlignée dans le lecteur (panneau « Cartes »). Modifiable depuis la file, la bibliothèque ou la révision (E), avec annulation.
 
+## Cartes image (zones masquées, comme Anki)
+
+- Dans le lecteur, cliquez sur une image du texte puis « Masquer des zones » ; ou Bibliothèque › Par type › Cartes › « Nouvelle carte image… » pour partir d'un fichier.
+- Tracez un rectangle sur chaque zone à masquer : chaque rectangle donne une carte (c1, c2…). Pour masquer plusieurs zones sur la même carte, choisissez son numéro dans la liste des zones. Consigne facultative.
+- « Tout masquer, en deviner une » (par défaut) : toutes les zones sont cachées, celle à deviner en orange. « Masquer seulement la zone à deviner » : les autres restent visibles.
+- Modifier la carte rouvre l'éditeur : une zone ajoutée crée une carte, une zone effacée supprime la sienne ; les autres gardent leur calendrier. Les images voyagent avec la synchronisation.
+
+## Sangsues
+
+- Une carte oubliée 8 fois (réglable) devient une « sangsue » : un message propose aussitôt de la reformuler. Elle est marquée dans la révision, la file et la bibliothèque (Cartes › « Seulement les sangsues »). Elle redevient sangsue tous les 4 oublis de plus.
+- Réglages : le seuil, et « Retirer les sangsues de la file » (sinon elles restent, signalées). « Ce n'est plus une sangsue » dans la fenêtre de la carte ; remettre la carte à zéro l'efface aussi.
+
 ## Consulter les extraits et les cartes
 - Bibliothèque (arborescence ou fiches) : cliquer sur un extrait ou une carte l'ouvre en entier (formules, réponse avec Espace, prochaine révision, cartes tirées de l'extrait), avec « Modifier » et « Voir dans le document ».
 - Lecteur, volet « Extraits » : cliquer sur un extrait l'affiche en entier, fait défiler le texte jusqu'au passage et le surligne.

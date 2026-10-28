@@ -9,6 +9,9 @@ interface SettingsViewProps {
   dailyReviewLimit: number;
   dailyTopicLimit: number;
   onUpdateTopicLimit: (limit: number) => void;
+  leechThreshold: number;
+  leechSuspend: boolean;
+  onUpdateLeechSettings: (patch: { leechThreshold?: number; leechSuspend?: boolean }) => void;
   autoPostpone: boolean;
   onToggleAutoPostpone: (on: boolean) => void;
   onUpdateDailyLimit: (limit: number) => void;
@@ -61,6 +64,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   dailyReviewLimit,
   dailyTopicLimit,
   onUpdateTopicLimit,
+  leechThreshold,
+  leechSuspend,
+  onUpdateLeechSettings,
   autoPostpone,
   onToggleAutoPostpone,
   onUpdateDailyLimit,
@@ -146,6 +152,38 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <span className="block text-xs text-[var(--fg-8c8072)]">
                 Les moins prioritaires sont reprogrammés plus tard (de 1 jour à environ deux semaines selon leur priorité), pour que la file
                 du jour reste faisable. Sinon, ils attendent dans l’ordre des priorités.
+              </span>
+            </span>
+          </label>
+
+          <label className="mt-6 flex flex-wrap items-center gap-2 text-sm text-[var(--fg-4a4137)]">
+            Sangsue : une carte oubliée
+            <input
+              type="number"
+              min={3}
+              max={99}
+              value={leechThreshold}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10);
+                if (!isNaN(val)) onUpdateLeechSettings({ leechThreshold: Math.max(3, Math.min(99, val)) });
+              }}
+              className="w-16 px-2 py-1 tabular-nums text-[var(--fg-28231d)] bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-md"
+              aria-label="Oublis pour une sangsue"
+            />
+            fois
+          </label>
+          <label className="mt-2 flex items-start gap-2 text-sm text-[var(--fg-4a4137)] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={leechSuspend}
+              onChange={(e) => onUpdateLeechSettings({ leechSuspend: e.target.checked })}
+              className="mt-1"
+            />
+            <span>
+              Retirer les sangsues de la file
+              <span className="block text-xs text-[var(--fg-8c8072)]">
+                Sinon elles restent, signalées. Dans les deux cas, un message propose de les reformuler ; la bibliothèque les liste
+                (Cartes › « Seulement les sangsues »).
               </span>
             </span>
           </label>

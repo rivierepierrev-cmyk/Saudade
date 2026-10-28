@@ -3,6 +3,7 @@ import { DocumentItem, ExtractItem, ClozeItem } from '../types/saudade';
 import { matchesQuery } from '../lib/search';
 import { renderTextWithMath } from '../lib/math';
 import { cardAnswerPreview, cardKindLabel } from '../lib/cards';
+import { isLeech } from '../lib/leech';
 import { safeHtml } from '../lib/markdown';
 import {
   Search,
@@ -17,6 +18,7 @@ import {
   FolderTree,
   LayoutGrid,
   Pencil,
+  ImagePlus,
 } from 'lucide-react';
 import { EditDocumentModal } from './EditDocumentModal';
 import { KnowledgeTreeView } from './KnowledgeTreeView';
@@ -35,6 +37,10 @@ interface LibraryViewProps {
   onExportMarkdown?: () => void;
   onEditItem?: (type: 'extract' | 'cloze', id: string) => void;
   onViewItem?: (type: 'extract' | 'cloze', id: string) => void;
+  /** Lapses that make a card a leech. */
+  leechThreshold: number;
+  /** A new image card (masked zones) from an image file. */
+  onNewImageCard?: () => void;
 }
 
 export const LibraryView: React.FC<LibraryViewProps> = ({
@@ -50,7 +56,10 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   onViewItem,
   onStartReviewWithFolder,
   onOpenImport,
+  leechThreshold,
+  onNewImageCard,
 }) => {
+  const [onlyLeeches, setOnlyLeeches] = useState(false);
   const [libraryViewMode, setLibraryViewMode] = useState<'tree' | 'grid'>('tree');
   const [objectTab, setObjectTab] = useState<'documents' | 'extracts' | 'clozes'>('documents');
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,7 +99,9 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     return true;
   });
 
+  const leechCount = clozes.filter((c) => isLeech(c, leechThreshold)).length;
   const filteredClozes = clozes.filter((clz) => {
+    if (onlyLeeches && !isLeech(clz, leechThreshold)) return false;
     if (selectedTag !== 'all' && !clz.tags.includes(selectedTag)) return false;
     if (searchQuery.trim()) {
       return matchesQuery(searchQuery, [clz.text, clz.note, clz.documentTitle, ...clz.tags]);
@@ -482,6 +493,27 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
       {/* --- VUE 3 : CARTES CLOZE --- */}
       {objectTab === 'clozes' && (
         <div>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            {leechCount > 0 || onlyLeeches ? (
+              <label className="inline-flex items-center gap-2 text-xs text-[var(--fg-4a4137)] cursor-pointer">
+                <input type="checkbox" checked={onlyLeeches} onChange={(e) => setOnlyLeeches(e.target.checked)} />
+                Seulement les sangsues ({leechCount}) : les cartes oubliées {leechThreshold} fois ou plus, à reformuler
+              </label>
+            ) : (
+              <span />
+            )}
+            {onNewImageCard && (
+              <button
+                type="button"
+                onClick={onNewImageCard}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-4a3e31)] bg-[var(--bg-ffffff)] border border-[var(--bd-d5cbbf)] rounded-lg hover:bg-[var(--bg-f3efe8)] cursor-pointer"
+                title="Une image dont vous masquez des zones (schéma, carte, anatomie…) : une carte par zone"
+              >
+                <ImagePlus className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
+                Nouvelle carte image…
+              </button>
+            )}
+          </div>
           {filteredClozes.length === 0 ? (
             <div className="p-12 text-center border border-dashed border-[var(--bd-ddd6c8)] rounded-xl bg-[var(--bg-ffffff)]/60">
               <Sparkles className="w-10 h-10 mx-auto text-[var(--fg-9e9385)] mb-3" />
@@ -504,8 +536,18 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                   >
                     <div>
                       <div className="flex items-center justify-between text-xs text-[var(--fg-8c8072)] mb-2">
-                        <span className="font-semibold text-[var(--fg-8c5e32)] uppercase tracking-wider text-[10px]">
-                          {cardKindLabel(clz)}
+                        <span className="flex items-center gap-1.5">
+                          <span className="font-semibold text-[var(--fg-8c5e32)] uppercase tracking-wider text-[10px]">
+                            {cardKindLabel(clz)}
+                          </span>
+                          {isLeech(clz, leechThreshold) && (
+                            <span
+                              className="px-1.5 py-0.5 rounded bg-[var(--bg-fdf2f0)] text-[var(--fg-a84236)] text-[10px] font-semibold uppercase tracking-wider"
+                              title={`Oubliée ${clz.fsrs.lapses} fois`}
+                            >
+                              Sangsue
+                            </span>
+                          )}
                         </span>
                         <span className="font-mono tabular-nums">Prio : {clz.priority}%</span>
                       </div>

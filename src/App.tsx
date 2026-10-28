@@ -20,8 +20,11 @@ import { buildTodayQueue, isDueToday, nextAfterToday, topicSurplus, postponeTopi
 import { locatePassage, replacePassage } from './lib/sourceSync';
 import { ItemEditor } from './components/ItemEditor';
 import { ItemViewer } from './components/ItemViewer';
-import { cardsForNewNote, applyNoteText, noteKeyOf, cardPassages } from './lib/clozeNotes';
-import { isQA } from './lib/cards';
+import { cardsForNewNote, applyNote, noteKeyOf, cardPassages } from './lib/clozeNotes';
+import { isImageCard, isQA } from './lib/cards';
+import { OcclusionEditor, OcclusionNote } from './components/OcclusionEditor';
+import { fetchImage } from './lib/importers';
+import { isLeech, lapseMakesLeech } from './lib/leech';
 import { parseClozes } from './lib/math';
 import { onStorageError, isDesktop, dataLocation, takeSnapshot, openDataFolder } from './lib/kv';
 import { createInitialFSRSRecord, applyCardReview, applyTopicReview, firstTopicInterval } from './lib/fsrs';
@@ -264,6 +267,33 @@ export default function App() {
     return card.id;
   };
 
+  // An image card note: one card per zone number.
+  const handleCreateImageCards = (source: { documentId?: string }, note: OcclusionNote): string[] => {
+    const doc = source.documentId ? documentsRef.current.find((d) => d.id === source.documentId) : undefined;
+    const now = new Date().toISOString();
+    const cards = cardsForNewNote(
+      {
+        kind: 'io',
+        documentId: doc?.id,
+        documentTitle: doc?.title ?? 'Image',
+        folder: doc?.folder,
+        text: note.text,
+        image: note.image,
+        masks: note.masks,
+        occlusionMode: note.occlusionMode,
+        tags: [...(doc?.tags ?? [])],
+        priority: doc?.priority ?? 85,
+        createdAt: now,
+        updatedAt: now,
+        state: 'new',
+        fsrs: createInitialFSRSRecord(0),
+      },
+      () => newId('cloze')
+    );
+    updateClozes((prev) => [...cards, ...prev]);
+    return cards.map((c) => c.id);
+  };
+
   const handleUpdateQA = (id: string, question: string, answer: string) => {
     const card = clozesRef.current.find((c) => c.id === id);
     if (!card || (card.text === question && card.answer === answer)) return;
@@ -287,6 +317,12 @@ export default function App() {
         info?: string;
         /** Runs once the card is created (e.g. finishing the document after a summary card). */
         afterSave?: () => void;
+      }
+    | {
+        kind: 'new-io';
+        source: { documentId?: string };
+        image?: string;
+        context: string;
       }
     | {
         kind: 'new-qa';
@@ -316,6 +352,21 @@ export default function App() {
         ? 'Vérifiez la carte : vous pouvez masquer d’autres mots (« nouvelle carte » ou « même carte ») ou raccourcir la phrase, puis « Créer la carte » (Ctrl+Entrée).'
         : undefined,
     });
+  };
+
+  // An image card: from an image of a document (copied locally first if it is on
+  // the web, so it works offline and travels with the sync), or from a file.
+  const openOcclusionEditor = async (source: { documentId?: string }, image?: string) => {
+    const doc = source.documentId ? documentsRef.current.find((d) => d.id === source.documentId) : undefined;
+    let local = image;
+    if (image && /^https?:/i.test(image)) {
+      try {
+        local = await fetchImage(image);
+      } catch {
+        local = undefined; // the editor asks for a file instead
+      }
+    }
+    setEditRequest({ kind: 'new-io', source, image: local, context: doc?.title ?? '' });
   };
 
   // A passage selected for a question: it becomes the answer to start from.
@@ -378,14 +429,20 @@ export default function App() {
 
   // Edits the note of a card: all its cards get the text; a new deletion number adds
   // a card, a number that disappears removes its card. Can be undone.
-  const handleUpdateClozeText = (id: string, newText: string) => {
+  const handleUpdateClozeText = (id: string, newText: string) => handleUpdateNote(id, { text: newText });
+
+  // Same for any part of a note: its text, or the image and zones of an image card.
+  const handleUpdateNote = (id: string, patch: Partial<Pick<ClozeItem, 'text' | 'image' | 'masks' | 'occlusionMode'>>) => {
     const card = clozesRef.current.find((c) => c.id === id);
-    if (!card || card.text === newText) return;
+    const keys = Object.keys(patch) as Array<keyof typeof patch>;
+    if (!card || keys.every((k) => JSON.stringify(card[k]) === JSON.stringify(patch[k]))) return;
     const key = noteKeyOf(card);
     const previousNote = new Map(
-      clozesRef.current.filter((c) => noteKeyOf(c) === key).map((c) => [c.id, { text: c.text, updatedAt: c.updatedAt }])
+      clozesRef.current
+        .filter((c) => noteKeyOf(c) === key)
+        .map((c) => [c.id, { ...Object.fromEntries(keys.map((k) => [k, c[k]])), updatedAt: c.updatedAt }])
     );
-    const result = applyNoteText(clozesRef.current, id, newText, () => newId('cloze'), new Date().toISOString());
+    const result = applyNote(clozesRef.current, id, patch, () => newId('cloze'), new Date().toISOString());
     updateClozes(result.cards);
     const changes = [
       result.created.length ? `${result.created.length} carte${result.created.length > 1 ? 's' : ''} ajoutée${result.created.length > 1 ? 's' : ''}` : '',
@@ -412,7 +469,7 @@ export default function App() {
   const resetCards = (ids: string[], options: { reviveRetired: boolean }): number => {
     const targets = new Set(ids);
     const previousCards = new Map(
-      clozesRef.current.filter((c) => targets.has(c.id)).map((c) => [c.id, { fsrs: c.fsrs, state: c.state }])
+      clozesRef.current.filter((c) => targets.has(c.id)).map((c) => [c.id, { fsrs: c.fsrs, state: c.state, leech: c.leech }])
     );
     if (previousCards.size === 0) return 0;
     const allLogs = SaudadeStorage.getReviewLogs();
@@ -426,6 +483,7 @@ export default function App() {
               ...c,
               fsrs: createInitialFSRSRecord(0),
               state: c.state === 'dismissed' && !options.reviveRetired ? 'dismissed' : 'new',
+              leech: undefined, // a fresh start
               updatedAt: now,
             }
           : c
@@ -465,7 +523,7 @@ export default function App() {
     const docId = ext?.documentId ?? card?.documentId ?? source?.documentId;
     if (!docId) return;
     // A card is located by its sentence (answers shown), or by its extract.
-    const text = source?.text ?? cardPassages(card!)[0];
+    const text = source?.text ?? cardPassages(card!)[0] ?? '';
     setViewRequest(null);
     setCurrentDocumentId(docId);
     setActiveTab('reader');
@@ -503,6 +561,8 @@ export default function App() {
         onOpenInDocument={doc ? () => openInDocument(viewRequest.type, viewRequest.id) : undefined}
         onView={handleViewItem}
         onResetCard={viewRequest.type === 'cloze' ? () => resetCards([viewRequest.id], { reviveRetired: true }) : undefined}
+        leech={viewRequest.type === 'cloze' && isLeech(item as ClozeItem, settings.leechThreshold)}
+        onClearLeech={() => clearLeech(viewRequest.id)}
         onClose={() => setViewRequest(null)}
       />
     );
@@ -540,6 +600,21 @@ export default function App() {
     if (editRequest.kind === 'cloze') {
       const card = clozes.find((c) => c.id === editRequest.id);
       if (!card) return null;
+      if (isImageCard(card)) {
+        const siblings = clozes.filter((c) => noteKeyOf(c) === noteKeyOf(card)).length;
+        return (
+          <OcclusionEditor
+            title="Modifier la carte image"
+            context={siblings > 1 ? `${card.documentTitle ?? ''} · ${siblings} cartes (une par zone)` : card.documentTitle}
+            initial={{ image: card.image, masks: card.masks, text: card.text, occlusionMode: card.occlusionMode }}
+            onSave={(note) => {
+              handleUpdateNote(card.id, { text: note.text, image: note.image, masks: note.masks, occlusionMode: note.occlusionMode });
+              close();
+            }}
+            onClose={close}
+          />
+        );
+      }
       if (isQA(card)) {
         return (
           <ItemEditor
@@ -572,6 +647,24 @@ export default function App() {
           onSave={(text) => {
             handleUpdateClozeText(card.id, text);
             close();
+          }}
+          onClose={close}
+        />
+      );
+    }
+    if (editRequest.kind === 'new-io') {
+      return (
+        <OcclusionEditor
+          title="Nouvelle carte image"
+          context={editRequest.context}
+          initial={{ image: editRequest.image }}
+          saveLabel="Créer les cartes"
+          onSave={(note) => {
+            const ids = new Set(handleCreateImageCards(editRequest.source, note));
+            close();
+            offerUndo(ids.size > 1 ? `${ids.size} cartes image créées` : 'Carte image créée', () =>
+              updateClozes((prev) => prev.filter((c) => !ids.has(c.id)))
+            );
           }}
           onClose={close}
         />
@@ -690,10 +783,14 @@ export default function App() {
     if (!target) return undefined;
     const now = new Date();
     const fsrs = applyCardReview(target.fsrs, rating, now, settings.targetRetention);
-    const state: ItemState = fsrs.phase === 'review' ? 'review' : 'learning';
+    let state: ItemState = fsrs.phase === 'review' ? 'review' : 'learning';
+    // A lapse that makes the card a leech: flagged (and set aside if chosen), and said.
+    const leech = fsrs.lapses > target.fsrs.lapses && lapseMakesLeech(fsrs.lapses, settings.leechThreshold);
+    if (leech && settings.leechSuspend) state = 'dismissed';
     updateClozes((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, fsrs, state, updatedAt: now.toISOString() } : c))
+      prev.map((c) => (c.id === id ? { ...c, fsrs, state, ...(leech ? { leech: true } : {}), updatedAt: now.toISOString() } : c))
     );
+    if (leech) setLeechNotice({ id, lapses: fsrs.lapses, suspended: settings.leechSuspend });
     SaudadeStorage.appendReviewLog({
       id: newId('log'),
       itemId: id,
@@ -843,6 +940,16 @@ export default function App() {
         prev.map((c) => (c.id === id ? { ...c, priority: newPriority } : c))
       );
     }
+  };
+
+  // A card just became a leech: a notice offering to reword it.
+  const [leechNotice, setLeechNotice] = useState<{ id: string; lapses: number; suspended: boolean } | null>(null);
+  const clearLeech = (id: string) =>
+    updateClozes((prev) => prev.map((c) => (c.id === id ? { ...c, leech: false, updatedAt: new Date().toISOString() } : c)));
+  const handleUpdateLeechSettings = (patch: Partial<Pick<AppSettings, 'leechThreshold' | 'leechSuspend'>>) => {
+    const newSettings: AppSettings = { ...settings, ...patch };
+    setSettings(newSettings);
+    SaudadeStorage.saveSettings(newSettings);
   };
 
   // Undo for deletions and retirements: a short notice with an "Annuler" button.
@@ -1140,6 +1247,7 @@ export default function App() {
             onDeleteItem={handleDeleteItem}
             onOpenImport={() => setIsImportOpen(true)}
             queue={todayQueue}
+            leechThreshold={settings.leechThreshold}
             overload={overload}
             autoPostpone={settings.autoPostpone}
             onPostponeSurplus={() => postponeSurplus(false)}
@@ -1170,6 +1278,7 @@ export default function App() {
               }}
               onOpenClozeEditor={(docId, sentence) => openClozeEditor({ documentId: docId }, sentence)}
               onOpenQAEditor={(docId, passage) => openQAEditor({ documentId: docId }, passage)}
+              onOpenOcclusionEditor={(docId, image) => void openOcclusionEditor({ documentId: docId }, image)}
               onEditItem={handleEditItem}
               focusPassage={focusPassage}
               onViewItem={handleViewItem}
@@ -1230,6 +1339,7 @@ export default function App() {
             dailyLimit={settings.dailyReviewLimit}
             documents={documents}
             topicLimit={settings.dailyTopicLimit}
+            leechThreshold={settings.leechThreshold}
             reviewedTodayIds={reviewedTodayIds}
             showExtractHighlights={settings.showExtractHighlights}
             onClose={() => setActiveTab('queue')}
@@ -1271,6 +1381,8 @@ export default function App() {
             onExportMarkdown={handleExportMarkdownMirror}
             onEditItem={handleEditItem}
             onViewItem={handleViewItem}
+            leechThreshold={settings.leechThreshold}
+            onNewImageCard={() => void openOcclusionEditor({})}
           />
         )}
 
@@ -1281,6 +1393,7 @@ export default function App() {
             extracts={extracts}
             clozes={clozes}
             targetRetention={settings.targetRetention}
+            leeches={clozes.filter((c) => c.state !== 'dismissed' && isLeech(c, settings.leechThreshold)).length}
             today={{
               documents: todayQueue.filter((e) => e.type === 'document').length,
               extracts: todayQueue.filter((e) => e.type === 'extract').length,
@@ -1296,6 +1409,9 @@ export default function App() {
             onUpdateTargetRetention={handleUpdateTargetRetention}
             dailyReviewLimit={settings.dailyReviewLimit}
             onUpdateDailyLimit={handleUpdateDailyLimit}
+            leechThreshold={settings.leechThreshold}
+            leechSuspend={settings.leechSuspend}
+            onUpdateLeechSettings={handleUpdateLeechSettings}
             dailyTopicLimit={settings.dailyTopicLimit}
             onUpdateTopicLimit={handleUpdateTopicLimit}
             autoPostpone={settings.autoPostpone}
@@ -1327,6 +1443,43 @@ export default function App() {
           </button>
         </div>
       )}
+
+      {leechNotice && (() => {
+        const card = clozes.find((c) => c.id === leechNotice.id);
+        if (!card) return null;
+        return (
+          <div
+            role="alert"
+            aria-label="Sangsue"
+            className="fixed bottom-6 right-6 z-[60] w-80 p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-xl shadow-lg text-xs text-[var(--fg-4a4137)]"
+          >
+            <p className="font-semibold text-[var(--fg-a84236)]">Sangsue : carte oubliée {leechNotice.lapses} fois</p>
+            <p className="mt-1">
+              {leechNotice.suspended ? 'Elle est retirée de la file. ' : ''}
+              Elle coûte plus de révisions qu’elle n’en rapporte : reformulez-la, découpez-la en cartes plus simples, ou remettez-la à zéro.
+            </p>
+            <div className="mt-3 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setLeechNotice(null)}
+                className="px-2.5 py-1.5 rounded-lg text-[var(--fg-695f54)] hover:bg-[var(--bg-f3efe8)] cursor-pointer"
+              >
+                Plus tard
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLeechNotice(null);
+                  handleEditItem('cloze', card.id);
+                }}
+                className="px-3 py-1.5 rounded-lg font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] cursor-pointer"
+              >
+                Reformuler la carte
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {renderViewer()}
       {renderEditor()}

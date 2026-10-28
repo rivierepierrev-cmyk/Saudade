@@ -20,6 +20,10 @@ export interface AppSettings {
   autoPostpone: boolean;
   /** Day (YYYY-MM-DD, local) the surplus was last postponed. */
   lastAutoPostpone?: string;
+  /** Lapses that make a card a leech. */
+  leechThreshold: number;
+  /** Leeches leave the queue until reworded or reset. */
+  leechSuspend: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -33,6 +37,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showExtractHighlights: true,
   dailyTopicLimit: 20,
   autoPostpone: true,
+  leechThreshold: 8,
+  leechSuspend: false,
 };
 
 export type RestoreResult = { ok: true; counts: { documents: number; extracts: number; clozes: number } } | { ok: false; error: string };

@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Highlighter,
   HelpCircle,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { EditDocumentModal } from './EditDocumentModal';
 import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
@@ -21,7 +22,7 @@ import { formatInterval, nextTopicInterval } from '../lib/fsrs';
 import { isDueToday } from '../lib/queue';
 import { findPassages, setHighlight, clearHighlight } from '../lib/highlight';
 import { renderTextWithMath } from '../lib/math';
-import { cardAnswerPreview, isQA, renderCard } from '../lib/cards';
+import { cardAnswerPreview, isImageCard, isQA, renderCard } from '../lib/cards';
 import { safeHtml } from '../lib/markdown';
 
 interface ReaderViewProps {
@@ -41,6 +42,8 @@ interface ReaderViewProps {
   onOpenClozeEditor: (documentId: string, text: string) => void;
   /** A question/answer card from the selected passage (its answer to start from). */
   onOpenQAEditor: (documentId: string, passage: string) => void;
+  /** Image card: hide zones of an image of the document. */
+  onOpenOcclusionEditor: (documentId: string, image: string) => void;
   onEditItem: (type: 'extract' | 'cloze', id: string) => void;
   /** Opens the card viewer. */
   onViewItem: (type: 'extract' | 'cloze', id: string) => void;
@@ -76,6 +79,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   onRetireDocument,
   onOpenClozeEditor,
   onOpenQAEditor,
+  onOpenOcclusionEditor,
   onEditItem,
   onViewItem,
   onNotFinished,
@@ -93,6 +97,8 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   const [fontFamily, setFontFamily] = useState<'serif' | 'sans' | 'mono'>('serif');
   const [fontSize, setFontSize] = useState<number>(18);
   const [typoOpen, setTypoOpen] = useState(false);
+  // An image clicked in the text: offer to make an image card of it.
+  const [imageAction, setImageAction] = useState<{ src: string; x: number; y: number } | null>(null);
   const typoRef = useRef<HTMLDivElement>(null);
   // Close the typography menu on a click elsewhere or Escape.
   useEffect(() => {
@@ -163,6 +169,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
     let timer: number | undefined;
     const handleScroll = () => {
       setToolbarPos(null);
+      setImageAction(null);
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
         if (!contentRef.current) return;
@@ -625,6 +632,13 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
           {/* Corps de l'article formaté */}
           <article
             ref={articleRef}
+            onClick={(e) => {
+              const img = (e.target as HTMLElement).closest('img');
+              const src = img?.getAttribute('src');
+              if (!img || !src) return setImageAction(null);
+              const r = img.getBoundingClientRect();
+              setImageAction({ src, x: Math.max(8, r.right - 190), y: Math.max(72, r.top + 8) });
+            }}
             className={`prose max-w-none ${fontClass} leading-relaxed select-text text-[var(--fg-28231d)]`}
             style={{ fontSize: `${fontSize}px` }}
             dangerouslySetInnerHTML={{ __html: renderedHtml }}
@@ -788,7 +802,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                           title={open ? 'Refermer' : 'Relire cette carte et retrouver sa phrase dans le texte'}
                         >
                           <span className="flex items-center justify-between text-[10px] text-[var(--fg-8c8072)] mb-1">
-                            <span>{isQA(card) ? 'Question' : `Carte${siblings > 1 ? ` c${card.clozeNumber} (note de ${siblings})` : ''}`}</span>
+                            <span>{isQA(card) ? 'Question' : `${isImageCard(card) ? 'Image' : 'Carte'}${siblings > 1 ? ` c${card.clozeNumber} (note de ${siblings})` : ''}`}</span>
                             <span className="font-mono tabular-nums">
                               {card.fsrs.reps === 0 ? 'nouvelle' : `${card.fsrs.reps} révision${card.fsrs.reps > 1 ? 's' : ''}`}
                             </span>
@@ -892,6 +906,23 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
           </aside>
         )}
       </div>
+
+      {/* Une image du texte : en faire une carte image */}
+      {imageAction && (
+        <button
+          type="button"
+          style={{ left: `${imageAction.x}px`, top: `${imageAction.y}px` }}
+          onClick={() => {
+            onOpenOcclusionEditor(currentDocument.id, imageAction.src);
+            setImageAction(null);
+          }}
+          className="fixed z-50 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[var(--bg-28231d)] text-[var(--fg-faf7f2)] rounded-xl shadow-xl border border-[var(--bd-3e3831)] hover:bg-[var(--bg-3e3831)] cursor-pointer"
+          title="Carte image : masquer des zones de cette image (une carte par zone)"
+        >
+          <ImageIcon className="w-3.5 h-3.5 text-[var(--fg-e6c280)]" />
+          Masquer des zones
+        </button>
+      )}
 
       {/* Barre d'action contextuelle flottante (HUD) */}
       {toolbarPos && selectedText && (

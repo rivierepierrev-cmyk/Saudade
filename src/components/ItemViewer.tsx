@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { X, Pencil, BookOpen, Eye, EyeOff, Sparkles, Scissors, RotateCcw } from 'lucide-react';
 import { ClozeItem, DocumentItem, ExtractItem, FSRSRecord } from '../types/saudade';
 import { renderTextWithMath } from '../lib/math';
-import { cardPreview, isQA, renderCard } from '../lib/cards';
+import { cardPreview, isImageCard, isQA, renderCard } from '../lib/cards';
 import { safeHtml } from '../lib/markdown';
 import { formatInterval } from '../lib/fsrs';
 import { isDueToday } from '../lib/queue';
@@ -29,6 +29,9 @@ interface ItemViewerProps {
   onView: (type: 'extract' | 'cloze', id: string) => void;
   /** Cards only: back to "never reviewed" (schedule and history). */
   onResetCard?: () => void;
+  /** Cards: forgotten again and again (see lib/leech.ts). */
+  leech?: boolean;
+  onClearLeech?: () => void;
   onClose: () => void;
 }
 
@@ -58,6 +61,8 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
   onOpenInDocument,
   onView,
   onResetCard,
+  leech,
+  onClearLeech,
   onClose,
 }) => {
   const [revealed, setRevealed] = useState(false);
@@ -127,7 +132,7 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
       }}
       role="dialog"
       aria-modal="true"
-      aria-label={isCloze ? (isQA(item as ClozeItem) ? 'Question' : 'Carte à trou') : 'Extrait'}
+      aria-label={isCloze ? (isQA(item as ClozeItem) ? 'Question' : isImageCard(item as ClozeItem) ? 'Carte image' : 'Carte à trou') : 'Extrait'}
     >
       <div
         ref={panelRef}
@@ -141,7 +146,7 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
               {isCloze
                 ? isQA(item as ClozeItem)
                   ? 'Question'
-                  : `Carte à trou${noteCards && noteCards.length > 1 ? ` c${cardNumber} · note de ${noteCards.length} cartes` : ''}`
+                  : `${isImageCard(item as ClozeItem) ? 'Image' : 'Carte à trou'}${noteCards && noteCards.length > 1 ? ` c${cardNumber} · note de ${noteCards.length} cartes` : ''}`
                 : parentExtract
                 ? 'Sous-extrait'
                 : 'Extrait'}
@@ -161,6 +166,22 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
         </div>
 
         <div className="px-6 py-5 overflow-y-auto space-y-5">
+          {isCloze && leech && (
+            <div role="note" className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-[var(--bg-fdf2f0)] border border-[var(--bd-f2d6d3)] text-xs">
+              <span className="text-[var(--fg-a84236)]">
+                <strong className="font-semibold">Sangsue</strong> : oubliée {fsrs.lapses} fois. Reformulez-la (Modifier), découpez-la, ou remettez-la à zéro.
+              </span>
+              {onClearLeech && (
+                <button
+                  type="button"
+                  onClick={onClearLeech}
+                  className="px-2 py-1 rounded-md text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-ffffff)] cursor-pointer"
+                >
+                  Ce n’est plus une sangsue
+                </button>
+              )}
+            </div>
+          )}
           <div
             ref={textRef}
             className="text-xl font-serif-reading text-[var(--fg-28231d)] leading-relaxed select-text"

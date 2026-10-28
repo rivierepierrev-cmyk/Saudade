@@ -60,6 +60,15 @@ export interface ExtractItem {
   state: ItemState;
 }
 
+/** A zone hidden on an image card, in fractions of the image (0 to 1); n = its card. */
+export interface OcclusionMask {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  n: number;
+}
+
 export interface ClozeItem {
   id: string;
   documentId?: string;
@@ -73,11 +82,21 @@ export interface ClozeItem {
   /** The sentence as it stood in the document or extract when the card was made: the card
    *  is found there by it, even after being reworded. */
   sourceText?: string;
-  /** 'qa': a question/answer card (question in `text`, answer in `answer`). Missing: a cloze card. */
-  kind?: 'qa';
+  /**
+   * 'qa': a question/answer card (question in `text`, answer in `answer`).
+   * 'io': an image with hidden zones (`image`, `masks`; `text` = optional instruction),
+   * one card per zone number, like cloze numbers. Missing: a cloze card.
+   */
+  kind?: 'qa' | 'io';
   text: string; // e.g. "The {{c1::hippocampus}} is essential for memory consolidation."
   /** Question/answer cards: the answer (Markdown-free text, LaTeX allowed). */
   answer?: string;
+  /** Image cards: the image (/media/…), its zones, and whether the other zones stay hidden. */
+  image?: string;
+  masks?: OcclusionMask[];
+  occlusionMode?: 'all' | 'one';
+  /** Leech (forgotten again and again): true when flagged, false once cleared by hand. */
+  leech?: boolean;
   note?: string;
   tags: string[];
   priority: number;

@@ -4,6 +4,7 @@ import { formatInterval } from '../lib/fsrs';
 import { matchesQuery } from '../lib/search';
 import { renderTextWithMath } from '../lib/math';
 import { cardKindLabel, cardPreview } from '../lib/cards';
+import { isLeech } from '../lib/leech';
 import { safeHtml } from '../lib/markdown';
 import type { QueueEntry } from '../lib/queue';
 import { projectMarkdown } from '../lib/sourceSync';
@@ -55,6 +56,7 @@ interface QueueViewProps {
   queue: QueueEntry[];
   /** Due today beyond the daily limits (not listed). */
   overload: { topics: number; cards: number };
+  leechThreshold: number;
   autoPostpone: boolean;
   /** Reschedules the documents and extracts beyond the limit, now. */
   onPostponeSurplus: () => void;
@@ -73,6 +75,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
   onOpenImport,
   queue,
   overload,
+  leechThreshold,
   autoPostpone,
   onPostponeSurplus,
   nextDueDate,
@@ -375,6 +378,11 @@ export const QueueView: React.FC<QueueViewProps> = ({
                       <span className="font-semibold text-[var(--fg-3b3026)] uppercase tracking-wider text-[10px]">
                         {isCloze ? cardKindLabel(item.originalItem as ClozeItem) : TYPE_LABEL[item.type]}
                       </span>
+                      {isCloze && isLeech(item.originalItem as ClozeItem, leechThreshold) && (
+                        <span className="px-1.5 py-0.5 rounded bg-[var(--bg-fdf2f0)] text-[var(--fg-a84236)] text-[10px] font-semibold uppercase tracking-wider">
+                          Sangsue
+                        </span>
+                      )}
                       <span aria-hidden="true">·</span>
                       <span className="inline-flex items-center gap-1">
                         <Folder className="w-3 h-3 text-[var(--fg-8c8072)]" />

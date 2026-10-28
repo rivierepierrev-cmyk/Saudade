@@ -6,7 +6,8 @@ import { buildTodayQueue, isDueToday } from '../lib/queue';
 import { noteKeyOf } from '../lib/clozeNotes';
 import { findPassages, setHighlight, clearHighlight } from '../lib/highlight';
 import { renderTextWithMath } from '../lib/math';
-import { isQA, renderCard } from '../lib/cards';
+import { isImageCard, isQA, renderCard } from '../lib/cards';
+import { isLeech } from '../lib/leech';
 import { safeHtml } from '../lib/markdown';
 import confetti from 'canvas-confetti';
 import {
@@ -61,6 +62,7 @@ interface ReviewModalProps {
   /** With the daily limit of documents and extracts, so the session plays the queue's extracts. */
   documents: DocumentItem[];
   topicLimit: number;
+  leechThreshold: number;
   /** Ids of cards already reviewed today (they don't use up the limit again). */
   reviewedTodayIds: Set<string>;
   /** Highlight sub-extracts inside the extract being read. */
@@ -84,6 +86,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   dailyLimit,
   documents,
   topicLimit,
+  leechThreshold,
   reviewedTodayIds,
   showExtractHighlights,
   onClose,
@@ -704,8 +707,20 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           <div className="flex items-center justify-between text-xs text-[var(--fg-8c8072)] mb-3">
             <div className="flex items-center gap-2">
               <span className="text-[11px] uppercase tracking-wider font-semibold text-[var(--fg-695f54)]">
-                {isCloze ? (currentCard && isQA(currentCard) ? 'Question' : `Carte à trou${noteSize > 1 ? ` · c${currentCard?.clozeNumber} (note de ${noteSize} cartes)` : ''}`) : 'Extrait à relire'}
+                {isCloze
+                  ? currentCard && isQA(currentCard)
+                    ? 'Question'
+                    : `${currentCard && isImageCard(currentCard) ? 'Image' : 'Carte à trou'}${noteSize > 1 ? ` · c${currentCard?.clozeNumber} (note de ${noteSize} cartes)` : ''}`
+                  : 'Extrait à relire'}
               </span>
+              {currentCard && isLeech(currentCard, leechThreshold) && (
+                <span
+                  className="px-1.5 py-0.5 rounded bg-[var(--bg-fdf2f0)] text-[var(--fg-a84236)] text-[10px] font-semibold uppercase tracking-wider"
+                  title={`Oubliée ${currentCard.fsrs.lapses} fois : à reformuler (E)`}
+                >
+                  Sangsue
+                </span>
+              )}
               <span aria-hidden="true">·</span>
               {onNavigateToDocument && currentEntry.documentId ? (
                 <button

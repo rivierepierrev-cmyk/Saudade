@@ -341,6 +341,36 @@ article p > em:only-child {
   font-weight: 600;
 }
 
+/* Image cards: zones drawn over the image */
+.io-prompt {
+  margin-bottom: 0.6em;
+}
+.io-frame {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+}
+.io-frame img {
+  max-width: 100%;
+  max-height: 60vh;
+  border-radius: 0.4rem;
+}
+.io-mask {
+  position: absolute;
+  background: var(--io-mask, #e6dccb);
+  border: 1px solid var(--io-mask-border, #a8957a);
+  border-radius: 3px;
+}
+.io-mask.io-active {
+  background: var(--io-active, #e8a33d);
+  border-color: var(--io-active-border, #9a5e14);
+}
+.io-mask.io-revealed {
+  background: transparent;
+  border: 2px solid var(--io-active-border, #9a5e14);
+}
+
 /* Revealed cloze answers (also inside a formula) */
 .cloze-answer {
   background-color: var(--highlight-bg);

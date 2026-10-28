@@ -35,9 +35,9 @@ async function api<T>(path: string, init: { json?: unknown; body?: Blob; content
 }
 
 const fetchPage = (url: string) => api<{ html: string; url: string }>('/api/fetch-page', { json: { url } });
-const fetchImage = (url: string, referer?: string) =>
+export const fetchImage = (url: string, referer?: string) =>
   api<{ path: string }>('/api/media/fetch', { json: { url, referer } }).then((r) => r.path);
-const uploadImage = (bytes: Uint8Array, mime: string) =>
+export const uploadImage = (bytes: Uint8Array, mime: string) =>
   api<{ path: string }>('/api/media/upload', { body: new Blob([bytes as BlobPart], { type: mime }), contentType: mime }).then(
     (r) => r.path
   );
