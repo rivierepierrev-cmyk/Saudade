@@ -76,11 +76,55 @@ jobs:
             release/latest*.yml
             release/*.blockmap
 
+  # The Android app (Capacitor): the mobile build of the page in an APK. Signed with
+  # the project's key when the repository's secrets hold it (ANDROID_KEYSTORE_B64:
+  # the .jks in base64, ANDROID_KEYSTORE_PASSWORD), so that each APK updates the
+  # installed app; otherwise a debug APK (installable, but each one replaces the app).
+  android:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - run: npm ci
+      - run: npm run build:mobile && npx cap sync android
+      - name: Signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/saudade.jks"
+            echo "SAUDADE_KEYSTORE=$RUNNER_TEMP/saudade.jks" >> "$GITHUB_ENV"
+            echo "SAUDADE_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "APK_TYPE=release" >> "$GITHUB_ENV"
+          else
+            echo "No signing key: debug APK."
+            echo "APK_TYPE=debug" >> "$GITHUB_ENV"
+          fi
+      - name: Build the APK
+        working-directory: android
+        run: ./gradlew --no-daemon "assemble${APK_TYPE^}"
+      - name: Name it
+        run: |
+          mkdir -p release
+          version=$(node -p "require('./package.json').version")
+          cp android/app/build/outputs/apk/$APK_TYPE/app-$APK_TYPE.apk "release/Saudade-$version-android.apk"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: saudade-android
+          if-no-files-found: error
+          path: release/*.apk
+
   # Pushing a tag such as v1.1.0 publishes a GitHub release with the installers and
   # the update files; installed apps update from it (the repository must be public).
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build, e2e]
+    needs: [build, e2e, android]
     runs-on: ubuntu-latest
     permissions:
       contents: write

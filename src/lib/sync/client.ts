@@ -39,6 +39,8 @@ const bridge: SyncBridge | undefined =
   typeof window !== 'undefined' ? (window.saudadeDesktop as unknown as { sync?: SyncBridge } | undefined)?.sync : undefined;
 
 export const syncAvailable = Boolean(bridge);
+/** 'folder': desktop, a folder kept in sync by Nextcloud's client; 'webdav': phone, Nextcloud reached directly. */
+export const syncTransport: 'folder' | 'webdav' = (bridge as unknown as { kind?: string } | undefined)?.kind === 'webdav' ? 'webdav' : 'folder';
 
 let status: SyncStatus | null = bridge?.initial?.status ?? null;
 let meta: SyncMeta | null = null;

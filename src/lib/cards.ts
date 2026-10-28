@@ -5,6 +5,7 @@
  */
 import { ClozeItem } from '../types/saudade';
 import { clozeAnswerPreview, clozePreviewText, escapeHtml, renderClozeCard, renderTextWithMath } from './math';
+import { mediaSrc } from './media';
 
 type Card = Pick<ClozeItem, 'kind' | 'text' | 'answer' | 'clozeNumber' | 'image' | 'masks' | 'occlusionMode'>;
 
@@ -32,7 +33,7 @@ function renderImageCard(card: Card, revealed: boolean): string {
     })
     .join('');
   const prompt = card.text.trim() ? `<p class="io-prompt">${renderTextWithMath(card.text)}</p>` : '';
-  return `${prompt}<div class="io-frame"><img src="${escapeHtml(card.image ?? '')}" alt="">${masks}</div>`;
+  return `${prompt}<div class="io-frame"><img src="${escapeHtml(mediaSrc(card.image ?? ''))}" alt="">${masks}</div>`;
 }
 
 /** HTML of a card: the question, then the answer once revealed. */

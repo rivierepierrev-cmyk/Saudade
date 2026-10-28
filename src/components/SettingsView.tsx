@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Check, Download, FolderOpen, RotateCcw, Upload } from 'lucide-react';
 import { SyncSettings } from './SyncSettings';
+import { isMobileApp } from '../lib/platform';
 import { checkForUpdates, installUpdate, setAutoUpdates, useUpdates } from '../lib/updates';
 
 interface SettingsViewProps {
@@ -316,6 +317,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </p>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-2">
+            {!isMobileApp && (
+              <>
             <button
               type="button"
               onClick={() => {
@@ -340,6 +343,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <Download className="w-3.5 h-3.5" />
               Exporter en Markdown
             </button>
+              </>
+            )}
             {onOpenDataFolder && (
               <button type="button" onClick={onOpenDataFolder} className={SECONDARY}>
                 <FolderOpen className="w-3.5 h-3.5" />

@@ -4,6 +4,7 @@ import { matchesQuery } from '../lib/search';
 import { renderTextWithMath } from '../lib/math';
 import { cardAnswerPreview, cardKindLabel } from '../lib/cards';
 import { isLeech } from '../lib/leech';
+import { isMobileApp } from '../lib/platform';
 import { safeHtml } from '../lib/markdown';
 import {
   Search,
@@ -60,7 +61,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   onNewImageCard,
 }) => {
   const [onlyLeeches, setOnlyLeeches] = useState(false);
-  const [libraryViewMode, setLibraryViewMode] = useState<'tree' | 'grid'>('tree');
+  const [libraryViewMode, setLibraryViewMode] = useState<'tree' | 'grid'>(isMobileApp ? 'grid' : 'tree');
   const [objectTab, setObjectTab] = useState<'documents' | 'extracts' | 'clozes'>('documents');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string>('all');

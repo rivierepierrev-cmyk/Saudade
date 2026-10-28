@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Cloud, FolderOpen, RefreshCw } from 'lucide-react';
 import {
-  SyncStatus, chooseFolder, disableSync, enableSync, getStatus, inspectFolder, onStatusChanged, syncAvailable, syncNow,
+  SyncStatus, chooseFolder, disableSync, enableSync, getStatus, inspectFolder, onStatusChanged, syncAvailable, syncNow, syncTransport,
 } from '../lib/sync/client';
 
 const SECONDARY =
@@ -31,6 +31,8 @@ export const SyncSettings: React.FC<{ onDone: (message: string) => void }> = ({ 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmOff, setConfirmOff] = useState(false);
+  // Phone: Nextcloud reached through WebDAV (address of the folder, user, app password).
+  const [dav, setDav] = useState({ url: '', user: '', password: '' });
   const [, setTick] = useState(0);
 
   useEffect(() => onStatusChanged(() => setStatus(getStatus())), []);
@@ -45,9 +47,10 @@ export const SyncSettings: React.FC<{ onDone: (message: string) => void }> = ({ 
 
   const pick = async () => {
     setError(null);
-    const chosen = await chooseFolder();
+    const chosen = syncTransport === 'webdav' ? JSON.stringify({ ...dav, url: dav.url.trim(), user: dav.user.trim() }) : await chooseFolder();
     if (!chosen) return;
-    const info = await inspectFolder(chosen);
+    setBusy(true);
+    const info = await inspectFolder(chosen).finally(() => setBusy(false));
     if (!info.ok) {
       setError(info.error ?? 'Dossier inutilisable.');
       return;
@@ -157,13 +160,40 @@ export const SyncSettings: React.FC<{ onDone: (message: string) => void }> = ({ 
         Gardez la même bibliothèque sur plusieurs ordinateurs grâce à un dossier partagé (Nextcloud, Syncthing…). Tout ce qui y est
         écrit est chiffré avec votre phrase de passe : le serveur ne peut pas le lire.
       </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <button type="button" className={SECONDARY} onClick={pick}>
-          <FolderOpen className="w-3.5 h-3.5" />
-          {folder ? 'Changer de dossier…' : 'Choisir le dossier…'}
-        </button>
-        {folder && <span className="font-mono text-xs break-all text-[var(--fg-4a4137)]">{folder}</span>}
-      </div>
+      {syncTransport === 'webdav' ? (
+        <div className="space-y-2">
+          <p className="text-xs text-[var(--fg-8c8072)]">
+            Dans Nextcloud (Fichiers › Paramètres › WebDAV), copiez l’adresse WebDAV et ajoutez-y le nom du dossier partagé, par
+            exemple <span className="font-mono">…/remote.php/dav/files/vous/Saudade-sync</span>. Créez un mot de passe d’application
+            (Paramètres personnels › Sécurité).
+          </p>
+          <label className="block text-xs text-[var(--fg-695f54)]">
+            Adresse WebDAV du dossier
+            <input type="url" value={dav.url} onChange={(e) => setDav({ ...dav, url: e.target.value })} className={`${INPUT} mt-1 block`} placeholder="https://…/remote.php/dav/files/…/Saudade-sync" />
+          </label>
+          <label className="block text-xs text-[var(--fg-695f54)]">
+            Identifiant
+            <input type="text" value={dav.user} onChange={(e) => setDav({ ...dav, user: e.target.value })} className={`${INPUT} mt-1 block`} autoComplete="username" />
+          </label>
+          <label className="block text-xs text-[var(--fg-695f54)]">
+            Mot de passe d’application
+            <input type="password" value={dav.password} onChange={(e) => setDav({ ...dav, password: e.target.value })} className={`${INPUT} mt-1 block`} autoComplete="current-password" />
+          </label>
+          <button type="button" className={SECONDARY} onClick={pick} disabled={busy || !dav.url.trim() || !dav.user.trim() || !dav.password}>
+            <Cloud className="w-3.5 h-3.5" />
+            {busy && !folder ? 'Connexion…' : 'Se connecter'}
+          </button>
+          {folder && <p className="text-xs text-[var(--fg-5f8550)]">Connecté.</p>}
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className={SECONDARY} onClick={pick}>
+            <FolderOpen className="w-3.5 h-3.5" />
+            {folder ? 'Changer de dossier…' : 'Choisir le dossier…'}
+          </button>
+          {folder && <span className="font-mono text-xs break-all text-[var(--fg-4a4137)]">{folder}</span>}
+        </div>
+      )}
 
       {folder && folderInfo && (
         <div className="space-y-3">

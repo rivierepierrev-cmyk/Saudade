@@ -1,6 +1,7 @@
 import { marked, type TokenizerAndRendererExtension } from 'marked';
 import DOMPurify from 'dompurify';
 import { renderTex } from './math';
+import { withMediaUrls } from './media';
 
 // External links open in the system browser (the desktop app routes target=_blank there).
 DOMPurify.addHook('afterSanitizeAttributes', (node) => {
@@ -50,12 +51,14 @@ const SANITIZE = {
   // copy formulas as LaTeX when text is extracted. annotation-xml stays forbidden.
   ADD_TAGS: ['semantics', 'annotation'],
   ADD_ATTR: ['target', 'encoding'],
+  // DOMPurify's default list of allowed URLs, plus blob: (images in the phone app, see lib/media.ts).
+  ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix|blob):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
 };
 
 /** Markdown → HTML that is safe to insert in the page (no scripts, event handlers, iframes…). */
 export function renderMarkdown(markdown: string): string {
   const html = marked.parse(markdown, { async: false }) as string;
-  return DOMPurify.sanitize(html, SANITIZE);
+  return withMediaUrls(DOMPurify.sanitize(html, SANITIZE));
 }
 
 /** Sanitizes HTML produced by our own renderers (cards, extracts) before display. */

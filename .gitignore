@@ -8,3 +8,6 @@ coverage/
 .env*
 !.env.example
 .saudade-data/
+dist-mobile
+android/app/build
+android/.gradle

@@ -20,6 +20,7 @@ import { EditDocumentModal } from './EditDocumentModal';
 import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
 import { cardPassages } from '../lib/clozeNotes';
 import { FORMAT_LABEL, isWriting } from '../lib/formats';
+import { isMobileApp } from '../lib/platform';
 import { formatInterval, nextTopicInterval } from '../lib/fsrs';
 import { isDueToday } from '../lib/queue';
 import { findPassages, setHighlight, clearHighlight } from '../lib/highlight';
@@ -211,6 +212,26 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
       y: rect.top > 60 ? rect.top - 48 : rect.bottom + 8,
     });
   };
+
+  // Touch screens: a selection made by a long press ends without a mouseup.
+  const mouseUpRef = useRef(handleMouseUp);
+  mouseUpRef.current = handleMouseUp;
+  useEffect(() => {
+    if (!window.matchMedia?.('(pointer: coarse)').matches) return;
+    let timer: number | undefined;
+    const onChange = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount && articleRef.current?.contains(sel.anchorNode)) mouseUpRef.current();
+      }, 400);
+    };
+    document.addEventListener('selectionchange', onChange);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('selectionchange', onChange);
+    };
+  }, []);
 
   // Save the reading position once scrolling pauses, not on every scroll event.
   useEffect(() => {
@@ -569,7 +590,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
             {onUpdateDocument && (
               <button
                 onClick={() => setIsEditModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-[var(--bd-e8e2d5)] bg-[var(--bg-ffffff)] text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)] transition-colors cursor-pointer"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-[var(--bd-e8e2d5)] bg-[var(--bg-ffffff)] text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)] transition-colors cursor-pointer"
                 title="Modifier le texte, les tags, l'auteur ou la priorité de cet article"
               >
                 <Edit3 className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
@@ -597,7 +618,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
             <button
               onClick={() => setPanel(panel === 'extracts' ? null : 'extracts')}
               aria-pressed={panel === 'extracts'}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border transition-colors cursor-pointer ${
+              className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border transition-colors cursor-pointer ${
                 panel === 'extracts'
                   ? 'bg-[var(--bg-eae4d9)] border-[var(--bd-d6cdbc)] text-[var(--fg-28231d)] font-semibold'
                   : 'bg-[var(--bg-ffffff)] border-[var(--bd-e8e2d5)] text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)]'
@@ -611,7 +632,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
             <button
               onClick={() => setPanel(panel === 'cards' ? null : 'cards')}
               aria-pressed={panel === 'cards'}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border transition-colors cursor-pointer ${
+              className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border transition-colors cursor-pointer ${
                 panel === 'cards'
                   ? 'bg-[var(--bg-eae4d9)] border-[var(--bd-d6cdbc)] text-[var(--fg-28231d)] font-semibold'
                   : 'bg-[var(--bg-ffffff)] border-[var(--bd-e8e2d5)] text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)]'
@@ -738,6 +759,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
           <article
             ref={articleRef}
             onClick={(e) => {
+              if (isMobileApp) return;
               const img = (e.target as HTMLElement).closest('img');
               const src = img?.getAttribute('src');
               if (!img || !src) return setImageAction(null);

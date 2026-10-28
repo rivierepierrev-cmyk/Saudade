@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Saudade</string>
+    <string name="title_activity_main">Saudade</string>
+    <string name="package_name">io.github.rivierepierrev.saudade</string>
+    <string name="custom_url_scheme">io.github.rivierepierrev.saudade</string>
+</resources>

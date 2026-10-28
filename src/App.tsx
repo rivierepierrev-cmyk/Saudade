@@ -27,6 +27,7 @@ import { fetchImage } from './lib/importers';
 import { isLeech, lapseMakesLeech } from './lib/leech';
 import { isWriting } from './lib/formats';
 import { installUpdate, useUpdates } from './lib/updates';
+import { isMobileApp } from './lib/platform';
 import { parseClozes } from './lib/math';
 import { onStorageError, isDesktop, dataLocation, takeSnapshot, openDataFolder } from './lib/kv';
 import { createInitialFSRSRecord, applyCardReview, applyTopicReview, firstTopicInterval } from './lib/fsrs';
@@ -1259,7 +1260,7 @@ export default function App() {
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1">
+      <main className="flex-1 pb-20 md:pb-0">
         {activeTab === 'queue' && (
           <QueueView
             documents={documents}
@@ -1307,7 +1308,7 @@ export default function App() {
               }}
               onOpenClozeEditor={(docId, sentence) => openClozeEditor({ documentId: docId }, sentence)}
               onOpenQAEditor={(docId, passage) => openQAEditor({ documentId: docId }, passage)}
-              onOpenOcclusionEditor={(docId, image) => void openOcclusionEditor({ documentId: docId }, image)}
+              onOpenOcclusionEditor={(docId, image) => !isMobileApp && void openOcclusionEditor({ documentId: docId }, image)}
               onEditItem={handleEditItem}
               focusPassage={focusPassage}
               onViewItem={handleViewItem}
@@ -1414,7 +1415,7 @@ export default function App() {
             onEditItem={handleEditItem}
             onViewItem={handleViewItem}
             leechThreshold={settings.leechThreshold}
-            onNewImageCard={() => void openOcclusionEditor({})}
+            onNewImageCard={isMobileApp ? undefined : () => void openOcclusionEditor({})}
           />
         )}
 
@@ -1459,7 +1460,7 @@ export default function App() {
             onResetDemo={handleResetDemo}
             onRestoreBackup={handleRestoreBackup}
             onResetAllCards={handleResetAllCards}
-            onOpenDataFolder={isDesktop ? openDataFolder : undefined}
+            onOpenDataFolder={isDesktop && !isMobileApp ? openDataFolder : undefined}
             dataLocation={dataLocation}
           />
         )}

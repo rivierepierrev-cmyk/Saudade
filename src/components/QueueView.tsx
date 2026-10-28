@@ -6,6 +6,7 @@ import { renderTextWithMath } from '../lib/math';
 import { cardKindLabel, cardPreview } from '../lib/cards';
 import { isLeech } from '../lib/leech';
 import { isWriting } from '../lib/formats';
+import { isMobileApp } from '../lib/platform';
 import { safeHtml } from '../lib/markdown';
 import type { QueueEntry } from '../lib/queue';
 import { projectMarkdown } from '../lib/sourceSync';
@@ -333,12 +334,14 @@ export const QueueView: React.FC<QueueViewProps> = ({
                   ? `Prochain élément : ${nextDueDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}. Vous pouvez ajouter une nouvelle source en attendant.`
                   : 'Ajoutez une source pour commencer la lecture incrémentale.'}
               </p>
+              {!isMobileApp && (
               <button
                 onClick={onOpenImport}
                 className="px-4 py-2 text-xs font-semibold text-[var(--fg-faf7f2)] bg-[var(--bg-3b3026)] hover:bg-[var(--bg-28211a)] rounded-lg shadow-xs"
               >
                 Ajouter une source
               </button>
+              )}
             </>
           ) : (
             <>

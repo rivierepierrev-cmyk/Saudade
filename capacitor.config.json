@@ -1,0 +1,11 @@
+{
+  "appId": "io.github.rivierepierrev.saudade",
+  "appName": "Saudade",
+  "webDir": "dist-mobile",
+  "android": {
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
