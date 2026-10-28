@@ -14,6 +14,12 @@ export interface AppSettings {
   theme: ThemePreference;
   /** Extracted passages highlighted in the reader. */
   showExtractHighlights: boolean;
+  /** Documents and extracts per day; the least important beyond it wait (or are postponed). */
+  dailyTopicLimit: number;
+  /** Each morning, documents and extracts beyond the limit are rescheduled later. */
+  autoPostpone: boolean;
+  /** Day (YYYY-MM-DD, local) the surplus was last postponed. */
+  lastAutoPostpone?: string;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -25,6 +31,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   dailyReviewLimit: 50,
   theme: 'system',
   showExtractHighlights: true,
+  dailyTopicLimit: 20,
+  autoPostpone: true,
 };
 
 export type RestoreResult = { ok: true; counts: { documents: number; extracts: number; clozes: number } } | { ok: false; error: string };

@@ -7,6 +7,10 @@ interface SettingsViewProps {
   targetRetention: number;
   onUpdateTargetRetention: (retention: number) => void;
   dailyReviewLimit: number;
+  dailyTopicLimit: number;
+  onUpdateTopicLimit: (limit: number) => void;
+  autoPostpone: boolean;
+  onToggleAutoPostpone: (on: boolean) => void;
   onUpdateDailyLimit: (limit: number) => void;
   onExportBackup: () => void;
   onExportMarkdownMirror: () => void;
@@ -55,6 +59,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   targetRetention,
   onUpdateTargetRetention,
   dailyReviewLimit,
+  dailyTopicLimit,
+  onUpdateTopicLimit,
+  autoPostpone,
+  onToggleAutoPostpone,
   onUpdateDailyLimit,
   onExportBackup,
   onExportMarkdownMirror,
@@ -107,8 +115,40 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             cartes à trou différentes par jour
           </label>
           <p className="mt-1 text-xs text-[var(--fg-8c8072)]">
-            Les documents et extraits du jour ne sont pas limités. Une carte ratée revient dans la journée sans compter à nouveau.
+            Une carte ratée revient dans la journée sans compter à nouveau. Les cartes au-delà attendent le lendemain.
           </p>
+
+          <label className="mt-4 flex flex-wrap items-center gap-2 text-sm text-[var(--fg-4a4137)]">
+            Au plus
+            <input
+              type="number"
+              min={1}
+              max={999}
+              value={dailyTopicLimit}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10);
+                if (!isNaN(val)) onUpdateTopicLimit(val);
+              }}
+              className="w-20 px-2 py-1 tabular-nums text-[var(--fg-28231d)] bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-md"
+              aria-label="Documents et extraits par jour"
+            />
+            documents et extraits par jour
+          </label>
+          <label className="mt-2 flex items-start gap-2 text-sm text-[var(--fg-4a4137)] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoPostpone}
+              onChange={(e) => onToggleAutoPostpone(e.target.checked)}
+              className="mt-1"
+            />
+            <span>
+              Reporter automatiquement le surplus chaque matin
+              <span className="block text-xs text-[var(--fg-8c8072)]">
+                Les moins prioritaires sont reprogrammés plus tard (de 1 jour à environ deux semaines selon leur priorité), pour que la file
+                du jour reste faisable. Sinon, ils attendent dans l’ordre des priorités.
+              </span>
+            </span>
+          </label>
 
           <div className="mt-6">
             <div className="flex items-baseline justify-between">

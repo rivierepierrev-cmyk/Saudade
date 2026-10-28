@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import { locatePassage, replacePassage, projectMarkdown } from '../src/lib/sourceSync';
-import { buildTodayQueue } from '../src/lib/queue';
+import { buildTodayQueue, topicSurplus, cardBacklog, postponeDays, postponeTopic } from '../src/lib/queue';
 
 const md = `# Titre principal
 
@@ -48,4 +48,18 @@ const exts: any[] = [{ ...base, id: 'e1', priority: 70, state: 'review', fsrs: r
 const cards: any[] = [1, 2, 3].map((n) => ({ ...base, id: 'c' + n, priority: 60 + n, state: 'review', fsrs: rec(-n) }));
 const q = buildTodayQueue({ documents: docs, extracts: exts, clozes: cards, dailyLimit: 2, reviewedTodayIds: new Set(['c1']), now });
 assert.deepEqual(q.map((e) => e.item.id), ['e1', 'c3', 'c1', 'd1'], 'due only, by priority; limit 2 with c1 already reviewed today');
+// overload: at most N documents and extracts a day, the most important first
+const many: any[] = [10, 90, 50, 70, 30].map((p, i) => ({ ...base, id: 'm' + i, priority: p, state: 'review', fsrs: { ...rec(-i), interval: 10 } }));
+const limited = buildTodayQueue({ documents: many, extracts: [], clozes: cards, dailyLimit: 2, topicLimit: 2, reviewedTodayIds: new Set(['c1']), now });
+assert.deepEqual(limited.filter((e) => e.type === 'document').map((e) => e.item.id), ['m1', 'm3'], 'two most important');
+assert.deepEqual(topicSurplus(many, [], 2, now).map((e) => e.item.id), ['m2', 'm4', 'm0'], 'the rest, most important first');
+assert.equal(cardBacklog(cards, limited, now), 1, 'c2 waits (card limit)');
+// postponement: 1 day at the top, further for low priorities, never more than 16 days
+assert.equal(postponeDays(100, 10), 1); assert.equal(postponeDays(50, 10), 4); assert.equal(postponeDays(0, 10), 6);
+assert.equal(postponeDays(0, 400), 16); assert.equal(postponeDays(80, 0), 1);
+const moved = postponeTopic(many[0].fsrs, 10, now);
+assert.equal(new Date(moved.nextReviewDate).getTime(), new Date('2026-10-27T00:00:00').getTime() + 6 * day, 'start of the day, 6 days later');
+assert.equal(moved.interval, 10, 'interval kept when longer');
+assert.equal(postponeTopic({ ...many[0].fsrs, interval: 0 }, 0, now).interval, 2, 'interval at least the delay');
+
 console.log('sync/queue tests OK');

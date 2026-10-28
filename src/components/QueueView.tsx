@@ -52,6 +52,11 @@ interface QueueViewProps {
   onOpenImport: () => void;
   /** Today's queue (see lib/queue.ts): only these items are listed. */
   queue: QueueEntry[];
+  /** Due today beyond the daily limits (not listed). */
+  overload: { topics: number; cards: number };
+  autoPostpone: boolean;
+  /** Reschedules the documents and extracts beyond the limit, now. */
+  onPostponeSurplus: () => void;
   /** When the next item after today is due (shown when the queue is empty). */
   nextDueDate: Date | null;
   onEditItem: (type: 'extract' | 'cloze', id: string) => void;
@@ -66,6 +71,9 @@ export const QueueView: React.FC<QueueViewProps> = ({
   onDeleteItem,
   onOpenImport,
   queue,
+  overload,
+  autoPostpone,
+  onPostponeSurplus,
   nextDueDate,
   onEditItem,
 }) => {
@@ -182,6 +190,32 @@ export const QueueView: React.FC<QueueViewProps> = ({
               ? 'Tout est fait pour aujourd’hui.'
               : `${todayItems.length} élément${todayItems.length > 1 ? 's' : ''} à traiter aujourd’hui : ${countOf('document')} à lire, ${dueCount} à réviser. Chacun quitte la file une fois fait.`}
           </p>
+          {(overload.topics > 0 || overload.cards > 0) && (
+            <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--fg-8c8072)]" data-testid="overload">
+              <span>
+                Au-delà de vos limites du jour (Réglages) :{' '}
+                {[
+                  overload.topics > 0 &&
+                    `${overload.topics} document${overload.topics > 1 ? 's' : ''} ou extrait${overload.topics > 1 ? 's' : ''} ${
+                      autoPostpone ? 'reportés demain matin' : 'en attente'
+                    }`,
+                  overload.cards > 0 && `${overload.cards} carte${overload.cards > 1 ? 's' : ''} en attente`,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </span>
+              {overload.topics > 0 && (
+                <button
+                  type="button"
+                  onClick={onPostponeSurplus}
+                  className="px-2 py-0.5 rounded-md border border-[var(--bd-e8e2d5)] text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)] cursor-pointer"
+                  title="Reprogrammer maintenant les moins prioritaires, plus loin s'ils comptent peu"
+                >
+                  Reporter maintenant
+                </button>
+              )}
+            </p>
+          )}
         </div>
 
         {dueCount > 0 ? (

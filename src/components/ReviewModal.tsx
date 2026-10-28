@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ClozeItem, ExtractItem, ReviewRating, FSRSRecord } from '../types/saudade';
+import { ClozeItem, DocumentItem, ExtractItem, ReviewRating, FSRSRecord } from '../types/saudade';
 import { predictAllRatings, nextTopicInterval, formatInterval } from '../lib/fsrs';
 import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
 import { buildTodayQueue, isDueToday } from '../lib/queue';
@@ -54,6 +54,9 @@ interface ReviewModalProps {
   onCreateExtractFromExtract: (extractId: string, text: string) => void;
   /** Maximum number of different cards reviewed per day. */
   dailyLimit: number;
+  /** With the daily limit of documents and extracts, so the session plays the queue's extracts. */
+  documents: DocumentItem[];
+  topicLimit: number;
   /** Ids of cards already reviewed today (they don't use up the limit again). */
   reviewedTodayIds: Set<string>;
   /** Highlight sub-extracts inside the extract being read. */
@@ -74,6 +77,8 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   onRetireExtract,
   onCreateExtractFromExtract,
   dailyLimit,
+  documents,
+  topicLimit,
   reviewedTodayIds,
   showExtractHighlights,
   onClose,
@@ -146,9 +151,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         ...extracts.filter((e) => e.state !== 'dismissed').map((e) => toEntry(e, 'extract')),
       ].sort((a, b) => b.priority - a.priority);
     } else {
-      entries = buildTodayQueue({ documents: [], extracts, clozes, dailyLimit, reviewedTodayIds }).map((q) =>
-        toEntry(q.item as ClozeItem | ExtractItem, q.type as 'cloze' | 'extract')
-      );
+      entries = buildTodayQueue({ documents, extracts, clozes, dailyLimit, topicLimit, reviewedTodayIds })
+        .filter((q) => q.type !== 'document') // documents are read in the reader
+        .map((q) => toEntry(q.item as ClozeItem | ExtractItem, q.type as 'cloze' | 'extract'));
     }
     if (initialItemId) {
       const index = entries.findIndex((e) => e.id === initialItemId);

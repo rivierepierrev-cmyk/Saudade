@@ -24,6 +24,11 @@ En mode navigateur (`npm run dev`), les données restent dans le localStorage du
 - La file ne contient que ce qui est à faire aujourd'hui (documents, extraits et cartes dus, avec la même limite quotidienne de cartes que la révision). Chaque élément la quitte une fois lu ou révisé ; quand tout est fait, elle est vide et indique la date du prochain élément. Les réponses des cartes y restent masquées ; priorité et historique s'affichent au survol. Le badge, la file et les Statistiques donnent le même compte.
 - Un document ou un extrait déjà programmé pour plus tard n'est jamais reprogrammé une seconde fois : « Lu » / « Suivant » passe simplement à la suite (« déjà prévu dans N j »).
 
+### Surcharge
+
+- Limites par jour (Réglages) : cartes à trou différentes (50 par défaut) et documents + extraits (20 par défaut). La file ne montre que les plus prioritaires ; une ligne indique ce qui attend au-delà.
+- Chaque matin, si « Reporter automatiquement le surplus » est coché (par défaut), les documents et extraits en trop sont reprogrammés plus tard : 1 jour pour les plus prioritaires, jusqu'à la moitié de leur intervalle (16 jours au plus) pour les moins prioritaires. Un message permet d'annuler ; « Reporter maintenant » fait la même chose à la demande (après un gros import, par exemple). Les cartes ne sont jamais reportées : celles au-delà de la limite attendent le lendemain.
+
 ## Modifier un extrait ou une carte
 - Bouton « Modifier » dans la file, la révision (touche E) et la bibliothèque.
 - Modifier un extrait modifie aussi le passage dans le document d'origine (et dans l'extrait parent) ; seule la partie changée est remplacée, la mise en forme autour est conservée. Si le passage n'est plus retrouvé tel quel, seul l'extrait change (un message le signale). Annulable (Ctrl+Z).

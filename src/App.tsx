@@ -16,7 +16,7 @@ import {
 } from './types/saudade';
 import { SaudadeStorage, AppSettings } from './lib/storage';
 import { applyTheme } from './lib/theme';
-import { buildTodayQueue, isDueToday, nextAfterToday } from './lib/queue';
+import { buildTodayQueue, isDueToday, nextAfterToday, topicSurplus, postponeTopic, cardBacklog } from './lib/queue';
 import { locatePassage, replacePassage } from './lib/sourceSync';
 import { ItemEditor } from './components/ItemEditor';
 import { ItemViewer } from './components/ItemViewer';
@@ -55,34 +55,6 @@ export default function App() {
     []
   );
 
-  // Synchronisation: reload what other computers changed; fetch their changes at
-  // start, when the window comes back to the front, and every two minutes.
-  useEffect(() => {
-    const reload = () => {
-      documentsRef.current = SaudadeStorage.getDocuments();
-      extractsRef.current = SaudadeStorage.getExtracts();
-      clozesRef.current = SaudadeStorage.getClozes();
-      setDocuments(documentsRef.current);
-      setExtracts(extractsRef.current);
-      setClozes(clozesRef.current);
-      const synced = SaudadeStorage.getSettings();
-      setSettings(synced);
-      applyTheme(synced.theme);
-    };
-    const off = onLibraryChanged(reload);
-    const tick = () => {
-      if (getSyncStatus()?.enabled) syncNow().catch((e) => console.error('Synchronisation :', e));
-    };
-    tick();
-    const timer = window.setInterval(tick, 2 * 60 * 1000);
-    window.addEventListener('focus', tick);
-    return () => {
-      off();
-      window.clearInterval(timer);
-      window.removeEventListener('focus', tick);
-    };
-  }, []);
-
   // Initial load from local-first storage
   useEffect(() => {
     const docs = SaudadeStorage.getDocuments();
@@ -99,6 +71,36 @@ export default function App() {
     if (docs.length > 0 && !currentDocumentId) {
       setCurrentDocumentId(docs[0].id);
     }
+  }, []);
+
+  // Synchronisation: reload what other computers changed; fetch their changes at
+  // start, when the window comes back to the front, and every two minutes.
+  useEffect(() => {
+    const reload = () => {
+      documentsRef.current = SaudadeStorage.getDocuments();
+      extractsRef.current = SaudadeStorage.getExtracts();
+      clozesRef.current = SaudadeStorage.getClozes();
+      setDocuments(documentsRef.current);
+      setExtracts(extractsRef.current);
+      setClozes(clozesRef.current);
+      const synced = SaudadeStorage.getSettings();
+      setSettings(synced);
+      applyTheme(synced.theme);
+    };
+    const off = onLibraryChanged(reload);
+    // Changes from other computers first, then the morning's postponement.
+    const tick = async () => {
+      if (getSyncStatus()?.enabled) await syncNow().catch((e) => console.error('Synchronisation :', e));
+      postponeSurplusRef.current(true);
+    };
+    tick();
+    const timer = window.setInterval(tick, 2 * 60 * 1000);
+    window.addEventListener('focus', tick);
+    return () => {
+      off();
+      window.clearInterval(timer);
+      window.removeEventListener('focus', tick);
+    };
   }, []);
 
   // Sync state to storage. Updates read the latest state from refs so delayed
@@ -147,10 +149,17 @@ export default function App() {
     extracts,
     clozes,
     dailyLimit: settings.dailyReviewLimit,
+    topicLimit: settings.dailyTopicLimit,
     reviewedTodayIds,
   });
+  // Beyond today's limits: shown in the queue, the documents and extracts postponed.
+  const overload = {
+    topics: topicSurplus(documents, extracts, settings.dailyTopicLimit).length,
+    cards: cardBacklog(clozes, todayQueue),
+  };
   const nextDueDate = nextAfterToday([documents, extracts, clozes]);
 
+  const localDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const newId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   // Handler: Create Extract (from a document in the reader, or from another extract)
@@ -530,6 +539,53 @@ export default function App() {
     setSettings(newSettings);
     SaudadeStorage.saveSettings(newSettings);
   };
+
+  const handleUpdateTopicLimit = (limit: number) => {
+    const newSettings: AppSettings = { ...settings, dailyTopicLimit: Math.max(1, Math.min(999, Math.round(limit))) };
+    setSettings(newSettings);
+    SaudadeStorage.saveSettings(newSettings);
+  };
+
+  const handleToggleAutoPostpone = (on: boolean) => {
+    const newSettings: AppSettings = { ...settings, autoPostpone: on };
+    setSettings(newSettings);
+    SaudadeStorage.saveSettings(newSettings);
+  };
+
+  /**
+   * Overload: the documents and extracts due today beyond the daily limit (the least
+   * important) are rescheduled later, lower priorities further. Automatic once a
+   * morning when enabled, or on demand from the queue. Can be undone.
+   */
+  const postponeSurplus = (automatic: boolean) => {
+    const current = SaudadeStorage.getSettings();
+    const now = new Date();
+    const today = localDay(now);
+    if (automatic) {
+      if (!current.autoPostpone || current.lastAutoPostpone === today) return;
+      const marked = { ...current, lastAutoPostpone: today };
+      SaudadeStorage.saveSettings(marked);
+      setSettings(marked);
+    }
+    const surplus = topicSurplus(documentsRef.current, extractsRef.current, current.dailyTopicLimit, now);
+    if (surplus.length === 0) return;
+    const before = new Map(surplus.map((s) => [s.item.id, s.item.fsrs]));
+    const later = <T extends DocumentItem | ExtractItem>(item: T): T =>
+      before.has(item.id) ? { ...item, fsrs: postponeTopic(item.fsrs, item.priority, now) } : item;
+    updateDocuments((prev) => prev.map(later));
+    updateExtracts((prev) => prev.map(later));
+    const back = <T extends DocumentItem | ExtractItem>(item: T): T =>
+      before.has(item.id) ? { ...item, fsrs: before.get(item.id)! } : item;
+    offerUndo(
+      `${surplus.length} élément${surplus.length > 1 ? 's' : ''} en trop reporté${surplus.length > 1 ? 's' : ''} (les moins prioritaires)`,
+      () => {
+        updateDocuments((prev) => prev.map(back));
+        updateExtracts((prev) => prev.map(back));
+      }
+    );
+  };
+  const postponeSurplusRef = useRef(postponeSurplus);
+  postponeSurplusRef.current = postponeSurplus;
 
   const handleUpdateDailyLimit = (limit: number) => {
     const newSettings: AppSettings = { ...settings, dailyReviewLimit: Math.max(1, Math.min(999, Math.round(limit))) };
@@ -993,6 +1049,9 @@ export default function App() {
             onDeleteItem={handleDeleteItem}
             onOpenImport={() => setIsImportOpen(true)}
             queue={todayQueue}
+            overload={overload}
+            autoPostpone={settings.autoPostpone}
+            onPostponeSurplus={() => postponeSurplus(false)}
             nextDueDate={nextDueDate}
             onEditItem={handleEditItem}
           />
@@ -1076,6 +1135,8 @@ export default function App() {
               if (parent) handleCreateExtract({ documentId: parent.documentId, parentExtractId: extractId }, text);
             }}
             dailyLimit={settings.dailyReviewLimit}
+            documents={documents}
+            topicLimit={settings.dailyTopicLimit}
             reviewedTodayIds={reviewedTodayIds}
             showExtractHighlights={settings.showExtractHighlights}
             onClose={() => setActiveTab('queue')}
@@ -1142,6 +1203,10 @@ export default function App() {
             onUpdateTargetRetention={handleUpdateTargetRetention}
             dailyReviewLimit={settings.dailyReviewLimit}
             onUpdateDailyLimit={handleUpdateDailyLimit}
+            dailyTopicLimit={settings.dailyTopicLimit}
+            onUpdateTopicLimit={handleUpdateTopicLimit}
+            autoPostpone={settings.autoPostpone}
+            onToggleAutoPostpone={handleToggleAutoPostpone}
             onExportBackup={handleExportBackup}
             onExportMarkdownMirror={handleExportMarkdownMirror}
             onResetDemo={handleResetDemo}
