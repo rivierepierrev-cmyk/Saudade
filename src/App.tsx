@@ -30,6 +30,7 @@ import { ReaderView } from './components/ReaderView';
 import { ReviewModal } from './components/ReviewModal';
 import { LibraryView } from './components/LibraryView';
 import { StatsView } from './components/StatsView';
+import { SettingsView } from './components/SettingsView';
 import { ImportModal } from './components/ImportModal';
 
 export default function App() {
@@ -1076,7 +1077,6 @@ export default function App() {
             }}
             onOpenImport={() => setIsImportOpen(true)}
             onExportMarkdown={handleExportMarkdownMirror}
-            onExportBackup={handleExportBackup}
             onEditItem={handleEditItem}
             onViewItem={handleViewItem}
           />
@@ -1088,6 +1088,18 @@ export default function App() {
             documents={documents}
             extracts={extracts}
             clozes={clozes}
+            targetRetention={settings.targetRetention}
+            today={{
+              documents: todayQueue.filter((e) => e.type === 'document').length,
+              extracts: todayQueue.filter((e) => e.type === 'extract').length,
+              cards: todayQueue.filter((e) => e.type === 'cloze').length,
+            }}
+          />
+        )}
+
+        {activeTab === 'settings' && (
+          <SettingsView
+            cardCount={clozes.length}
             targetRetention={settings.targetRetention}
             onUpdateTargetRetention={handleUpdateTargetRetention}
             dailyReviewLimit={settings.dailyReviewLimit}

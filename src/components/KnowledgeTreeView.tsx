@@ -55,6 +55,8 @@ interface TreeNode {
   dueCount: number;
 }
 
+const FORMAT_LABEL: Record<string, string> = { article: 'Article', book: 'Livre', pdf: 'PDF', markdown: 'Markdown', note: 'Note' };
+
 export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
   documents,
   extracts,
@@ -713,8 +715,11 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
             <Folder className="w-4 h-4 text-[var(--fg-8c5e32)]" />
-            <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--fg-695f54)]">
-              Arborescence
+            <h2
+              className="text-xs font-bold uppercase tracking-wider text-[var(--fg-695f54)]"
+              title="Glissez un dossier ou un document sur un dossier pour le déplacer"
+            >
+              Dossiers
             </h2>
           </div>
           <button
@@ -729,12 +734,6 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
             <FolderPlus className="w-3.5 h-3.5" />
             <span>Nouveau</span>
           </button>
-        </div>
-
-        {/* Aide Drag & Drop */}
-        <div className="mb-2.5 px-2.5 py-1.5 bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg text-[10px] text-[var(--fg-8c8072)] flex items-center gap-1.5">
-          <GripVertical className="w-3 h-3 text-[var(--fg-8c5e32)] shrink-0" />
-          <span>Glissez-déposez un dossier sur un autre pour le déplacer.</span>
         </div>
 
         {/* Barre de recherche dans les dossiers */}
@@ -824,7 +823,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
         {/* Fil d'Ariane & Titre de dossier */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-[var(--bd-e8e2d5)]">
           <div>
-            <div className="flex items-center gap-1.5 text-xs text-[var(--fg-8c8072)] mb-1 font-mono flex-wrap">
+            <div className="flex items-center gap-1.5 text-xs text-[var(--fg-8c8072)] mb-1 flex-wrap">
               <span
                 className="hover:text-[var(--fg-28231d)] cursor-pointer"
                 onClick={() => setSelectedFolder('all')}
@@ -850,14 +849,14 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
             </div>
 
             <div className="flex items-center gap-2.5">
-              <h1 className="text-xl font-bold text-[var(--fg-28231d)] font-serif-reading flex items-center gap-2">
+              <h2 className="text-xl font-semibold text-[var(--fg-28231d)] font-serif-reading flex items-center gap-2">
                 <Folder className="w-5 h-5 text-[var(--fg-8c5e32)]" />
                 <span>
                   {selectedFolder === 'all'
-                    ? 'Tous les documents & sous-éléments'
+                    ? 'Tous les documents'
                     : selectedFolder.split('/').pop()}
                 </span>
-              </h1>
+              </h2>
 
               {selectedFolder !== 'all' && (
                 <div className="flex items-center gap-1">
@@ -892,36 +891,14 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                 type="button"
                 onClick={() => onStartReviewWithFolder(selectedFolder)}
                 className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-xl shadow-xs transition-colors cursor-pointer"
-                title="Lancer une révision FSRS sur les éléments de ce dossier"
+                title="Réviser les extraits et cartes à trou de ce dossier"
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
                 <span>Réviser ce dossier ({selectedNode.dueCount})</span>
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={() => {
-                setNewFolderParent(selectedFolder !== 'all' ? selectedFolder : '');
-                setIsNewFolderOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[var(--fg-4a3e31)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-d5cbbf)] rounded-xl transition-colors cursor-pointer shadow-2xs"
-            >
-              <FolderPlus className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
-              <span>Nouveau sous-dossier</span>
-            </button>
 
-            {onOpenImport && (
-              <button
-                type="button"
-                onClick={onOpenImport}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[var(--fg-faf7f2)] bg-[var(--bg-3b3026)] hover:bg-[var(--bg-28231d)] rounded-xl transition-colors cursor-pointer shadow-2xs"
-                title="Ajouter un article"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Ajouter un article</span>
-              </button>
-            )}
           </div>
         </div>
 
@@ -1085,11 +1062,12 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap text-[10px] text-[var(--fg-8c8072)] mb-1">
                           <span className="font-semibold text-[var(--fg-8c5e32)] uppercase tracking-wider">
-                            {doc.format}
+                            {FORMAT_LABEL[doc.format] ?? doc.format}
                           </span>
                           <span>·</span>
-                          <span className="font-mono bg-[var(--bg-faf7f2)] px-1.5 py-0.5 rounded border border-[var(--bd-e8e2d5)] text-[var(--fg-4a3e31)]">
-                            📁 {doc.folder || 'Général'}
+                          <span className="inline-flex items-center gap-1 text-[var(--fg-695f54)]">
+                            <Folder className="w-3 h-3" />
+                            {doc.folder || 'Général'}
                           </span>
                           {doc.author && (
                             <>
@@ -1097,8 +1075,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                               <span>{doc.author}</span>
                             </>
                           )}
-                          <span>·</span>
-                          <span>Priorité : {doc.priority}%</span>
+                          <span className="queue-details">· priorité {doc.priority} %</span>
                         </div>
 
                         <h3
@@ -1117,11 +1094,9 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                           </span>
                           <span className="inline-flex items-center gap-1">
                             <Sparkles className="w-3.5 h-3.5 text-[var(--fg-5f8550)]" />
-                            {docClozes.length} cloze{docClozes.length > 1 ? 's' : ''} FSRS
+                            {docClozes.length} carte{docClozes.length > 1 ? 's' : ''} à trou
                           </span>
-                          <span className="text-[11px] font-mono text-[var(--fg-8c8072)]">
-                            Progression : {doc.readingProgress || 0}%
-                          </span>
+                          <span className="text-[var(--fg-8c8072)] tabular-nums">lu à {doc.readingProgress || 0} %</span>
                         </div>
                       </div>
                     </div>
@@ -1260,7 +1235,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                             <div>
                               <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--fg-5f8550)] mb-2">
                                 <Sparkles className="w-3.5 h-3.5" />
-                                <span>Cartes Cloze FSRS associées ({docClozes.length})</span>
+                                <span>Cartes à trou ({docClozes.length})</span>
                               </div>
                               <div className="space-y-1.5">
                                 {docClozes.map((clz) => {
@@ -1302,7 +1277,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                                         type="button"
                                         onClick={() => onDeleteCloze(clz.id)}
                                         className="p-1 text-[var(--fg-8c8072)] hover:text-red-600 rounded cursor-pointer"
-                                        title="Supprimer cette carte cloze"
+                                        title="Supprimer cette carte à trou"
                                       >
                                         <Trash2 className="w-3 h-3" />
                                       </button>

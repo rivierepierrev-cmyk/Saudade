@@ -37,7 +37,7 @@ const highlightState = (page) => page.evaluate(() => {
 
   // 1. Library, grid: open an extract
   await page.getByRole('button', { name: /Bibliothèque/ }).first().click();
-  await page.getByRole('button', { name: /Vue Fiches/ }).click();
+  await page.getByRole('tab', { name: 'Par type' }).click();
   await page.getByRole('button', { name: /^Extraits/ }).first().click();
   await page.getByTitle("Lire l'extrait").first().click();
   let dialog = page.getByRole('dialog', { name: 'Extrait' });
@@ -66,7 +66,7 @@ const highlightState = (page) => page.evaluate(() => {
   await page.keyboard.press('Escape');
 
   // 3. Library, tree: extract -> "Voir dans le document": reader scrolled to the highlighted passage
-  await page.getByRole('button', { name: /Arborescence/ }).click();
+  await page.getByRole('tab', { name: 'Dossiers' }).click();
   await page.getByText('Relativité restreinte', { exact: true }).first()
     .locator('xpath=ancestor::div[.//button][1]').locator('button').first().click(); // expand the document
   await page.getByTitle("Lire l'extrait").first().waitFor();

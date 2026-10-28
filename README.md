@@ -21,7 +21,7 @@ En mode navigateur (`npm run dev`), les données restent dans le localStorage du
     npm run electron:dev   # fenêtre desktop
 
 ## File de lecture du jour
-- La file ne contient que ce qui est à faire aujourd'hui (documents, extraits et cartes dus, avec la même limite quotidienne de cartes que la révision). Chaque élément la quitte une fois lu ou révisé ; quand tout est fait, elle est vide et indique la date du prochain élément.
+- La file ne contient que ce qui est à faire aujourd'hui (documents, extraits et cartes dus, avec la même limite quotidienne de cartes que la révision). Chaque élément la quitte une fois lu ou révisé ; quand tout est fait, elle est vide et indique la date du prochain élément. Les réponses des cartes y restent masquées ; priorité et historique s'affichent au survol. Le badge, la file et les Statistiques donnent le même compte.
 - Un document ou un extrait déjà programmé pour plus tard n'est jamais reprogrammé une seconde fois : « Lu » / « Suivant » passe simplement à la suite (« déjà prévu dans N j »).
 
 ## Modifier un extrait ou une carte
@@ -35,7 +35,7 @@ En mode navigateur (`npm run dev`), les données restent dans le localStorage du
 - Bibliothèque (arborescence ou fiches) : cliquer sur un extrait ou une carte l'ouvre en entier (formules, réponse avec Espace, prochaine révision, cartes tirées de l'extrait), avec « Modifier » et « Voir dans le document ».
 - Lecteur, volet « Extraits » : cliquer sur un extrait l'affiche en entier, fait défiler le texte jusqu'au passage et le surligne.
 - Comme dans SuperMemo, le texte d'origine montre ce qui en a été tiré : passages extraits en doré, phrases transformées en cartes en vert (bouton « Surlignage » pour les masquer). Les marques suivent les modifications et disparaissent quand l'extrait ou la carte est supprimé (« Annuler » les remet). Dans un extrait, seuls ses sous-extraits sont surlignés.
-- Réinitialiser une carte (fenêtre de la carte) ou toutes les cartes (Analytique) : comme si elles n'avaient jamais été révisées, historique compris. Annulable ; une sauvegarde est créée avant la réinitialisation globale.
+- Réinitialiser une carte (fenêtre de la carte) ou toutes les cartes (Réglages, icône ⚙ en haut) : comme si elles n'avaient jamais été révisées, historique compris. Annulable ; une sauvegarde est créée avant la réinitialisation globale.
 
 ## Fin de lecture d'un texte
 La question n'est pas « m'en souviendrai-je ? » (ce sont les cartes qui servent à retenir) mais « reste-t-il quelque chose à extraire ? » :
@@ -57,7 +57,7 @@ La question n'est pas « m'en souviendrai-je ? » (ce sont les cartes qui serven
 - **Windows** : lancez `Saudade-1.0.0-win-x64.exe` (installateur) ou la version portable. L'application n'est pas signée : au premier lancement, Windows SmartScreen affiche un avertissement → « Informations complémentaires » → « Exécuter quand même ».
 
 Les données (Linux : `~/.config/Saudade/data/`, Windows : `%APPDATA%\Saudade\data\`) sont conservées lors d'une mise à jour ou d'une désinstallation.
-Sauvegarde / restauration : onglet Analytique → « Sauvegarde JSON » et « Restaurer une sauvegarde… » (accepte aussi les fichiers de `data/backups/`).
+Sauvegarde / restauration : Réglages (icône ⚙ en haut) → « Exporter une sauvegarde » et « Restaurer une sauvegarde… » (accepte aussi les fichiers de `data/backups/`).
 
 ## Construire les installateurs
     npm run dist:linux     # release/*.deb et *.AppImage

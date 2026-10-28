@@ -66,8 +66,9 @@ const strip = (s) => s.replace(/\s+/g, ' ').trim();
   await page.getByRole('button', { name: /File de lecture/ }).first().click();
   // (the split older card's c2 is a new card, due now: 2 items in all)
   await page.getByText('2 éléments à traiter').waitFor();
-  assert.equal(await page.getByText('[Paris] est une ville et [la capitale] de France.').count(), 1, 'c1 today');
-  assert.equal(await page.getByText('Paris est une ville et la capitale de [France].').count(), 0, 'c2 another day');
+  // (answers hidden in the queue)
+  assert.equal(await page.getByText('[…] est une ville et […] de France.').count(), 1, 'c1 today');
+  assert.equal(await page.getByText('Paris est une ville et la capitale de […].').count(), 0, 'c2 another day');
 
   // 3. Review: card c1 has two holes
   await page.getByRole('button', { name: /Révision du jour/ }).first().click();
@@ -77,7 +78,7 @@ const strip = (s) => s.replace(/\s+/g, ' ').trim();
 
   // 4. Card c2 in the library: one hole; the note's cards are listed
   await page.getByRole('button', { name: /Bibliothèque/ }).first().click();
-  await page.getByRole('button', { name: /Vue Fiches/ }).click();
+  await page.getByRole('tab', { name: 'Par type' }).click();
   await page.getByRole('button', { name: /^(Cartes|Clozes|Cloze)/ }).first().click();
   await page.getByTitle('Voir la carte').filter({ hasText: '[France]' }).click();
   const viewer = page.getByRole('dialog', { name: 'Carte à trou' });

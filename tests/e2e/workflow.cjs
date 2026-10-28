@@ -72,7 +72,7 @@ const badge = (page) => page.getByRole('button', { name: /File de lecture/ }).fi
   assert.equal(read('clozes').find((c) => c.id === 'c1').text, 'La capitale de la France est {{c1::Paris::une ville}} depuis 508.');
 
   // 4. Review: the extract and the card leave the queue once done
-  await page.getByRole('button', { name: /Révision du jour \(2\)/ }).click();
+  await page.getByRole('button', { name: /Réviser \(2\)/ }).click();
   for (let i = 0; i < 2; i++) {
     if (await page.getByText('Extrait à relire').count()) {
       assert.match(await page.locator('.font-serif-reading').first().innerText(), /milliers/);
@@ -103,9 +103,9 @@ const badge = (page) => page.getByRole('button', { name: /File de lecture/ }).fi
   await page.getByRole('button', { name: 'Texte suivant de la file' }).waitFor();
   await page.keyboard.press('l'); await page.waitForTimeout(300);
   assert.deepEqual(read('documents').find((d) => d.id === 'docA').fsrs, before, 'L on a scheduled document');
-  // nor in "Étude anticipée": extracts scheduled for later keep their date
+  // nor in "Réviser en avance": extracts scheduled for later keep their date
   await page.getByRole('button', { name: /Révision du jour/ }).first().click();
-  await page.getByRole('button', { name: /Étude anticipée/ }).click();
+  await page.getByRole('button', { name: /Réviser en avance/ }).click();
   let checked = 0;
   for (let i = 0; i < 6 && checked < 2; i++) {
     if (await page.getByText('Extrait à relire').count()) {

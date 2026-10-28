@@ -102,4 +102,4 @@ export interface SaudadeStats {
 }
 
 
-export type ActiveTab = 'queue' | 'reader' | 'review' | 'library' | 'stats';
+export type ActiveTab = 'queue' | 'reader' | 'review' | 'library' | 'stats' | 'settings';

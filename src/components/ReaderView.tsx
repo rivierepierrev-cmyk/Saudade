@@ -86,6 +86,22 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
 }) => {
   const [fontFamily, setFontFamily] = useState<'serif' | 'sans' | 'mono'>('serif');
   const [fontSize, setFontSize] = useState<number>(18);
+  const [typoOpen, setTypoOpen] = useState(false);
+  const typoRef = useRef<HTMLDivElement>(null);
+  // Close the typography menu on a click elsewhere or Escape.
+  useEffect(() => {
+    if (!typoOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!typoRef.current?.contains(e.target as Node)) setTypoOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setTypoOpen(false);
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [typoOpen]);
   const [columnWidth] = useState<'narrow' | 'normal' | 'wide'>('normal');
   // Side panel: the document's extracts, or its cards.
   const [panel, setPanel] = useState<'extracts' | 'cards' | null>(null);
@@ -357,7 +373,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
       <div className="sticky top-16 z-30 bg-[var(--bg-ffffff)]/95 backdrop-blur-md border-b border-[var(--bd-e8e2d5)] py-2.5 px-4 sm:px-6 transition-colors">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
           {/* Sélecteur de document et navigation dans la file */}
-          <div className="flex items-center gap-1.5 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <button
               onClick={onPrevQueueItem}
               className="p-1.5 text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] rounded-lg hover:bg-[var(--bg-f3efe8)] border border-transparent hover:border-[var(--bd-e8e2d5)] transition-colors shrink-0 cursor-pointer"
@@ -372,7 +388,8 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                 const doc = allDocuments.find((d) => d.id === e.target.value);
                 if (doc) onSelectDocument(doc);
               }}
-              className="text-xs font-semibold text-[var(--fg-28231d)] bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-lg px-2.5 py-1.5 truncate max-w-xs focus:outline-none focus:ring-1 focus:ring-[var(--bd-8c5e32)]"
+              className="min-w-0 w-full max-w-xs text-xs font-semibold text-[var(--fg-28231d)] bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-lg px-2.5 py-1.5 truncate focus:outline-none focus:ring-1 focus:ring-[var(--bd-8c5e32)]"
+              aria-label="Texte affiché"
             >
               {allDocuments.map((doc, idx) => (
                 <option key={doc.id} value={doc.id}>
@@ -389,7 +406,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
               <ChevronRight className="w-4 h-4" />
             </button>
 
-            <span className="text-[11px] font-mono text-[var(--fg-8c8072)] tabular-nums hidden sm:inline ml-1 shrink-0">
+            <span className="text-[11px] text-[var(--fg-8c8072)] tabular-nums hidden sm:inline ml-1 shrink-0">
               {currentIndex + 1}/{totalDocuments}
             </span>
 
@@ -408,55 +425,67 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
 
           {/* Réglages typographiques */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="hidden sm:flex items-center gap-1 bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] p-0.5 rounded-lg text-xs">
+            {/* Typographie : un seul bouton, réglages dans un menu */}
+            <div className="relative" ref={typoRef}>
               <button
-                onClick={() => setFontFamily('serif')}
-                className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
-                  fontFamily === 'serif'
-                    ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] shadow-xs font-semibold'
-                    : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
+                type="button"
+                onClick={() => setTypoOpen((o) => !o)}
+                aria-expanded={typoOpen}
+                aria-haspopup="true"
+                className={`flex items-center px-2.5 py-1.5 text-xs font-semibold border rounded-lg transition-colors cursor-pointer font-serif-reading ${
+                  typoOpen
+                    ? 'bg-[var(--bg-f3efe8)] border-[var(--bd-d5cbbf)] text-[var(--fg-28231d)]'
+                    : 'bg-[var(--bg-ffffff)] border-[var(--bd-e8e2d5)] text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
                 }`}
+                title="Police et taille du texte"
+                aria-label="Police et taille du texte"
               >
-                Sérif
+                Aa
               </button>
-              <button
-                onClick={() => setFontFamily('sans')}
-                className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
-                  fontFamily === 'sans'
-                    ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] shadow-xs font-semibold'
-                    : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
-                }`}
-              >
-                Sans
-              </button>
-              <button
-                onClick={() => setFontFamily('mono')}
-                className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
-                  fontFamily === 'mono'
-                    ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] shadow-xs font-semibold'
-                    : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
-                }`}
-              >
-                Mono
-              </button>
-            </div>
-
-            <div className="flex items-center gap-1 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-lg px-1 py-0.5">
-              <button
-                onClick={() => setFontSize((s) => Math.max(14, s - 1))}
-                className="px-1.5 py-0.5 text-xs text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] rounded font-mono cursor-pointer"
-                title="Diminuer la taille du texte"
-              >
-                A-
-              </button>
-              <span className="text-xs font-mono tabular-nums text-[var(--fg-8c8072)] px-1">{fontSize}px</span>
-              <button
-                onClick={() => setFontSize((s) => Math.min(26, s + 1))}
-                className="px-1.5 py-0.5 text-xs text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] rounded font-mono cursor-pointer"
-                title="Agrandir la taille du texte"
-              >
-                A+
-              </button>
+              {typoOpen && (
+                <div className="absolute right-0 top-full mt-2 z-40 w-56 p-3 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-xl shadow-lg space-y-3">
+                  <div className="flex items-center gap-1 bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] p-0.5 rounded-lg text-xs">
+                    {([
+                      ['serif', 'Sérif'],
+                      ['sans', 'Sans'],
+                      ['mono', 'Mono'],
+                    ] as const).map(([family, label]) => (
+                      <button
+                        key={family}
+                        type="button"
+                        onClick={() => setFontFamily(family)}
+                        aria-pressed={fontFamily === family}
+                        className={`flex-1 px-2 py-1 rounded-md transition-colors cursor-pointer ${
+                          fontFamily === family
+                            ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] shadow-xs font-semibold'
+                            : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setFontSize((s) => Math.max(14, s - 1))}
+                      className="px-2.5 py-1 rounded-md border border-[var(--bd-e8e2d5)] text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)] cursor-pointer"
+                      title="Diminuer la taille du texte"
+                    >
+                      A−
+                    </button>
+                    <span className="tabular-nums text-[var(--fg-695f54)]">{fontSize} px</span>
+                    <button
+                      type="button"
+                      onClick={() => setFontSize((s) => Math.min(26, s + 1))}
+                      className="px-2.5 py-1 rounded-md border border-[var(--bd-e8e2d5)] text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)] cursor-pointer"
+                      title="Agrandir la taille du texte"
+                    >
+                      A+
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Bouton Modifier l'article */}

@@ -28,7 +28,7 @@ const marks = (page) => page.evaluate(() => {
 const tab = (page, name) => page.getByRole('button', { name }).first().click();
 const toReader = async (page) => { await tab(page, /^Lecteur/); await page.waitForSelector('article p'); await page.waitForTimeout(300); };
 const toLibraryGrid = async (page, objects) => {
-  await tab(page, /Bibliothèque/); await page.getByRole('button', { name: /Vue Fiches/ }).click();
+  await tab(page, /Bibliothèque/); await page.getByRole('tab', { name: 'Par type' }).click();
   await page.getByRole('button', { name: objects }).first().click();
 };
 
@@ -56,7 +56,7 @@ const toLibraryGrid = async (page, objects) => {
 
   // 3. Deleting a card removes its underline
   await toLibraryGrid(page, /^(Cartes|Clozes|Cloze)/);
-  await page.getByTitle('Supprimer cette carte cloze et la retirer de la file').first().click();
+  await page.getByTitle('Supprimer cette carte à trou').first().click();
   await page.getByRole('button', { name: 'Confirmer' }).first().click(); await page.waitForTimeout(200);
   const left = read('clozes').map((c) => c.id);
   await toReader(page);
@@ -82,8 +82,8 @@ const toLibraryGrid = async (page, objects) => {
   c2 = read('clozes').find((c) => c.id === 'c2');
   assert.equal(c2.fsrs.reps, 3, 'undo restores the schedule'); assert.equal(read('reviewLogs').length, 3, 'and the history');
 
-  // 5. Reset all cards from Analytique (with a safety snapshot)
-  await tab(page, /Analytique/);
+  // 5. Reset all cards from the settings (with a safety snapshot)
+  await page.getByRole('button', { name: 'Réglages' }).click();
   await page.getByRole('button', { name: 'Réinitialiser toutes les cartes' }).click();
   await page.getByRole('button', { name: 'Oui, réinitialiser' }).click(); await page.waitForTimeout(500);
   assert.ok(read('clozes').every((c) => c.fsrs.reps === 0 && c.fsrs.phase === 'new'));

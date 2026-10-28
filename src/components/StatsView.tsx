@@ -1,17 +1,6 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { SaudadeStats, DocumentItem, ExtractItem, ClozeItem } from '../types/saudade';
-import {
-  Download,
-  RotateCcw,
-  Check,
-  Calendar,
-  Layers,
-  Sparkles,
-  BarChart3,
-  TrendingUp,
-  Upload,
-  FolderOpen,
-} from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 
 interface StatsViewProps {
   stats: SaudadeStats;
@@ -19,17 +8,8 @@ interface StatsViewProps {
   extracts: ExtractItem[];
   clozes: ClozeItem[];
   targetRetention: number;
-  onUpdateTargetRetention: (retention: number) => void;
-  dailyReviewLimit: number;
-  onUpdateDailyLimit: (limit: number) => void;
-  onExportBackup: () => void;
-  onExportMarkdownMirror: () => void;
-  onResetDemo: () => Promise<boolean>;
-  onRestoreBackup: (file: File) => Promise<{ ok: boolean; message: string }>;
-  /** Every card back to "never reviewed" (retired cards stay retired). */
-  onResetAllCards: () => Promise<boolean>;
-  onOpenDataFolder?: () => void;
-  dataLocation?: string;
+  /** Today's queue by type: the same numbers as the reading queue. */
+  today: { documents: number; extracts: number; cards: number };
 }
 
 export const StatsView: React.FC<StatsViewProps> = ({
@@ -38,30 +18,11 @@ export const StatsView: React.FC<StatsViewProps> = ({
   extracts,
   clozes,
   targetRetention,
-  onUpdateTargetRetention,
-  dailyReviewLimit,
-  onUpdateDailyLimit,
-  onExportBackup,
-  onExportMarkdownMirror,
-  onResetDemo,
-  onRestoreBackup,
-  onResetAllCards,
-  onOpenDataFolder,
-  dataLocation,
+  today,
 }) => {
-  const [confirmReset, setConfirmReset] = useState(false);
-  const [confirmResetCards, setConfirmResetCards] = useState(false);
-  const [pendingRestore, setPendingRestore] = useState<File | null>(null);
-  const [restoreError, setRestoreError] = useState<string | null>(null);
-  const restoreInputRef = useRef<HTMLInputElement>(null);
-  const [toast, setToast] = useState<string | null>(null);
   const [forecastPeriod, setForecastPeriod] = useState<'1d' | '7d' | '30d'>('7d');
   const [hoveredDayIndex, setHoveredDayIndex] = useState<number | null>(null);
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  };
 
   // Forecast computation
   const forecastDaysCount = forecastPeriod === '1d' ? 2 : forecastPeriod === '7d' ? 7 : 30;
@@ -121,6 +82,12 @@ export const StatsView: React.FC<StatsViewProps> = ({
         }
       });
 
+      // Today: what today's queue holds (daily limit and sibling cards applied).
+      if (i === 0) {
+        clozesCount = today.cards;
+        extractsCount = today.extracts;
+        docsCount = today.documents;
+      }
       const total = clozesCount + extractsCount + docsCount;
       const label = i === 0 ? 'Auj.' : i === 1 ? '+1 j' : `+${i} j`;
       const fullDate = dayStart.toLocaleDateString('fr-FR', {
@@ -141,7 +108,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
     }
 
     return days;
-  }, [forecastPeriod, forecastDaysCount, clozes, extracts, documents]);
+  }, [forecastPeriod, forecastDaysCount, clozes, extracts, documents, today]);
 
   const totalPeriodReviews = useMemo(() => {
     return forecastData.reduce((acc, d) => acc + d.total, 0);
@@ -186,197 +153,60 @@ export const StatsView: React.FC<StatsViewProps> = ({
     };
   }, [clozes, extracts]);
 
+  const tile = (label: string, value: React.ReactNode, sub: React.ReactNode, accent = false) => (
+    <div className="p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl">
+      <div className="text-xs text-[var(--fg-695f54)] font-medium">{label}</div>
+      <div className={`mt-1.5 text-2xl font-bold tabular-nums ${accent ? 'text-[var(--fg-8c5e32)]' : 'text-[var(--fg-28231d)]'}`}>
+        {value}
+      </div>
+      <div className="mt-1 text-xs text-[var(--fg-8c8072)]">{sub}</div>
+    </div>
+  );
+  const toReview = today.extracts + today.cards;
+  const newCards = clozes.filter((c) => c.state !== 'dismissed' && c.fsrs.reps === 0).length;
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-      {/* En-tête */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 pb-6 border-b border-[var(--bd-e8e2d5)]">
-        <div>
-          <h1 className="text-3xl font-serif font-bold text-[var(--fg-28231d)] tracking-tight">
-            Analytique & FSRS
-          </h1>
-         
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              onExportMarkdownMirror();
-              showToast('Miroir Markdown exporté avec succès');
-            }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-4a3e31)] bg-[var(--bg-ffffff)] border border-[var(--bd-d5cbbf)] rounded-lg hover:bg-[var(--bg-f3efe8)] transition-colors shadow-xs"
-            title="Exporter tous les extraits et cartes en miroir Markdown"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Miroir Markdown
-          </button>
-          <button
-            onClick={() => {
-              onExportBackup();
-              showToast('Sauvegarde JSON générée avec succès');
-            }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-4a3e31)] bg-[var(--bg-ffffff)] border border-[var(--bd-d5cbbf)] rounded-lg hover:bg-[var(--bg-f3efe8)] transition-colors shadow-xs"
-            title="Exporter l'ensemble de la base Saudade en JSON"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Sauvegarde JSON
-          </button>
-        </div>
+      <div className="mb-8 pb-6 border-b border-[var(--bd-e8e2d5)]">
+        <h1 className="page-title">Statistiques</h1>
       </div>
 
-      {/* Rangée 1 : Cartes métriques principales */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs">
-          <div className="text-[11px] text-[var(--fg-695f54)] uppercase tracking-wider font-semibold">
-            Sources & Extraits
-          </div>
-          <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[var(--fg-28231d)]">
-            {stats.totalDocuments + stats.totalExtracts}
-          </div>
-          <div className="mt-1 text-xs text-[var(--fg-8c8072)]">
-            {stats.totalDocuments} doc{stats.totalDocuments > 1 ? 's' : ''} · {stats.totalExtracts} extrait{stats.totalExtracts > 1 ? 's' : ''}
-          </div>
-        </div>
-
-        <div className="p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs">
-          <div className="text-[11px] text-[var(--fg-695f54)] uppercase tracking-wider font-semibold">
-            Cartes Cloze Actives
-          </div>
-          <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[var(--fg-28231d)]">
-            {stats.totalClozes}
-          </div>
-          <div className="mt-1 text-xs text-[var(--fg-8c8072)]">
-            Items atomiques (MIP)
-          </div>
-        </div>
-
-        <div className="p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs">
-          <div className="text-[11px] text-[var(--fg-695f54)] uppercase tracking-wider font-semibold">
-            Rétention réelle (30 j)
-          </div>
-          <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[var(--fg-5f8550)]">
-            {stats.averageRetention === null ? '—' : `${stats.averageRetention}%`}
-          </div>
-          <div className="mt-1 text-xs text-[var(--fg-8c8072)]">
-            {stats.averageRetention === null
-              ? 'Pas encore de cartes révisées'
-              : `Cible : ${Math.round(targetRetention * 100)}%`}
+        {tile(
+          'Aujourd’hui',
+          today.documents + toReview,
+          `${today.documents} à lire · ${toReview} à réviser · ${stats.reviewsCompletedToday} fait${stats.reviewsCompletedToday > 1 ? 's' : ''}`,
+          true
+        )}
+        {tile(
+          'Bibliothèque',
+          stats.totalDocuments + stats.totalExtracts,
+          `${stats.totalDocuments} document${stats.totalDocuments > 1 ? 's' : ''} · ${stats.totalExtracts} extrait${stats.totalExtracts > 1 ? 's' : ''}`
+        )}
+        {tile('Cartes à trou', stats.totalClozes, `dont ${newCards} jamais révisée${newCards > 1 ? 's' : ''}`)}
+        {tile(
+          'Rappel réel (30 j)',
+          stats.averageRetention === null ? '—' : `${stats.averageRetention} %`,
+          <>
+            {stats.averageRetention === null ? 'Pas encore de révision' : `Visé : ${Math.round(targetRetention * 100)} %`}
             {stats.streakDays > 0 && ` · ${stats.streakDays} j d'affilée`}
-          </div>
-        </div>
-
-        <div className="p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs">
-          <div className="text-[11px] text-[var(--fg-695f54)] uppercase tracking-wider font-semibold">
-            Révision du jour
-          </div>
-          <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[var(--fg-8c5e32)]">
-            {stats.dueTodayCount}
-          </div>
-          <div className="mt-1 text-xs text-[var(--fg-8c8072)]">
-            {stats.reviewsCompletedToday} terminée{stats.reviewsCompletedToday > 1 ? 's' : ''} aujourd'hui
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
-      {/* Rangée 2 : Format unifié pour Pourcentage cible, Prévision, et Stabilité mémorielle */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {/* Carte 1 : Pourcentage cible FSRS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        {/* Carte 2 : À venir */}
         <div className="p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs flex flex-col justify-between">
           <div>
             <div className="text-[11px] text-[var(--fg-695f54)] uppercase tracking-wider font-semibold">
-              Pourcentage cible FSRS
+              À venir
             </div>
-            <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[var(--fg-8c5e32)]">
-              {Math.round(targetRetention * 100)}%
-            </div>
-            <label className="mt-1 flex items-center gap-1.5 text-xs text-[var(--fg-8c8072)]">
-              Limite :
-              <input
-                type="number"
-                min={1}
-                max={999}
-                value={dailyReviewLimit}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value, 10);
-                  if (!isNaN(val)) onUpdateDailyLimit(val);
-                }}
-                className="w-16 px-1.5 py-0.5 font-mono text-[var(--fg-28231d)] bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-md"
-              />
-              cartes différentes par jour
-            </label>
-          </div>
-          <div className="mt-4 pt-3 border-t border-[var(--bd-f3efe8)]">
-            <div className="relative w-full">
-              <input
-                type="range"
-                min={70}
-                max={98}
-                step={1}
-                value={Math.round(targetRetention * 100)}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value, 10);
-                  if (!isNaN(val)) {
-                    onUpdateTargetRetention(val / 100);
-                  }
-                }}
-                className="w-full h-2 bg-[var(--bg-f3efe8)] rounded-lg appearance-none cursor-pointer accent-[var(--fg-8c5e32)] block"
-              />
-              <div className="relative w-full h-6 mt-1.5 select-none">
-                {[
-                  { val: 70, label: '70%', pct: 0 },
-                  { val: 75, label: '75%', pct: 5 / 28 },
-                  { val: 80, label: '80%', pct: 10 / 28 },
-                  { val: 85, label: '85%', pct: 15 / 28 },
-                  { val: 90, label: '90%', pct: 20 / 28, bold: true },
-                  { val: 95, label: '95%', pct: 25 / 28 },
-                  { val: 98, label: '98%', pct: 1 },
-                ].map((m) => {
-                  const isSelected = Math.round(targetRetention * 100) === m.val;
-                  return (
-                    <div
-                      key={m.val}
-                      style={{
-                        left: `calc(8px + (100% - 16px) * ${m.pct})`,
-                      }}
-                      className="absolute top-0 -translate-x-1/2 flex flex-col items-center"
-                    >
-                      <span
-                        className={`w-0.5 h-1 mb-0.5 transition-colors ${
-                          isSelected ? 'bg-[var(--bg-8c5e32)]' : 'bg-[var(--bg-d5cbbf)]'
-                        }`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => onUpdateTargetRetention(m.val / 100)}
-                        className={`text-[10px] font-mono transition-colors cursor-pointer hover:text-[var(--fg-8c5e32)] ${
-                          isSelected
-                            ? 'text-[var(--fg-8c5e32)] font-bold'
-                            : m.bold
-                            ? 'font-semibold text-[var(--fg-695f54)]'
-                            : 'text-[var(--fg-8c8072)]'
-                        }`}
-                        title={`Définir la rétention cible à ${m.val}%`}
-                      >
-                        {m.label}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Carte 2 : Prévision des révisions à venir */}
-        <div className="p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="text-[11px] text-[var(--fg-695f54)] uppercase tracking-wider font-semibold">
-              Prévision des révisions à venir
-            </div>
-            <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[var(--fg-28231d)]">
+            <div className="mt-2 text-2xl font-bold tabular-nums text-[var(--fg-28231d)]">
               {totalPeriodReviews}
             </div>
             <div className="mt-1 text-xs text-[var(--fg-8c8072)]">
               {forecastPeriod === '1d'
-                ? 'Prochaines 48h (Auj. + Demain)'
+                ? 'Aujourd’hui et demain'
                 : forecastPeriod === '7d'
                 ? 'Sur les 7 prochains jours'
                 : 'Sur les 30 prochains jours'}
@@ -392,7 +222,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                   : 'bg-[var(--bg-f3efe8)] text-[var(--fg-695f54)] hover:bg-[var(--bg-e8e2d5)]'
               }`}
             >
-              1j
+              2 j
             </button>
             <button
               type="button"
@@ -403,7 +233,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                   : 'bg-[var(--bg-f3efe8)] text-[var(--fg-695f54)] hover:bg-[var(--bg-e8e2d5)]'
               }`}
             >
-              7j
+              7 j
             </button>
             <button
               type="button"
@@ -414,7 +244,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                   : 'bg-[var(--bg-f3efe8)] text-[var(--fg-695f54)] hover:bg-[var(--bg-e8e2d5)]'
               }`}
             >
-              30j
+              30 j
             </button>
           </div>
         </div>
@@ -423,13 +253,13 @@ export const StatsView: React.FC<StatsViewProps> = ({
         <div className="p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs flex flex-col justify-between">
           <div>
             <div className="text-[11px] text-[var(--fg-695f54)] uppercase tracking-wider font-semibold">
-              Stabilité mémorielle (FSRS)
+              Solidité des souvenirs
             </div>
-            <div className="mt-2 text-2xl font-bold font-mono tabular-nums text-[var(--fg-5f8550)]">
-              {stabilityBuckets.pct4}%
+            <div className="mt-2 text-2xl font-bold tabular-nums text-[var(--fg-28231d)]">
+              {stabilityBuckets.pct4} %
             </div>
             <div className="mt-1 text-xs text-[var(--fg-8c8072)]">
-              Jours jusqu'à 70% rétention ({stabilityBuckets.b4} items stables &gt;30j)
+              tiennent plus d'un mois ({stabilityBuckets.b4} sur {stabilityBuckets.activeTotal}) avant de tomber à 70 % de chances de rappel
             </div>
           </div>
           <div className="mt-4 pt-3 border-t border-[var(--bd-f3efe8)] flex flex-col gap-1.5">
@@ -437,25 +267,25 @@ export const StatsView: React.FC<StatsViewProps> = ({
               <div
                 style={{ width: `${stabilityBuckets.pct1}%` }}
                 className="bg-[var(--bg-d97706)] h-full"
-                title={`< 3 jours : ${stabilityBuckets.b1} items (${stabilityBuckets.pct1}%)`}
+                title={`< 3 jours : ${stabilityBuckets.b1} éléments (${stabilityBuckets.pct1}%)`}
               />
               <div
                 style={{ width: `${stabilityBuckets.pct2}%` }}
                 className="bg-[var(--bg-eab308)] h-full"
-                title={`3-7 jours : ${stabilityBuckets.b2} items (${stabilityBuckets.pct2}%)`}
+                title={`3-7 jours : ${stabilityBuckets.b2} éléments (${stabilityBuckets.pct2}%)`}
               />
               <div
                 style={{ width: `${stabilityBuckets.pct3}%` }}
                 className="bg-[var(--bg-84cc16)] h-full"
-                title={`7-30 jours : ${stabilityBuckets.b3} items (${stabilityBuckets.pct3}%)`}
+                title={`7-30 jours : ${stabilityBuckets.b3} éléments (${stabilityBuckets.pct3}%)`}
               />
               <div
                 style={{ width: `${stabilityBuckets.pct4}%` }}
                 className="bg-[var(--bg-5f8550)] h-full"
-                title={`> 30 jours : ${stabilityBuckets.b4} items (${stabilityBuckets.pct4}%)`}
+                title={`> 30 jours : ${stabilityBuckets.b4} éléments (${stabilityBuckets.pct4}%)`}
               />
             </div>
-            <div className="flex justify-between text-[10px] text-[var(--fg-8c8072)] font-mono">
+            <div className="flex justify-between text-[10px] text-[var(--fg-8c8072)] ">
               <span className="text-[var(--fg-d97706)]">&lt;3j: {stabilityBuckets.b1}</span>
               <span className="text-[var(--fg-b45309)]">3-7j: {stabilityBuckets.b2}</span>
               <span className="text-[var(--fg-4d7c0f)]">7-30j: {stabilityBuckets.b3}</span>
@@ -471,13 +301,13 @@ export const StatsView: React.FC<StatsViewProps> = ({
           <div className="flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-[var(--fg-8c5e32)]" />
             <span className="text-sm font-semibold text-[var(--fg-28231d)]">
-              Charge de révision journalière ({forecastPeriod === '1d' ? '48 heures' : forecastPeriod === '7d' ? '7 jours' : '30 jours'})
+              Charge à venir ({forecastPeriod === '1d' ? '48 heures' : forecastPeriod === '7d' ? '7 jours' : '30 jours'})
             </span>
           </div>
 
           <div className="flex items-center gap-3 text-xs text-[var(--fg-695f54)]">
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-xs bg-[var(--chart-clozes)]" /> Clozes
+              <span className="w-2.5 h-2.5 rounded-xs bg-[var(--chart-clozes)]" /> Cartes à trou
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-xs bg-[var(--chart-extracts)]" /> Extraits
@@ -497,7 +327,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                 {forecastData[hoveredDayIndex].fullDate}
               </span>
               <span>Total : <strong className="text-white">{forecastData[hoveredDayIndex].total}</strong></span>
-              <span className="text-[var(--fg-e8d0ba)]">Clozes : {forecastData[hoveredDayIndex].clozesCount}</span>
+              <span className="text-[var(--fg-e8d0ba)]">Cartes : {forecastData[hoveredDayIndex].clozesCount}</span>
               <span className="text-[var(--fg-d5cbbf)]">Extraits : {forecastData[hoveredDayIndex].extractsCount}</span>
               <span className="text-[var(--fg-a89f91)]">Docs : {forecastData[hoveredDayIndex].docsCount}</span>
             </div>
@@ -599,169 +429,6 @@ export const StatsView: React.FC<StatsViewProps> = ({
         </div>
       </div>
 
-      {/* Maintenance et gestion de la base de données */}
-      <div className="p-5 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-sm font-semibold text-[var(--fg-28231d)]">
-              Maintenance de la base de données
-            </h2>
-            <p className="mt-0.5 text-xs text-[var(--fg-695f54)]">
-              Une sauvegarde de sécurité est créée automatiquement avant toute restauration ou réinitialisation.
-            </p>
-            {dataLocation && (
-              <p className="mt-1 text-[11px] text-[var(--fg-8c8072)]">
-                Données : <span className="font-mono break-all">{dataLocation}</span> — 7 sauvegardes
-                quotidiennes dans « backups »
-              </p>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {onOpenDataFolder && (
-              <button
-                type="button"
-                onClick={onOpenDataFolder}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-4a3e31)] bg-[var(--bg-ffffff)] border border-[var(--bd-d5cbbf)] rounded-lg hover:bg-[var(--bg-f3efe8)] transition-colors shadow-xs"
-              >
-                <FolderOpen className="w-3.5 h-3.5" />
-                Ouvrir le dossier des données
-              </button>
-            )}
-            <input
-              ref={restoreInputRef}
-              type="file"
-              accept=".json,application/json"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                e.target.value = '';
-                if (file) {
-                  setRestoreError(null);
-                  setPendingRestore(file);
-                }
-              }}
-            />
-            {pendingRestore ? (
-              <div className="flex items-center gap-2 p-1.5 bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-xl">
-                <span className="text-xs text-[var(--fg-a84236)] font-medium px-2">
-                  Remplacer toute la bibliothèque par « {pendingRestore.name} » ?
-                </span>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const file = pendingRestore;
-                    setPendingRestore(null);
-                    const result = await onRestoreBackup(file);
-                    if (result.ok) showToast(result.message);
-                    else setRestoreError(result.message);
-                  }}
-                  className="px-3 py-1 text-xs font-semibold text-white bg-[var(--bg-a84236)] rounded-lg hover:bg-[var(--bg-8f352b)] transition-colors"
-                >
-                  Oui, restaurer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPendingRestore(null)}
-                  className="px-2.5 py-1 text-xs text-[var(--fg-695f54)] hover:bg-[var(--bg-e8e2d5)] rounded-lg transition-colors"
-                >
-                  Annuler
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => restoreInputRef.current?.click()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-4a3e31)] bg-[var(--bg-ffffff)] border border-[var(--bd-d5cbbf)] rounded-lg hover:bg-[var(--bg-f3efe8)] transition-colors shadow-xs"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                Restaurer une sauvegarde…
-              </button>
-            )}
-            {confirmResetCards ? (
-              <div className="flex flex-wrap items-center gap-2 p-1.5 bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-xl">
-                <span className="text-xs text-[var(--fg-a84236)] font-medium px-2">
-                  Remettre les {clozes.length} cartes à zéro et effacer leur historique ?
-                </span>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setConfirmResetCards(false);
-                    if (await onResetAllCards()) showToast('Cartes réinitialisées (sauvegarde créée avant)');
-                  }}
-                  className="px-3 py-1 text-xs font-semibold text-white bg-[var(--bg-a84236)] rounded-lg hover:bg-[var(--bg-8f352b)] transition-colors"
-                >
-                  Oui, réinitialiser
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmResetCards(false)}
-                  className="px-2.5 py-1 text-xs text-[var(--fg-695f54)] hover:bg-[var(--bg-e8e2d5)] rounded-lg transition-colors"
-                >
-                  Annuler
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setConfirmResetCards(true)}
-                disabled={clozes.length === 0}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-a84236)] hover:bg-[var(--bg-fdf2f0)] border border-[var(--bd-f2d6d3)] rounded-lg transition-colors disabled:opacity-45"
-                title="Comme si aucune carte n'avait jamais été révisée (les extraits et documents ne changent pas)"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Réinitialiser toutes les cartes
-              </button>
-            )}
-            {confirmReset ? (
-              <div className="flex items-center gap-2 p-1.5 bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-xl">
-                <span className="text-xs text-[var(--fg-a84236)] font-medium px-2">
-                  Confirmer la réinitialisation ?
-                </span>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setConfirmReset(false);
-                    if (await onResetDemo()) showToast('Données de démo réinitialisées');
-                  }}
-                  className="px-3 py-1 text-xs font-semibold text-white bg-[var(--bg-a84236)] rounded-lg hover:bg-[var(--bg-8f352b)] transition-colors"
-                >
-                  Oui, écraser
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmReset(false)}
-                  className="px-2.5 py-1 text-xs text-[var(--fg-695f54)] hover:bg-[var(--bg-e8e2d5)] rounded-lg transition-colors"
-                >
-                  Annuler
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setConfirmReset(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-a84236)] hover:bg-[var(--bg-fdf2f0)] border border-[var(--bd-f2d6d3)] rounded-lg transition-colors"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Réinitialiser les données de démo
-              </button>
-            )}
-          </div>
-        </div>
-        {restoreError && (
-          <p role="alert" className="mt-3 text-xs text-[var(--fg-a84236)]">
-            Restauration impossible : {restoreError}
-          </p>
-        )}
-      </div>
-
-      {/* Toast Notification */}
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 bg-[var(--bg-28231d)] text-[var(--fg-faf7f2)] text-xs font-medium rounded-xl shadow-lg border border-[var(--bd-3b3026)] animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <Check className="w-4 h-4 text-[var(--fg-5f8550)]" />
-          <span>{toast}</span>
-        </div>
-      )}
     </div>
   );
 };

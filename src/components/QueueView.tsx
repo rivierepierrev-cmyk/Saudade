@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { DocumentItem, ExtractItem, ClozeItem, ItemType } from '../types/saudade';
 import { formatInterval } from '../lib/fsrs';
 import { matchesQuery } from '../lib/search';
-import { clozeAnswerPreview, renderTextWithMath } from '../lib/math';
+import { clozePreviewText, renderTextWithMath } from '../lib/math';
 import { safeHtml } from '../lib/markdown';
 import type { QueueEntry } from '../lib/queue';
 import { projectMarkdown } from '../lib/sourceSync';
@@ -17,6 +17,10 @@ import {
   Folder,
   Pencil,
 } from 'lucide-react';
+
+const TYPE_LABEL: Record<ItemType, string> = { document: 'Document', extract: 'Extrait', cloze: 'Carte à trou' };
+const ICON_BUTTON =
+  'p-1.5 rounded-md text-[var(--fg-8c8072)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)] transition-colors cursor-pointer';
 
 export interface UnifiedQueueItem {
   id: string;
@@ -122,8 +126,9 @@ export const QueueView: React.FC<QueueViewProps> = ({
       queueItems.push({
         id: clz.id,
         type: 'cloze',
-        title: clz.documentTitle || 'Carte de rappel actif Cloze',
-        preview: clozeAnswerPreview(clz.text, clz.clozeNumber),
+        title: clz.documentTitle || 'Carte à trou',
+        // The answer stays hidden until the review.
+        preview: clozePreviewText(clz.text, clz.clozeNumber),
         sourceDocTitle: clz.documentTitle,
         folder: clz.folder || parentDoc?.folder || 'Général',
         priority: clz.priority,
@@ -137,8 +142,6 @@ export const QueueView: React.FC<QueueViewProps> = ({
     }
   });
 
-  const now = new Date();
-  now.setHours(23, 59, 59, 999);
 
   // The reading queue is today's to-do list: items leave it once done for today.
   const queueOrder = new Map(queue.map((entry, index) => [entry.item.id, index]));
@@ -173,42 +176,29 @@ export const QueueView: React.FC<QueueViewProps> = ({
       {/* En-tête */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 pb-6 border-b border-[var(--bd-e8e2d5)]">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--fg-28231d)]">
-            File de lecture du jour
-          </h1>
+          <h1 className="page-title">File de lecture du jour</h1>
           <p className="mt-1 text-sm text-[var(--fg-695f54)]">
             {todayItems.length === 0
               ? 'Tout est fait pour aujourd’hui.'
-              : `${todayItems.length} élément${todayItems.length > 1 ? 's' : ''} à traiter aujourd’hui : chaque élément quitte la file une fois lu ou révisé.`}
+              : `${todayItems.length} élément${todayItems.length > 1 ? 's' : ''} à traiter aujourd’hui : ${countOf('document')} à lire, ${dueCount} à réviser. Chacun quitte la file une fois fait.`}
           </p>
         </div>
 
-        {/* Actions rapides */}
-        <div className="flex items-center gap-3">
-          {dueCount > 0 ? (
-            <button
-              onClick={() => onStartReview()}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg shadow-xs transition-all"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>Révision du jour ({dueCount})</span>
-            </button>
-          ) : (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 text-xs text-[var(--fg-5f8550)]">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>À jour</span>
-              </div>
-              <button
-                onClick={() => onStartReview()}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
-                <span>Révision du jour</span>
-              </button>
-            </div>
-          )}
-        </div>
+        {dueCount > 0 ? (
+          <button
+            onClick={() => onStartReview()}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg shadow-xs transition-all cursor-pointer"
+            title="Réviser les extraits et cartes à trou du jour (les documents se lisent dans le lecteur)"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Réviser ({dueCount})</span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-1.5 text-xs text-[var(--fg-5f8550)]">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Révisions à jour</span>
+          </div>
+        )}
       </div>
 
       {/* Barre de filtres et recherche */}
@@ -253,7 +243,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
                 : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
             }`}
           >
-            Cartes ({countOf('cloze')})
+            Cartes à trou ({countOf('cloze')})
           </button>
         </div>
 
@@ -283,7 +273,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
           <Search className="w-4 h-4 text-[var(--fg-9e9385)] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Rechercher des éléments, tags..."
+            placeholder="Rechercher dans la file…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-3 py-1.5 text-xs bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--bd-8c5e32)] text-[var(--fg-28231d)] placeholder:text-[var(--fg-9e9385)]"
@@ -323,199 +313,135 @@ export const QueueView: React.FC<QueueViewProps> = ({
       ) : (
         <div className="space-y-3">
           {filteredItems.map((item) => {
-            const isDue = new Date(item.nextReviewDate) <= now;
             const isDoc = item.type === 'document';
             const isExtract = item.type === 'extract';
             const isCloze = item.type === 'cloze';
+            const parentDoc = isExtract ? docMap.get((item.originalItem as ExtractItem).documentId) : undefined;
+            const open = () => (isDoc ? onSelectDocument(item.originalItem as DocumentItem) : onStartReview(item.id));
+            // Scheduling details: secondary, shown on hover / focus.
+            const details = [
+              `priorité ${item.priority} %`,
+              item.reps === 0
+                ? 'jamais vu'
+                : isCloze
+                  ? `${item.reps} révision${item.reps > 1 ? 's' : ''} · stabilité ${formatInterval(item.stability)}`
+                  : `${item.reps} lecture${item.reps > 1 ? 's' : ''} · intervalle ${formatInterval(item.originalItem.fsrs.interval)}`,
+              ...(isDoc && item.readingProgress ? [`lu à ${item.readingProgress} %`] : []),
+            ].join(' · ');
 
             return (
               <div
                 key={`${item.type}-${item.id}`}
-                className={`p-4 bg-[var(--bg-ffffff)] border rounded-xl transition-all duration-150 ${
-                  isDue
-                    ? 'border-[var(--bd-c29e6b)] shadow-xs'
-                    : 'border-[var(--bd-e8e2d5)] hover:border-[var(--bd-d0c6b3)]'
-                }`}
+                className="group p-4 bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] hover:border-[var(--bd-d0c6b3)] rounded-xl transition-colors"
               >
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                  {/* Zone de contenu gauche */}
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 text-xs text-[var(--fg-695f54)] mb-1.5 flex-wrap">
+                    <div className="flex items-center gap-2 text-xs text-[var(--fg-695f54)] mb-1 flex-wrap">
                       <span className="font-semibold text-[var(--fg-3b3026)] uppercase tracking-wider text-[10px]">
-                        {isDoc ? 'Document' : isExtract ? 'Extrait' : 'Carte Cloze'}
+                        {TYPE_LABEL[item.type]}
                       </span>
                       <span aria-hidden="true">·</span>
-                      <span className="font-mono text-[10px] bg-[var(--bg-faf7f2)] px-1.5 py-0.5 rounded border border-[var(--bd-e8e2d5)]">
-                        📁 {item.folder || 'Général'}
+                      <span className="inline-flex items-center gap-1">
+                        <Folder className="w-3 h-3 text-[var(--fg-8c8072)]" />
+                        {item.folder || 'Général'}
                       </span>
-                      <span aria-hidden="true">·</span>
-                      <span className="font-mono tabular-nums">Prio : {item.priority}%</span>
-                      <span aria-hidden="true">·</span>
-                      {item.type === 'cloze' ? (
-                        <>
-                          <span className="font-mono tabular-nums">
-                            Stabilité : {item.reps === 0 ? '—' : formatInterval(item.stability)}
-                          </span>
-                          <span aria-hidden="true">·</span>
-                          <span className="font-mono tabular-nums">Répétitions : {item.reps}</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="font-mono tabular-nums">
-                            Intervalle : {item.reps === 0 ? '—' : formatInterval(item.originalItem.fsrs.interval)}
-                          </span>
-                          <span aria-hidden="true">·</span>
-                          <span className="font-mono tabular-nums">Lectures : {item.reps}</span>
-                        </>
-                      )}
-                      {isDue ? (
-                        <>
-                          <span aria-hidden="true">·</span>
-                          <span className="font-medium text-[var(--fg-8c5e32)]">À réviser</span>
-                        </>
-                      ) : (
-                        <>
-                          <span aria-hidden="true">·</span>
-                          <span>
-                            Dans {formatInterval((new Date(item.nextReviewDate).getTime() - now.getTime()) / 86400000)}
-                          </span>
-                        </>
-                      )}
+                      <span className="queue-details tabular-nums text-[var(--fg-8c8072)]">· {details}</span>
                     </div>
 
-                    <h2
-                      onClick={() => {
-                        if (isDoc) {
-                          onSelectDocument(item.originalItem as DocumentItem);
-                        } else {
-                          onStartReview(item.id);
-                        }
-                      }}
-                      className="text-base font-semibold text-[var(--fg-28231d)] hover:text-[var(--fg-8c5e32)] cursor-pointer transition-colors"
-                    >
-                      {item.title}
-                    </h2>
-
-                    {isExtract && (
-                      <div className="flex items-center gap-1.5 mt-1 text-xs text-[var(--fg-8c8072)]">
-                        <span>Issu du document :</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const doc = documents.find((d) => d.id === (item.originalItem as ExtractItem).documentId);
-                            if (doc) onSelectDocument(doc);
-                          }}
-                          className="text-[var(--fg-8c5e32)] hover:underline font-medium text-left cursor-pointer inline-flex items-center gap-1"
-                          title="Ouvrir le document entier dans le lecteur"
+                    {isCloze ? (
+                      <>
+                        <p
+                          onClick={open}
+                          className="text-base text-[var(--fg-28231d)] font-serif-reading leading-relaxed cursor-pointer hover:text-[var(--fg-8c5e32)] transition-colors line-clamp-2"
+                          dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(item.preview)) }}
+                        />
+                        {item.sourceDocTitle && (
+                          <p className="mt-1 text-xs text-[var(--fg-8c8072)] truncate">{item.sourceDocTitle}</p>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <h2
+                          onClick={open}
+                          className="text-base font-semibold text-[var(--fg-28231d)] hover:text-[var(--fg-8c5e32)] cursor-pointer transition-colors"
                         >
-                          <span>{item.title}</span>
-                          <BookOpen className="w-3 h-3" />
-                        </button>
-                      </div>
+                          {item.title}
+                        </h2>
+                        <p className="mt-1 text-sm text-[var(--fg-4a4137)] line-clamp-2 leading-relaxed">
+                          {isDoc ? (
+                            item.preview
+                          ) : (
+                            <span dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(item.preview)) }} />
+                          )}
+                        </p>
+                      </>
                     )}
-
-                    <p className="mt-1 text-xs sm:text-sm text-[var(--fg-4a4137)] line-clamp-2 leading-relaxed">
-                      {item.type === 'document' ? (
-                        item.preview
-                      ) : (
-                        <span dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(item.preview)) }} />
-                      )}
-                    </p>
-
-                    <div className="flex items-center gap-3 mt-3 text-xs text-[var(--fg-8c8072)] flex-wrap">
-                      {item.tags.length > 0 && <span>{item.tags.join(' / ')}</span>}
-                      {isDoc && typeof item.readingProgress === 'number' && (
-                        <>
-                          <span aria-hidden="true">·</span>
-                          <span className="font-mono tabular-nums">Progression : {item.readingProgress}%</span>
-                        </>
-                      )}
-                    </div>
+                    {item.tags.length > 0 && (
+                      <p className="mt-2 text-xs text-[var(--fg-8c8072)]">{item.tags.join(' · ')}</p>
+                    )}
                   </div>
 
-                  {/* Actions à droite */}
-                  <div className="flex sm:flex-col items-center sm:items-end gap-2 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-[var(--bd-f3efe8)]">
-                    {isDoc ? (
-                      <button
-                        onClick={() => onSelectDocument(item.originalItem as DocumentItem)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[var(--fg-faf7f2)] bg-[var(--bg-3b3026)] hover:bg-[var(--bg-28211a)] rounded-lg transition-colors whitespace-nowrap cursor-pointer"
-                      >
-                        <BookOpen className="w-3.5 h-3.5" />
-                        <span>Lire</span>
-                      </button>
-                    ) : isCloze ? (
-                      <button
-                        onClick={() => onStartReview(item.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg transition-colors whitespace-nowrap cursor-pointer"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Réviser</span>
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => onStartReview(item.id)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg transition-colors whitespace-nowrap cursor-pointer"
-                          title="Réviser cet extrait dans le module de mémorisation FSRS"
-                        >
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>Réviser</span>
-                        </button>
+                  {/* Une action principale, le reste en icônes */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {pendingDeleteId === item.id ? (
+                      <>
                         <button
                           onClick={() => {
-                            const doc = documents.find((d) => d.id === (item.originalItem as ExtractItem).documentId);
-                            if (doc) onSelectDocument(doc);
+                            onDeleteItem?.(item.type, item.id);
+                            setPendingDeleteId(null);
                           }}
-                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-[var(--fg-3b3026)] bg-[var(--bg-f3efe8)] hover:bg-[var(--bg-eae4d9)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors whitespace-nowrap cursor-pointer"
-                          title="Ouvrir le document entier dans le lecteur"
+                          className="px-2 py-1 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-md cursor-pointer"
                         >
-                          <BookOpen className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
-                          <span className="hidden sm:inline">Document</span>
+                          Supprimer
                         </button>
-                      </div>
-                    )}
-
-                    {!isDoc && (
-                      <button
-                        onClick={() => onEditItem(item.type as 'extract' | 'cloze', item.id)}
-                        className="flex items-center gap-1 px-2 py-1 text-xs text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)] rounded-md cursor-pointer"
-                        title={isCloze ? 'Modifier la carte' : "Modifier l'extrait (et le passage dans le document)"}
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                        <span>Modifier</span>
-                      </button>
-                    )}
-                    {onDeleteItem && (
-                      <div className="flex items-center">
-                        {pendingDeleteId === item.id ? (
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => {
-                                onDeleteItem(item.type, item.id);
-                                setPendingDeleteId(null);
-                              }}
-                              className="px-2 py-1 text-[10px] font-semibold text-white bg-red-600 hover:bg-red-700 rounded cursor-pointer"
-                              title="Confirmer la suppression"
-                            >
-                              Confirmer
-                            </button>
-                            <button
-                              onClick={() => setPendingDeleteId(null)}
-                              className="px-2 py-1 text-[10px] text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] rounded cursor-pointer"
-                            >
-                              Annuler
-                            </button>
-                          </div>
-                        ) : (
+                        <button
+                          onClick={() => setPendingDeleteId(null)}
+                          className="px-2 py-1 text-xs text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] rounded-md cursor-pointer"
+                        >
+                          Annuler
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {isExtract && parentDoc && (
                           <button
-                            onClick={() => setPendingDeleteId(item.id)}
-                            title="Supprimer définitivement cet objet"
-                            className="p-1.5 text-[var(--fg-8c8072)] hover:text-red-600 rounded transition-colors cursor-pointer"
+                            onClick={() => onSelectDocument(parentDoc)}
+                            className={ICON_BUTTON}
+                            title={`Ouvrir le document « ${parentDoc.title} » dans le lecteur`}
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <BookOpen className="w-4 h-4" />
                           </button>
                         )}
-                      </div>
+                        {!isDoc && (
+                          <button
+                            onClick={() => onEditItem(item.type as 'extract' | 'cloze', item.id)}
+                            className={ICON_BUTTON}
+                            title={isCloze ? 'Modifier la carte' : "Modifier l'extrait (et le passage dans le document)"}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
+                        {onDeleteItem && (
+                          <button
+                            onClick={() => setPendingDeleteId(item.id)}
+                            className={`${ICON_BUTTON} hover:!text-red-600`}
+                            title="Supprimer définitivement"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={open}
+                          className={`ml-1 flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+                            isDoc
+                              ? 'text-[var(--fg-faf7f2)] bg-[var(--bg-3b3026)] hover:bg-[var(--bg-28211a)]'
+                              : 'text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)]'
+                          }`}
+                        >
+                          {isDoc ? <BookOpen className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
+                          <span>{isDoc ? 'Lire' : 'Réviser'}</span>
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>

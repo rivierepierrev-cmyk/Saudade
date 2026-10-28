@@ -6,11 +6,8 @@ import { safeHtml } from '../lib/markdown';
 import {
   Search,
   BookOpen,
-  Plus,
   Trash2,
   ExternalLink,
-  Download,
-  FolderSync,
   Check,
   FileText,
   Sparkles,
@@ -35,7 +32,6 @@ interface LibraryViewProps {
   onStartReviewWithFolder?: (folderPath: string) => void;
   onOpenImport: () => void;
   onExportMarkdown?: () => void;
-  onExportBackup: () => void;
   onEditItem?: (type: 'extract' | 'cloze', id: string) => void;
   onViewItem?: (type: 'extract' | 'cloze', id: string) => void;
 }
@@ -53,13 +49,11 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   onViewItem,
   onStartReviewWithFolder,
   onOpenImport,
-  onExportBackup,
 }) => {
   const [libraryViewMode, setLibraryViewMode] = useState<'tree' | 'grid'>('tree');
   const [objectTab, setObjectTab] = useState<'documents' | 'extracts' | 'clozes'>('documents');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string>('all');
-  const [simulatedIndexing, setSimulatedIndexing] = useState(false);
   const [inAppToast, setInAppToast] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [documentToEdit, setDocumentToEdit] = useState<DocumentItem | null>(null);
@@ -67,14 +61,6 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   const showToast = (msg: string) => {
     setInAppToast(msg);
     setTimeout(() => setInAppToast(null), 3000);
-  };
-
-  const handleSimulateIndex = () => {
-    setSimulatedIndexing(true);
-    setTimeout(() => {
-      setSimulatedIndexing(false);
-      showToast('Dossier local Markdown synchronisé avec succès sans duplication !');
-    }, 1000);
   };
 
   // Tags collectés
@@ -128,79 +114,31 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-      {/* En-tête */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 pb-6 border-b border-[var(--bd-e8e2d5)]">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--fg-28231d)]">
-            Bibliothèque de connaissances
-          </h1>
+      {/* En-tête : titre et mode d'affichage (ajouter une source : en haut de l'app) */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 pb-6 border-b border-[var(--bd-e8e2d5)]">
+        <h1 className="page-title">Bibliothèque</h1>
+        <div role="tablist" aria-label="Affichage" className="flex items-center gap-1 p-1 bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg text-xs">
+          {([
+            ['tree', 'Dossiers', FolderTree],
+            ['grid', 'Par type', LayoutGrid],
+          ] as const).map(([mode, label, Icon]) => (
+            <button
+              key={mode}
+              type="button"
+              role="tab"
+              aria-selected={libraryViewMode === mode}
+              onClick={() => setLibraryViewMode(mode)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
+                libraryViewMode === mode
+                  ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] font-semibold shadow-xs'
+                  : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              <span>{label}</span>
+            </button>
+          ))}
         </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={handleSimulateIndex}
-            disabled={simulatedIndexing}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors cursor-pointer"
-            title="Indexer un dossier ou vault local"
-          >
-            <FolderSync className={`w-3.5 h-3.5 ${simulatedIndexing ? 'animate-spin' : ''}`} />
-            <span>{simulatedIndexing ? 'Indexation...' : 'Indexer dossier local'}</span>
-          </button>
-
-          <button
-            onClick={onExportBackup}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors cursor-pointer"
-            title="Exporter la sauvegarde JSON"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Sauvegarde JSON</span>
-          </button>
-
-          <button
-            onClick={onOpenImport}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg shadow-xs transition-all cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Importer un document</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Sélecteur de mode de vue : Arborescence des dossiers VS Vue Fiches */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[var(--bd-e8e2d5)]">
-        <div className="flex items-center gap-1.5 p-1 bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-xl text-xs">
-          <button
-            type="button"
-            onClick={() => setLibraryViewMode('tree')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
-              libraryViewMode === 'tree'
-                ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] font-semibold shadow-xs'
-                : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
-            }`}
-          >
-            <FolderTree className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
-            <span>Arborescence des dossiers</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setLibraryViewMode('grid')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
-              libraryViewMode === 'grid'
-                ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] font-semibold shadow-xs'
-                : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
-            }`}
-          >
-            <LayoutGrid className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
-            <span>Vue Fiches & Grille</span>
-          </button>
-        </div>
-
-        <p className="text-xs text-[var(--fg-8c8072)]">
-          {libraryViewMode === 'tree'
-            ? 'Explorateur hiérarchique : Dossiers > Documents > Extraits > Clozes FSRS'
-            : 'Affichage des objets par typologie'}
-        </p>
       </div>
 
       {/* Affichage conditionnel selon le mode choisi */}
@@ -266,7 +204,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           }`}
         >
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Cartes Cloze ({clozes.length})</span>
+          <span>Cartes à trou ({clozes.length})</span>
         </button>
       </div>
 
@@ -405,7 +343,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                             <button
                               onClick={() => handleDeleteDocConfirm(doc.id)}
                               className="px-2 py-1 text-[10px] font-semibold text-white bg-red-600 hover:bg-red-700 rounded cursor-pointer"
-                              title="Supprimer ce document et tous ses extraits/clozes de la file"
+                              title="Supprimer ce document et tous ses extraits et cartes à trou"
                             >
                               Confirmer
                             </button>
@@ -550,7 +488,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 Aucune carte cloze enregistrée
               </h3>
               <p className="text-xs text-[var(--fg-695f54)] max-w-sm mx-auto mt-1 mb-4">
-                Créez des cartes à trou depuis le lecteur ou vos extraits pour alimenter vos révisions FSRS.
+                Créez des cartes à trou depuis le lecteur ou vos extraits pour alimenter vos révisions.
               </p>
             </div>
           ) : (
@@ -566,7 +504,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                     <div>
                       <div className="flex items-center justify-between text-xs text-[var(--fg-8c8072)] mb-2">
                         <span className="font-semibold text-[var(--fg-8c5e32)] uppercase tracking-wider text-[10px]">
-                          Carte Cloze (FSRS)
+                          Carte à trou
                         </span>
                         <span className="font-mono tabular-nums">Prio : {clz.priority}%</span>
                       </div>
@@ -602,7 +540,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                           <span>Voir dans le document</span>
                         </button>
                       ) : (
-                        <span className="text-[11px] text-[var(--fg-8c8072)]">Item FSRS atomique</span>
+                        <span />
                       )}
 
                       <div>
@@ -635,7 +573,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                           )}
                           <button
                             onClick={() => setPendingDeleteId(clz.id)}
-                            title="Supprimer cette carte cloze et la retirer de la file"
+                            title="Supprimer cette carte à trou"
                             className="p-1.5 text-[var(--fg-8c8072)] hover:text-red-600 rounded transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />

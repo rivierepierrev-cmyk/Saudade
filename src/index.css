@@ -89,6 +89,35 @@
   font-family: var(--font-serif);
 }
 
+/* Page titles: same serif as the reading, everywhere. */
+.page-title {
+  font-family: var(--font-serif);
+  font-size: 1.875rem;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--fg-28231d);
+}
+
+/* Keyboard focus only (no ring after a mouse click). */
+:focus-visible {
+  outline: 2px solid var(--bd-8c5e32);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Scheduling details of a queue item: on hover or keyboard focus only. */
+.queue-details {
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.group:hover .queue-details,
+.group:focus-within .queue-details {
+  opacity: 1;
+}
+
 .font-mono-code {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;

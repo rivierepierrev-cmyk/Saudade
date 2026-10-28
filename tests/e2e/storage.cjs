@@ -36,7 +36,7 @@ const read = n => JSON.parse(fs.readFileSync(path.join(dataDir, n + '.json'), 'u
   // 3. restore through the UI
   const backup = { app: 'saudade', version: 2, documents: [docs[0], { ...docs[0], id: 'r2', title: 'Restauré' }], extracts: [], clozes: [], logs: [], folders: ['Général', 'Livres'] };
   const bfile = path.join(cfg, 'backup.json'); fs.writeFileSync(bfile, JSON.stringify(backup));
-  await page.getByRole('button', { name: /Analytique/i }).first().click();
+  await page.getByRole('button', { name: 'Réglages' }).click();
   await page.getByText('Ouvrir le dossier des données').waitFor();
   await page.locator('input[type=file][accept*=json]').setInputFiles(bfile);
   await page.getByRole('button', { name: 'Oui, restaurer' }).click();

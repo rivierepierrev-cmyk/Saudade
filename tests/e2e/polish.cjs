@@ -17,9 +17,9 @@ const launch = async () => {
   const before = { d: read('documents'), e: read('extracts'), c: read('clozes') };
   const doc = before.d.find((d) => before.e.some((e) => e.documentId === d.id));
   const card = page.getByText(doc.title, { exact: true }).first()
-    .locator('xpath=ancestor::div[.//*[@title="Supprimer définitivement cet objet"]][1]');
-  await card.getByTitle('Supprimer définitivement cet objet').click();
-  await card.getByTitle('Confirmer la suppression').click();
+    .locator('xpath=ancestor::div[.//*[@title="Supprimer définitivement"]][1]');
+  await card.getByTitle('Supprimer définitivement').click();
+  await page.getByRole('button', { name: 'Supprimer', exact: true }).click();
   await page.getByText(/supprimé avec \d+ extrait/).waitFor();
   await page.waitForTimeout(300);
   assert.ok(!read('documents').some((d) => d.id === doc.id), 'deleted');

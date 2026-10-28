@@ -140,10 +140,11 @@ async function select(page, rootSel, needleOrNull, blockSel = 'p') {
   const zc = read('clozes').find(z => z.id === c.id);
   assert.ok(zc.fsrs.reps >= 2, 'new card shown again in the same session (reps ' + zc.fsrs.reps + ')');
 
-  // 7. stats: real retention + daily limit setting
-  await page.getByRole('button', { name: /Analytique/ }).first().click();
-  const ret = await page.getByText(/Rétention réelle/).locator('..').innerText();
-  assert.match(ret, /\d+(\.\d)?%/); assert.match(ret, /1 j d'affilée/);
+  // 7. stats: real retention; daily limit in the settings
+  await page.getByRole('button', { name: /Statistiques/ }).first().click();
+  const ret = await page.getByText(/Rappel réel/).locator('..').innerText();
+  assert.match(ret, /\d+(\.\d)? %/); assert.match(ret, /1 j d'affilée/);
+  await page.getByRole('button', { name: 'Réglages' }).click();
   await page.locator('input[type=number]').first().fill('20'); await settle(page);
   assert.equal(read('settings').dailyReviewLimit, 20);
   assert.deepEqual(errors, []);

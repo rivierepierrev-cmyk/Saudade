@@ -417,7 +417,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           Entraînement express réussi !
         </h2>
         <p className="mt-2 text-sm text-[var(--fg-695f54)] max-w-md mx-auto leading-relaxed">
-          Vous avez maîtrisé vos <strong className="font-semibold text-[var(--fg-28231d)]">{practiceInitialCount} cartes</strong> avec succès. Comme prévu, vos calendriers de répétition espacée FSRS sont restés intacts.
+          Vous avez maîtrisé vos <strong className="font-semibold text-[var(--fg-28231d)]">{practiceInitialCount} cartes</strong> avec succès. Les dates de révision n'ont pas changé.
         </p>
 
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -459,7 +459,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           <p className="mt-2 text-xs sm:text-sm text-[var(--fg-695f54)] max-w-md mx-auto leading-relaxed">
             {sessionCompletedCount > 0 ? (
               <>
-                Vous avez révisé <strong className="font-semibold text-[var(--fg-28231d)]">{sessionCompletedCount} élément{sessionCompletedCount > 1 ? 's' : ''}</strong>. Vos intervalles FSRS ont été mis à jour et espacés dans le futur.
+                Vous avez révisé <strong className="font-semibold text-[var(--fg-28231d)]">{sessionCompletedCount} élément{sessionCompletedCount > 1 ? 's' : ''}</strong>. Les prochaines révisions sont programmées.
               </>
             ) : (
               <>
@@ -487,7 +487,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                 className="px-4 py-2 text-xs font-medium text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors flex items-center gap-1.5"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Étude anticipée (FSRS)</span>
+                <span>Réviser en avance</span>
               </button>
             )}
           </div>
@@ -507,7 +507,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
               </div>
               <p className="text-xs text-[var(--fg-695f54)] mt-1 leading-relaxed">
                 Révisez librement une sélection aléatoire de vos cartes. 
-                Les cartes notées <strong className="text-[var(--fg-365a2e)]">Bon / Facile</strong> sont retirées dès qu'elles sont maîtrisées. Celles notées <strong className="text-[var(--fg-8c3a20)]">À revoir / Difficile</strong> sont remises dans la file jusqu'à assimilation complète, sans toucher à vos dates FSRS.
+                Les cartes notées <strong className="text-[var(--fg-365a2e)]">Bon / Facile</strong> sont retirées dès qu'elles sont maîtrisées. Celles notées <strong className="text-[var(--fg-8c3a20)]">À revoir / Difficile</strong> sont remises dans la file jusqu'à assimilation complète, sans toucher aux dates de révision.
               </p>
             </div>
           </div>
@@ -615,7 +615,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 
             <div className="flex items-center gap-3">
               <span className="text-[11px] bg-[var(--bg-f3efe8)] text-[var(--fg-8c5e32)] px-2 py-0.5 rounded font-medium border border-[var(--bd-e8e2d5)]">
-                FSRS préservé
+                Dates inchangées
               </span>
               <button
                 onClick={() => {
@@ -649,19 +649,24 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
               Révision du jour
             </span>
             <span aria-hidden="true">·</span>
-            <span className="font-mono tabular-nums">
+            <span
+              className="tabular-nums"
+              title={`Priorité ${currentEntry.priority} %${
+                currentEntry.fsrs.reps === 0
+                  ? ''
+                  : isCloze
+                    ? ` · stabilité ${formatInterval(currentEntry.fsrs.stability)} · difficulté ${currentEntry.fsrs.difficulty.toFixed(1)}/10`
+                    : ` · intervalle ${formatInterval(currentEntry.fsrs.interval)}`
+              }`}
+            >
               Élément {currentIndex + 1} sur {queue.length}
             </span>
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="font-mono tabular-nums text-[var(--fg-8c8072)]">
-              {isCloze
-                ? currentEntry.fsrs.reps === 0 || currentEntry.fsrs.phase === 'new'
-                  ? 'Nouvelle carte'
-                  : `Stabilité : ${formatInterval(currentEntry.fsrs.stability)} · Diff : ${currentEntry.fsrs.difficulty.toFixed(1)}`
-                : `Intervalle actuel : ${formatInterval(currentEntry.fsrs.interval)}`}
-            </span>
+            {isCloze && (currentEntry.fsrs.reps === 0 || currentEntry.fsrs.phase === 'new') && (
+              <span className="text-[var(--fg-8c8072)]">Nouvelle carte</span>
+            )}
             <button
               onClick={onClose}
               className="text-[var(--fg-8c8072)] hover:text-[var(--fg-28231d)] text-xs transition-colors cursor-pointer"
@@ -712,7 +717,6 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                   Modifier
                 </button>
               )}
-              <span className="font-mono tabular-nums">Priorité : {currentEntry.priority}%</span>
             </span>
           </div>
 
@@ -837,10 +841,10 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
             </div>
           ) : (
             <div>
-              <div className="text-center text-xs text-[var(--fg-8c8072)] mb-3 font-mono">
+              <div className="text-center text-xs text-[var(--fg-8c8072)] mb-3">
                 {isFreePractice
-                  ? 'Évaluez (1 et 2 remettent dans la file, 3 et 4 retirent la carte maîtrisée) :'
-                  : 'Évaluez la difficulté de rappel FSRS (1 à 4 au clavier) :'}
+                  ? 'Vous en souveniez-vous ? (1 et 2 remettent la carte dans la file, 3 et 4 la retirent)'
+                  : 'Vous en souveniez-vous ? (touches 1 à 4)'}
               </div>
 
               {isFreePractice ? (

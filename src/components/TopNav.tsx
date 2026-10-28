@@ -1,7 +1,15 @@
 import React from 'react';
 import { ActiveTab } from '../types/saudade';
-import { Plus, BookOpen, Layers, Sparkles, FolderArchive, BarChart2, Sun, Moon, Monitor } from 'lucide-react';
+import { Plus, BookOpen, Layers, Sparkles, FolderArchive, BarChart2, Sun, Moon, Monitor, Settings } from 'lucide-react';
 import { ThemePreference, NEXT_THEME, THEME_LABEL } from '../lib/theme';
+
+const TABS: Array<{ tab: ActiveTab; label: string; Icon: typeof Layers; wide?: boolean }> = [
+  { tab: 'queue', label: 'File de lecture', Icon: Layers },
+  { tab: 'reader', label: 'Lecteur', Icon: BookOpen },
+  { tab: 'review', label: 'Révision du jour', Icon: Sparkles },
+  { tab: 'library', label: 'Bibliothèque', Icon: FolderArchive },
+  { tab: 'stats', label: 'Statistiques', Icon: BarChart2, wide: true },
+];
 
 interface TopNavProps {
   activeTab: ActiveTab;
@@ -36,70 +44,33 @@ export const TopNav: React.FC<TopNavProps> = ({
 
         {/* Zone 2: Navigation en blanc et beige épuré */}
         <nav className="flex items-center gap-6 sm:gap-8 text-sm font-medium text-[var(--fg-695f54)]">
-          <button
-            onClick={() => onTabChange('queue')}
-            className={`flex items-center gap-2 py-1 transition-colors whitespace-nowrap shrink-0 border-b-2 ${
-              activeTab === 'queue'
-                ? 'border-[var(--bd-7a4e26)] text-[var(--fg-7a4e26)] font-semibold'
-                : 'border-transparent hover:text-[var(--fg-28231d)]'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>File de lecture</span>
-            {dueCount > 0 && (
-              <span className="text-xs font-mono tabular-nums px-1.5 py-0.5 bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded text-[var(--fg-5a4f44)]">
-                {dueCount}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => onTabChange('reader')}
-            className={`flex items-center gap-2 py-1 transition-colors whitespace-nowrap shrink-0 border-b-2 ${
-              activeTab === 'reader'
-                ? 'border-[var(--bd-7a4e26)] text-[var(--fg-7a4e26)] font-semibold'
-                : 'border-transparent hover:text-[var(--fg-28231d)]'
-            }`}
-          >
-            <BookOpen className="w-4 h-4" />
-            <span>Lecteur</span>
-          </button>
-
-          <button
-            onClick={() => onTabChange('review')}
-            className={`flex items-center gap-2 py-1 transition-colors whitespace-nowrap shrink-0 border-b-2 ${
-              activeTab === 'review'
-                ? 'border-[var(--bd-7a4e26)] text-[var(--fg-7a4e26)] font-semibold'
-                : 'border-transparent hover:text-[var(--fg-28231d)]'
-            }`}
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>Révision du jour</span>
-          </button>
-
-          <button
-            onClick={() => onTabChange('library')}
-            className={`flex items-center gap-2 py-1 transition-colors whitespace-nowrap shrink-0 border-b-2 ${
-              activeTab === 'library'
-                ? 'border-[var(--bd-7a4e26)] text-[var(--fg-7a4e26)] font-semibold'
-                : 'border-transparent hover:text-[var(--fg-28231d)]'
-            }`}
-          >
-            <FolderArchive className="w-4 h-4" />
-            <span>Bibliothèque</span>
-          </button>
-
-          <button
-            onClick={() => onTabChange('stats')}
-            className={`hidden md:flex items-center gap-2 py-1 transition-colors whitespace-nowrap shrink-0 border-b-2 ${
-              activeTab === 'stats'
-                ? 'border-[var(--bd-7a4e26)] text-[var(--fg-7a4e26)] font-semibold'
-                : 'border-transparent hover:text-[var(--fg-28231d)]'
-            }`}
-          >
-            <BarChart2 className="w-4 h-4" />
-            <span>Analytique</span>
-          </button>
+          {TABS.map(({ tab, label, Icon, wide }) => (
+            <button
+              key={tab}
+              onClick={(e) => {
+                // Keys typed next (Space to reveal a card…) must not hit the tab again.
+                e.currentTarget.blur();
+                onTabChange(tab);
+              }}
+              aria-current={activeTab === tab ? 'page' : undefined}
+              className={`${wide ? 'hidden md:flex' : 'flex'} items-center gap-2 py-1 transition-colors whitespace-nowrap shrink-0 border-b-2 cursor-pointer ${
+                activeTab === tab
+                  ? 'border-[var(--bd-7a4e26)] text-[var(--fg-7a4e26)] font-semibold'
+                  : 'border-transparent hover:text-[var(--fg-28231d)]'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{label}</span>
+              {tab === 'queue' && dueCount > 0 && (
+                <span
+                  className="text-xs tabular-nums px-1.5 py-0.5 bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded text-[var(--fg-5a4f44)]"
+                  title={`${dueCount} élément${dueCount > 1 ? 's' : ''} à traiter aujourd'hui`}
+                >
+                  {dueCount}
+                </span>
+              )}
+            </button>
+          ))}
         </nav>
 
         {/* Zone 3: 1 action principale */}
@@ -112,6 +83,23 @@ export const TopNav: React.FC<TopNavProps> = ({
             aria-label={THEME_LABEL[theme]}
           >
             <ThemeIcon className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.currentTarget.blur();
+              onTabChange('settings');
+            }}
+            aria-current={activeTab === 'settings' ? 'page' : undefined}
+            className={`p-2 rounded-lg transition-colors cursor-pointer ${
+              activeTab === 'settings'
+                ? 'text-[var(--fg-7a4e26)] bg-[var(--bg-f3efe8)]'
+                : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)]'
+            }`}
+            title="Réglages"
+            aria-label="Réglages"
+          >
+            <Settings className="w-4 h-4" />
           </button>
           <button
             onClick={onOpenImport}
