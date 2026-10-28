@@ -102,6 +102,18 @@ Ensuite tout est automatique : au démarrage, quand la fenêtre revient au premi
 - Attendez que le client indique que tout est synchronisé avant de passer d'un ordinateur à l'autre.
 - Le journal de chaque ordinateur est compacté quand il dépasse 4 Mo : il est réécrit sous forme d'état (chaque modification garde sa date d'origine), sous un nouveau nom. L'autre ordinateur le relit sans rien perdre, y compris ses propres modifications pas encore synchronisées.
 
+## Application Android (lire et réviser)
+
+L'application Android reprend la file du jour, le lecteur (extraits, cartes à trou, questions) et les révisions ; l'import de sources, les cartes image et les sauvegardes restent sur l'ordinateur. Elle se synchronise directement avec Nextcloud par WebDAV, sans client à installer.
+
+1. Installer l'APK : onglet *Actions* du dépôt → dernière exécution de « Build installers » → artefact `saudade-android` (ou fichier joint à une release). Sur le téléphone, autoriser l'installation depuis cette source.
+2. Dans Nextcloud : Paramètres personnels › Sécurité → créer un mot de passe d'application ; Fichiers › Paramètres (en bas à gauche) → copier l'adresse WebDAV.
+3. Dans Saudade sur le téléphone : ⚙ → Synchronisation → adresse WebDAV suivie du nom du dossier (`…/remote.php/dav/files/vous/Saudade-sync`), identifiant, mot de passe d'application → « Se connecter », puis la phrase de passe du dossier.
+
+Les données du téléphone sont gardées dans le stockage de l'application ; le téléphone écrit son propre journal chiffré dans le dossier, comme un ordinateur.
+
+Construire : `npm run build:mobile && npx cap sync android`, puis `cd android && ./gradlew assembleRelease` (SDK Android requis). La CI signe l'APK si les secrets `ANDROID_KEYSTORE_B64` (keystore encodé en base64) et `ANDROID_KEYSTORE_PASSWORD` existent ; sinon elle produit un APK de débogage, signé chaque fois par une clé différente : pour le mettre à jour il faut désinstaller l'ancien (la synchronisation redonne ensuite la bibliothèque). Gardez toujours la même clé : Android refuse une mise à jour signée par une autre.
+
 ## Installation
 - **Linux Mint / Ubuntu / Debian (recommandé)** : `sudo apt install ./Saudade-1.1.0-linux-amd64.deb`, puis lancez Saudade depuis le menu (ou la commande `saudade`).
 - **AppImage** (autres distributions) : `chmod +x Saudade-*.AppImage && ./Saudade-*.AppImage`. Sur Ubuntu 24.04+ et dérivés, où AppArmor bloque le bac à sable de Chromium pour les AppImage, Saudade démarre automatiquement sans ce bac à sable ; le .deb, lui, le conserve.
