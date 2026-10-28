@@ -117,17 +117,7 @@
         "repo": "Saudade",
         "releaseType": "release"
       }
-    ],
-    "deb": {
-      "fpm": [
-        "--replaces=gemma",
-        "--conflicts=gemma",
-        "--provides=gemma",
-        "--replaces=foliole",
-        "--conflicts=foliole",
-        "--provides=foliole"
-      ]
-    }
+    ]
   },
   "description": "Lecture incrémentale et répétition espacée FSRS — 100 % local, sans IA",
   "homepage": "https://github.com/rivierepierrev-cmyk/saudade",

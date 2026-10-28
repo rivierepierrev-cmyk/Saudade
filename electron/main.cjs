@@ -32,39 +32,6 @@ const keyStore = {
   },
 };
 
-// The app used to be called Gemma, and Foliole before that. The first time Saudade
-// starts, it takes over the most recent of those profiles: the library files (data/)
-// and the browser storage that holds the library of the very first versions, which
-// the page migrates on its own. The old folder is left untouched. Must run before
-// anything uses the profile folder.
-const FORMER_PROFILES = ['Gemma', 'Foliole'];
-
-function migrateFormerProfile() {
-  const target = app.getPath('userData');
-  // Electron creates the (empty) profile folder before this code runs.
-  const targetIsEmpty = !fs.existsSync(target) || fs.readdirSync(target).length === 0;
-  if (!targetIsEmpty) return;
-  const source = FORMER_PROFILES.map((name) => path.join(app.getPath('appData'), name)).find(
-    (dir) => fs.existsSync(dir) && fs.readdirSync(dir).length > 0
-  );
-  if (!source) return;
-  const partial = `${target}.migrating`;
-  try {
-    fs.rmSync(partial, { recursive: true, force: true });
-    fs.cpSync(source, partial, {
-      recursive: true,
-      // Lock files of a running former version must not be copied.
-      filter: (src) => !/^Singleton|^lockfile$|^LOCK$/.test(path.basename(src)),
-    });
-    fs.rmSync(target, { recursive: true, force: true }); // empty: see above
-    fs.renameSync(partial, target);
-  } catch (e) {
-    fs.rmSync(partial, { recursive: true, force: true });
-    console.error(`Reprise du profil ${path.basename(source)} impossible :`, e);
-  }
-}
-migrateFormerProfile();
-
 // Ubuntu 24.04+ (and derivatives) block the unprivileged user namespaces Chromium's
 // sandbox needs, and an AppImage can't ship the setuid helper the .deb installs:
 // without this the AppImage would not start at all. The window only shows Saudade's

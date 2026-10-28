@@ -4,8 +4,6 @@
  *   The whole library is loaded once at startup and kept in memory; writes are sent
  *   to the main process, which writes them atomically.
  * - Browser (npm run dev): localStorage.
- * Older versions stored everything in localStorage under saudade_* / foliole_* keys;
- * those are copied over once and left untouched as a fallback copy.
  */
 
 export type CollectionName = 'documents' | 'extracts' | 'clozes' | 'reviewLogs' | 'settings' | 'folders';
@@ -33,15 +31,6 @@ declare global {
     saudadeDesktop?: DesktopBridge;
   }
 }
-
-const LEGACY_KEYS: Record<CollectionName, string[]> = {
-  documents: ['gemma_documents_fr_v2', 'foliole_documents_fr_v2'],
-  extracts: ['gemma_extracts_fr_v2', 'foliole_extracts_fr_v2'],
-  clozes: ['gemma_clozes_fr_v2', 'foliole_clozes_fr_v2'],
-  reviewLogs: ['gemma_review_logs_fr_v2', 'foliole_review_logs_fr_v2'],
-  settings: ['gemma_settings_fr_v2', 'foliole_settings_fr_v2'],
-  folders: ['gemma_folders_fr_v2', 'foliole_folders_fr_v2'],
-};
 
 const browserKey = (name: CollectionName) => `saudade.v3.${name}`;
 
@@ -73,15 +62,6 @@ function safeLocalGet(key: string): string | null {
   }
 }
 
-function readLegacy(name: CollectionName): string | null {
-  // Also the keys used while the app was called Gemma or Foliole (browser mode).
-  for (const key of [...LEGACY_KEYS[name], `gemma.v3.${name}`, `foliole.v3.${name}`]) {
-    const value = safeLocalGet(key);
-    if (value) return value;
-  }
-  return null;
-}
-
 const desktop = typeof window !== 'undefined' ? window.saudadeDesktop : undefined;
 const cache = new Map<CollectionName, string>();
 
@@ -92,20 +72,6 @@ if (desktop) {
   for (const name of COLLECTIONS) {
     const text = initial.files?.[name];
     if (typeof text === 'string') cache.set(name, text);
-  }
-  if (initial.isNew && !initial.error) {
-    // First launch of the file-based version: bring over the old localStorage library.
-    for (const name of COLLECTIONS) {
-      const legacy = readLegacy(name);
-      if (legacy) setRaw(name, legacy);
-    }
-  }
-} else {
-  for (const name of COLLECTIONS) {
-    if (safeLocalGet(browserKey(name)) === null) {
-      const legacy = readLegacy(name);
-      if (legacy) setRaw(name, legacy);
-    }
   }
 }
 
