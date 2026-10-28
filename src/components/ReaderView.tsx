@@ -15,10 +15,11 @@ import {
 } from 'lucide-react';
 import { EditDocumentModal } from './EditDocumentModal';
 import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
+import { cardPassages } from '../lib/clozeNotes';
 import { formatInterval, nextTopicInterval } from '../lib/fsrs';
 import { isDueToday } from '../lib/queue';
 import { findPassages, setHighlight, clearHighlight } from '../lib/highlight';
-import { renderTextWithMath, parseClozes, renderClozeCard, clozeAnswerPreview } from '../lib/math';
+import { renderTextWithMath, renderClozeCard, clozeAnswerPreview } from '../lib/math';
 import { safeHtml } from '../lib/markdown';
 
 interface ReaderViewProps {
@@ -195,8 +196,8 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
     scrollToActive.current = true;
   };
 
-  // A card's sentence as it is in the text (answers in place).
-  const cardSentence = (card: ClozeItem) => parseClozes(card.text).map((p) => p.value).join('');
+  // Which of a card's passages (original sentence, current one) was found in the text.
+  const cardMatch = useRef(new Map<string, string>());
 
   const openCard = (card: ClozeItem) => {
     if (activeCardId === card.id) {
@@ -206,7 +207,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
     }
     setActiveCardId(card.id);
     setActiveExtractId(null);
-    setActivePassage(cardSentence(card));
+    setActivePassage(cardMatch.current.get(card.id) ?? cardPassages(card)[0]);
     scrollToActive.current = true;
   };
 
@@ -229,17 +230,24 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
     if (!article) return;
     // Extracts are highlighted, cards (their sentence, answers shown) underlined.
     const passages = showExtractHighlights ? documentExtracts.map((e) => e.text) : [];
-    const cardPassages = showExtractHighlights
-      ? documentCards.map((c) => parseClozes(c.text).map((p) => p.value).join(''))
-      : [];
-    const ranges = findPassages(article, [...passages, ...cardPassages, ...(activePassage ? [activePassage] : [])]);
+    // A card: its original sentence, else its current one (answers shown).
+    const candidates = showExtractHighlights ? documentCards.map((c) => cardPassages(c)) : [];
+    const flat = candidates.flat();
+    const ranges = findPassages(article, [...passages, ...flat, ...(activePassage ? [activePassage] : [])]);
     const present = (r: Range | null): r is Range => r !== null;
-    setHighlight('saudade-extracts', ranges.slice(0, passages.length).filter(present));
-    setHighlight('saudade-cards', ranges.slice(passages.length, passages.length + cardPassages.length).filter(present));
-    setMissingExtractIds(new Set(showExtractHighlights ? documentExtracts.filter((_, i) => !ranges[i]).map((e) => e.id) : []));
-    setMissingCardIds(
-      new Set(showExtractHighlights ? documentCards.filter((_, i) => !ranges[passages.length + i]).map((c) => c.id) : [])
+    let k = passages.length;
+    const cardRanges = candidates.map((list) => {
+      const found = list.map((text, j) => ({ text, range: ranges[k + j] })).find((m) => m.range);
+      k += list.length;
+      return found ?? null;
+    });
+    cardMatch.current = new Map(
+      documentCards.flatMap((c, i) => (cardRanges[i] ? [[c.id, cardRanges[i]!.text] as [string, string]] : []))
     );
+    setHighlight('saudade-extracts', ranges.slice(0, passages.length).filter(present));
+    setHighlight('saudade-cards', cardRanges.flatMap((m) => (m ? [m.range!] : [])));
+    setMissingExtractIds(new Set(showExtractHighlights ? documentExtracts.filter((_, i) => !ranges[i]).map((e) => e.id) : []));
+    setMissingCardIds(new Set(showExtractHighlights ? documentCards.filter((_, i) => !cardRanges[i]).map((c) => c.id) : []));
     const active = activePassage ? ranges[ranges.length - 1] : null;
     setHighlight('saudade-extract-active', active ? [active] : []);
     // Formulas aren't fully painted by text highlights: mark the whole formula.

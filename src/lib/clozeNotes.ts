@@ -4,7 +4,7 @@
  * each card has its own schedule.
  */
 import { ClozeItem } from '../types/saudade';
-import { clozeNumbers } from './math';
+import { clozeNumbers, parseClozes } from './math';
 import { createInitialFSRSRecord } from './fsrs';
 
 export const noteKeyOf = (card: ClozeItem) => card.noteId ?? card.id;
@@ -39,6 +39,12 @@ export function splitClozeNotes(cards: ClozeItem[]): ClozeItem[] {
 }
 
 /** New cards for a new note: one per deletion number. */
+/** What to look for in the source to find a card: its original sentence, then its current one. */
+export function cardPassages(card: Pick<ClozeItem, 'text' | 'sourceText'>): string[] {
+  const current = parseClozes(card.text).map((p) => p.value).join('');
+  return card.sourceText && card.sourceText !== current ? [card.sourceText, current] : [current];
+}
+
 export function cardsForNewNote(template: Omit<ClozeItem, 'id' | 'clozeNumber' | 'noteId'>, makeId: () => string): ClozeItem[] {
   const numbers = clozeNumbers(template.text);
   const ids = (numbers.length ? numbers : [1]).map(() => makeId());

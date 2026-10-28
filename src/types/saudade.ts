@@ -70,6 +70,9 @@ export interface ClozeItem {
   clozeNumber?: number;
   /** Cards made from the same text (one per deletion number) share this id. */
   noteId?: string;
+  /** The sentence as it stood in the document or extract when the card was made: the card
+   *  is found there by it, even after being reworded. */
+  sourceText?: string;
   text: string; // e.g. "The {{c1::hippocampus}} is essential for memory consolidation."
   note?: string;
   tags: string[];

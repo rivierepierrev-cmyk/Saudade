@@ -81,6 +81,23 @@ const selectBetween = (page, a, b) => page.evaluate(([a, b]) => {
   await cardEditor.getByRole('button', { name: 'Enregistrer' }).click(); await cardEditor.waitFor({ state: 'detached' });
   assert.equal(read('clozes').find((c) => c.id === 'k').text, 'Le {{c1::Mont Blanc}} est haut.');
 
+  // 5. A card reworded after creation is still found by its original sentence
+  const mer = read('clozes').find((c) => c.text.includes('{{c1::mer}}'));
+  assert.equal(mer.sourceText, 'Le Rhône se jette dans la mer.');
+  await page.getByTitle('Relire cette carte et retrouver sa phrase dans le texte').filter({ hasText: 'Rhône' }).click();
+  await page.getByRole('button', { name: 'Modifier', exact: true }).last().click();
+  await cardEditor.locator('textarea').fill('Le Rhône finit dans la {{c1::mer}}.');
+  await cardEditor.getByRole('button', { name: 'Enregistrer' }).click(); await cardEditor.waitFor({ state: 'detached' });
+  await page.waitForTimeout(300);
+  const card = page.locator(`[data-panel-item="${mer.id}"]`);
+  if (!(await card.getByText('Surlignée dans le texte').count())) await card.getByRole('button').first().click();
+  await card.getByText('Surlignée dans le texte').waitFor();
+  await page.waitForTimeout(200);
+  const active2 = await page.evaluate(() => [...CSS.highlights.get('saudade-extract-active')].map((r) => r.toString()));
+  assert.deepEqual(active2, ['Le Rhône se jette dans la mer.']);
+  const green = await page.evaluate(() => [...CSS.highlights.get('saudade-cards')].map((r) => r.toString()).sort());
+  assert.deepEqual(green, ['Le Mont Blanc est haut.', 'Le Rhône se jette dans la mer.']);
+
   assert.deepEqual(errors, []);
   await app.close();
   console.log('READER CARDS E2E OK', OUT);

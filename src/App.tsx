@@ -20,7 +20,7 @@ import { buildTodayQueue, isDueToday, nextAfterToday } from './lib/queue';
 import { locatePassage, replacePassage } from './lib/sourceSync';
 import { ItemEditor } from './components/ItemEditor';
 import { ItemViewer } from './components/ItemViewer';
-import { cardsForNewNote, applyNoteText, noteKeyOf } from './lib/clozeNotes';
+import { cardsForNewNote, applyNoteText, noteKeyOf, cardPassages } from './lib/clozeNotes';
 import { parseClozes } from './lib/math';
 import { onStorageError, isDesktop, dataLocation, takeSnapshot, openDataFolder } from './lib/kv';
 import { createInitialFSRSRecord, applyCardReview, applyTopicReview, firstTopicInterval } from './lib/fsrs';
@@ -162,7 +162,11 @@ export default function App() {
 
   // Handler: Create Cloze card. `clozeText` already contains the {{c1::...}} deletion.
   // Creates the cards of a new note (one per deletion number). Returns their ids.
-  const handleCreateCloze = (source: { documentId?: string; extractId?: string }, clozeText: string): string[] => {
+  const handleCreateCloze = (
+    source: { documentId?: string; extractId?: string },
+    clozeText: string,
+    sourceText?: string
+  ): string[] => {
     const ext = source.extractId ? extractsRef.current.find((e) => e.id === source.extractId) : undefined;
     const docId = source.documentId ?? ext?.documentId;
     const doc = docId ? documentsRef.current.find((d) => d.id === docId) : undefined;
@@ -175,6 +179,7 @@ export default function App() {
       documentTitle: ext?.documentTitle ?? doc?.title ?? 'Note',
       folder: ext?.folder ?? doc?.folder,
       text: clozeText,
+      sourceText,
       tags: [...(ext?.tags ?? doc?.tags ?? [])],
       priority: ext?.priority ?? doc?.priority ?? 85,
       createdAt: now,
@@ -196,6 +201,8 @@ export default function App() {
         kind: 'new-cloze';
         source: { documentId?: string; extractId?: string };
         text: string;
+        /** The sentence as it is in the source, before any rewording in the editor. */
+        sourceText?: string;
         context: string;
         info?: string;
         /** Runs once the card is created (e.g. finishing the document after a summary card). */
@@ -216,6 +223,7 @@ export default function App() {
       kind: 'new-cloze',
       source,
       text: sentence,
+      sourceText: parseClozes(sentence).map((p) => p.value).join(''),
       context: doc?.title ?? ext?.documentTitle ?? '',
       info: parseClozes(sentence).some((p) => p.type === 'cloze')
         ? 'Vérifiez la carte : vous pouvez masquer d’autres mots (« nouvelle carte » ou « même carte ») ou raccourcir la phrase, puis « Créer la carte » (Ctrl+Entrée).'
@@ -363,7 +371,7 @@ export default function App() {
     const docId = ext?.documentId ?? card?.documentId ?? source?.documentId;
     if (!docId) return;
     // A card is located by its sentence (answers shown), or by its extract.
-    const text = source?.text ?? parseClozes(card!.text).map((p) => p.value).join('');
+    const text = source?.text ?? cardPassages(card!)[0];
     setViewRequest(null);
     setCurrentDocumentId(docId);
     setActiveTab('reader');
@@ -471,7 +479,7 @@ export default function App() {
         initialText={editRequest.text}
         saveLabel="Créer la carte"
         onSave={(text) => {
-          const ids = new Set(handleCreateCloze(editRequest.source, text));
+          const ids = new Set(handleCreateCloze(editRequest.source, text, editRequest.sourceText));
           close();
           if (editRequest.afterSave) {
             editRequest.afterSave();

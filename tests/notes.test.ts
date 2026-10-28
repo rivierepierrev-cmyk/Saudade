@@ -33,3 +33,14 @@ assert.deepEqual(q.map((e) => e.item.id), ['a1', 'b1'], 'a2 waits for another da
 q = buildTodayQueue({ documents: [], extracts: [], clozes: cards, dailyLimit: 50, reviewedTodayIds: new Set(['a1']), now });
 assert.deepEqual(q.map((e) => e.item.id), ['a1', 'b1'], 'a1 reviewed today (learning step) keeps a2 out');
 console.log('notes tests OK');
+
+// A card is located by its original sentence first, then by its current one.
+{
+  const { cardPassages } = await import('../src/lib/clozeNotes');
+  assert.deepEqual(cardPassages({ text: 'Le {{c1::Rhône}} finit dans la mer.', sourceText: 'Le Rhône se jette dans la mer.' }), [
+    'Le Rhône se jette dans la mer.',
+    'Le Rhône finit dans la mer.',
+  ]);
+  assert.deepEqual(cardPassages({ text: 'Le {{c1::Rhône}} coule.' }), ['Le Rhône coule.']);
+  assert.deepEqual(cardPassages({ text: 'Le {{c1::Rhône}} coule.', sourceText: 'Le Rhône coule.' }), ['Le Rhône coule.']);
+}
