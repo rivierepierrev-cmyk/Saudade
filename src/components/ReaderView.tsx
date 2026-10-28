@@ -14,10 +14,12 @@ import {
   Highlighter,
   HelpCircle,
   Image as ImageIcon,
+  Folder,
 } from 'lucide-react';
 import { EditDocumentModal } from './EditDocumentModal';
 import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
 import { cardPassages } from '../lib/clozeNotes';
+import { FORMAT_LABEL, isWriting } from '../lib/formats';
 import { formatInterval, nextTopicInterval } from '../lib/fsrs';
 import { isDueToday } from '../lib/queue';
 import { findPassages, setHighlight, clearHighlight } from '../lib/highlight';
@@ -97,6 +99,52 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   const [fontFamily, setFontFamily] = useState<'serif' | 'sans' | 'mono'>('serif');
   const [fontSize, setFontSize] = useState<number>(18);
   const [typoOpen, setTypoOpen] = useState(false);
+  // Incremental writing: the text is edited here, saved as you type.
+  const writing = isWriting(currentDocument);
+  const [writeMode, setWriteMode] = useState<'edit' | 'preview'>('edit');
+  const [draft, setDraft] = useState(currentDocument.content);
+  const [saved, setSaved] = useState(true);
+  const draftRef = useRef({ id: currentDocument.id, text: currentDocument.content, dirty: false });
+  const docRef = useRef(currentDocument);
+  docRef.current = currentDocument;
+  const saveTimer = useRef<number | undefined>(undefined);
+  const flushDraft = () => {
+    window.clearTimeout(saveTimer.current);
+    const d = draftRef.current;
+    if (!d.dirty || !onUpdateDocument) return;
+    d.dirty = false;
+    const doc = docRef.current.id === d.id ? docRef.current : allDocuments.find((x) => x.id === d.id);
+    if (doc && doc.content !== d.text) onUpdateDocument({ ...doc, content: d.text, updatedAt: new Date().toISOString() });
+    setSaved(true);
+  };
+  const flushRef = useRef(flushDraft);
+  flushRef.current = flushDraft;
+  // Another text: save the previous one, start from this one.
+  useEffect(() => {
+    flushRef.current();
+    draftRef.current = { id: currentDocument.id, text: currentDocument.content, dirty: false };
+    setDraft(currentDocument.content);
+    setSaved(true);
+    setWriteMode('edit');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDocument.id]);
+  // Changed elsewhere (other computer, edit window) while nothing is being typed here.
+  useEffect(() => {
+    if (!draftRef.current.dirty && currentDocument.content !== draftRef.current.text) {
+      draftRef.current.text = currentDocument.content;
+      setDraft(currentDocument.content);
+    }
+  }, [currentDocument.content]);
+  useEffect(() => () => flushRef.current(), []);
+  const onDraftChange = (text: string) => {
+    setDraft(text);
+    draftRef.current = { id: currentDocument.id, text, dirty: true };
+    setSaved(false);
+    window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => flushRef.current(), 700);
+  };
+  const words = writing ? (draft.match(/[\p{L}\p{N}]+/gu) ?? []).length : 0;
+
   // An image clicked in the text: offer to make an image card of it.
   const [imageAction, setImageAction] = useState<{ src: string; x: number; y: number } | null>(null);
   const typoRef = useRef<HTMLDivElement>(null);
@@ -592,18 +640,34 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
           <div className="mb-8 pb-6 border-b border-[var(--bd-e8e2d5)]">
             <div className="flex items-center gap-2 text-xs text-[var(--fg-695f54)] mb-2 flex-wrap">
               <span className="font-semibold text-[var(--fg-8c5e32)] uppercase tracking-wider text-[10px]">
-                {currentDocument.format}
+                {FORMAT_LABEL[currentDocument.format] ?? currentDocument.format}
               </span>
               <span aria-hidden="true">·</span>
-              <span className="font-mono text-[10px] bg-[var(--bg-f3efe8)] px-2 py-0.5 rounded border border-[var(--bd-e8e2d5)] text-[var(--fg-4a3e31)]">
-                📁 {currentDocument.folder || 'Général'}
+              <span className="inline-flex items-center gap-1">
+                <Folder className="w-3 h-3" />
+                {currentDocument.folder || 'Général'}
               </span>
+              {currentDocument.author && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span>{currentDocument.author}</span>
+                </>
+              )}
               <span aria-hidden="true">·</span>
-              <span>{currentDocument.author || 'Auteur non précisé'}</span>
-              <span aria-hidden="true">·</span>
-              <span className="font-mono tabular-nums">Priorité : {currentDocument.priority}%</span>
-              <span aria-hidden="true">·</span>
-              <span className="font-mono tabular-nums">Progression : {currentDocument.readingProgress || 0}%</span>
+              <span className="tabular-nums">priorité {currentDocument.priority} %</span>
+              {writing ? (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="tabular-nums" data-testid="word-count">
+                    {words} mot{words > 1 ? 's' : ''}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="tabular-nums">lu à {currentDocument.readingProgress || 0} %</span>
+                </>
+              )}
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
@@ -629,7 +693,48 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
             )}
           </div>
 
-          {/* Corps de l'article formaté */}
+          {writing && (
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div role="tablist" aria-label="Écriture" className="flex items-center gap-1 p-0.5 bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg text-xs">
+                {([
+                  ['edit', 'Écrire'],
+                  ['preview', 'Aperçu'],
+                ] as const).map(([m, label]) => (
+                  <button
+                    key={m}
+                    type="button"
+                    role="tab"
+                    aria-selected={writeMode === m}
+                    onClick={() => {
+                      flushDraft();
+                      setWriteMode(m);
+                    }}
+                    className={`px-3 py-1 rounded-md cursor-pointer ${
+                      writeMode === m ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] font-semibold shadow-xs' : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[11px] text-[var(--fg-8c8072)]" role="status">
+                {saved ? 'Enregistré' : 'Enregistrement…'}
+              </span>
+            </div>
+          )}
+          {writing && writeMode === 'edit' ? (
+            <textarea
+              value={draft}
+              onChange={(e) => onDraftChange(e.target.value)}
+              onBlur={flushDraft}
+              aria-label="Texte en cours d'écriture"
+              spellCheck
+              placeholder="Écrivez… (Markdown et LaTeX acceptés)"
+              className={`block w-full min-h-[50vh] p-0 bg-transparent border-0 outline-none focus-visible:outline-none resize-none ${fontClass} leading-relaxed text-[var(--fg-28231d)] [field-sizing:content]`}
+              style={{ fontSize: `${fontSize}px` }}
+            />
+          ) : (
+          /* Corps de l'article formaté */
           <article
             ref={articleRef}
             onClick={(e) => {
@@ -643,6 +748,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
             style={{ fontSize: `${fontSize}px` }}
             dangerouslySetInnerHTML={{ __html: renderedHtml }}
           />
+          )}
 
           {/* Fin de lecture : la question est « reste-t-il quelque chose à extraire ? » */}
           <div className="mt-16 pt-8 border-t border-[var(--bd-e8e2d5)]">
@@ -668,7 +774,9 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
 
             {confirmRetire ? (
               <div role="alert" className="p-4 rounded-xl border border-[var(--bd-e8e2d5)] bg-[var(--bg-ffffff)] text-xs">
-                {documentExtracts.length === 0 && documentCards.length === 0 ? (
+                {writing ? (
+                  <p className="font-semibold text-[var(--fg-28231d)]">Ce texte est fini ? Il quitte la file et reste dans la bibliothèque.</p>
+                ) : documentExtracts.length === 0 && documentCards.length === 0 ? (
                   <>
                     <p className="font-semibold text-[var(--fg-28231d)]">Rien n'a été extrait de ce texte.</p>
                     <p className="mt-1 text-[var(--fg-695f54)]">
@@ -681,7 +789,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                   </p>
                 )}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {documentExtracts.length === 0 && documentCards.length === 0 && (
+                  {!writing && documentExtracts.length === 0 && documentCards.length === 0 && (
                     <button
                       onClick={() => {
                         setConfirmRetire(false);
@@ -696,7 +804,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                     onClick={() => onRetireDocument(currentDocument.id)}
                     className="px-3 py-2 font-semibold text-[var(--fg-faf7f2)] bg-[var(--bg-3b3026)] hover:bg-[var(--bg-28211a)] rounded-lg cursor-pointer"
                   >
-                    {documentExtracts.length === 0 && documentCards.length === 0 ? 'Terminer quand même' : 'Oui, terminer'}
+                    {!writing && documentExtracts.length === 0 && documentCards.length === 0 ? 'Terminer quand même' : 'Oui, terminer'}
                   </button>
                   <button
                     onClick={() => setConfirmRetire(false)}
@@ -709,7 +817,11 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
             ) : (
               <>
                 <p className="mb-2 text-sm font-semibold text-[var(--fg-28231d)]">
-                  {isDue ? 'Avez-vous tout extrait de ce texte ?' : `Déjà programmé : revient dans ${formatInterval(daysUntilNext)}`}
+                  {isDue
+                    ? writing
+                      ? 'Où en est ce texte ?'
+                      : 'Avez-vous tout extrait de ce texte ?'
+                    : `Déjà programmé : revient dans ${formatInterval(daysUntilNext)}`}
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
                   <button
@@ -726,7 +838,9 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                   >
                     <span>
                       {isDue
-                        ? `Il reste à extraire · dans ${formatInterval(nextInterval)}`
+                        ? writing
+                          ? `Continuer · dans ${formatInterval(nextInterval)}`
+                          : `Il reste à extraire · dans ${formatInterval(nextInterval)}`
                         : 'Texte suivant de la file'}
                     </span>
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -734,9 +848,9 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                   <button
                     onClick={() => setConfirmRetire(true)}
                     className="px-3.5 py-2 text-xs text-[var(--fg-4a3e31)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg transition-colors cursor-pointer"
-                    title="Tout ce qui compte est extrait : le texte quitte la file (T)"
+                    title={writing ? 'Le texte est fini : il quitte la file (T)' : 'Tout ce qui compte est extrait : le texte quitte la file (T)'}
                   >
-                    Tout est extrait · terminer
+                    {writing ? 'Texte terminé' : 'Tout est extrait · terminer'}
                   </button>
                 </div>
               </>

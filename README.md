@@ -55,6 +55,13 @@ En mode navigateur (`npm run dev`), les données restent dans le localStorage du
 - Une carte oubliée 8 fois (réglable) devient une « sangsue » : un message propose aussitôt de la reformuler. Elle est marquée dans la révision, la file et la bibliothèque (Cartes › « Seulement les sangsues »). Elle redevient sangsue tous les 4 oublis de plus.
 - Réglages : le seuil, et « Retirer les sangsues de la file » (sinon elles restent, signalées). « Ce n'est plus une sangsue » dans la fenêtre de la carte ; remettre la carte à zéro l'efface aussi.
 
+## Écriture incrémentale
+
+- « Ajouter une source » › « Écrire » : un texte que vous rédigez petit à petit (synthèse, article, chapitre…), avec un titre et une priorité. Il s'ouvre aussitôt dans le lecteur.
+- Le lecteur devient un éditeur : vous écrivez directement (Markdown et LaTeX), c'est enregistré au fil de la frappe ; « Aperçu » montre le rendu (on peut y extraire et faire des cartes comme ailleurs). Le nombre de mots est affiché.
+- Le texte revient dans la file selon sa priorité (« Écriture », bouton « Écrire ») : « Pas fini · demain » (P), « Continuer · dans N j » (L), « Texte terminé » (T).
+- Depuis un extrait (révision ou fenêtre de l'extrait), « Ajouter à un texte… » le verse à la fin d'un texte en cours, en citation avec sa source.
+
 ## Consulter les extraits et les cartes
 - Bibliothèque (arborescence ou fiches) : cliquer sur un extrait ou une carte l'ouvre en entier (formules, réponse avec Espace, prochaine révision, cartes tirées de l'extrait), avec « Modifier » et « Voir dans le document ».
 - Lecteur, volet « Extraits » : cliquer sur un extrait l'affiche en entier, fait défiler le texte jusqu'au passage et le surligne.

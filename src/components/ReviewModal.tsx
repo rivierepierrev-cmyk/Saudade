@@ -8,6 +8,7 @@ import { findPassages, setHighlight, clearHighlight } from '../lib/highlight';
 import { renderTextWithMath } from '../lib/math';
 import { isImageCard, isQA, renderCard } from '../lib/cards';
 import { isLeech } from '../lib/leech';
+import { AddToWriting } from './AddToWriting';
 import { safeHtml } from '../lib/markdown';
 import confetti from 'canvas-confetti';
 import {
@@ -63,6 +64,9 @@ interface ReviewModalProps {
   documents: DocumentItem[];
   topicLimit: number;
   leechThreshold: number;
+  /** Texts being written: an extract can be poured into one (incremental writing). */
+  writingTexts: DocumentItem[];
+  onAddToWriting: (documentId: string, extractId: string) => void;
   /** Ids of cards already reviewed today (they don't use up the limit again). */
   reviewedTodayIds: Set<string>;
   /** Highlight sub-extracts inside the extract being read. */
@@ -87,6 +91,8 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   documents,
   topicLimit,
   leechThreshold,
+  writingTexts,
+  onAddToWriting,
   reviewedTodayIds,
   showExtractHighlights,
   onClose,
@@ -777,6 +783,13 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                 <span dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(currentEntry.text)) }} />
               </div>
               <div className="flex flex-wrap items-center gap-2 mt-5">
+                <AddToWriting
+                  texts={writingTexts}
+                  onAdd={(docId) => {
+                    onAddToWriting(docId, currentEntry.id);
+                    showToast('Extrait ajouté au texte');
+                  }}
+                />
                 <button
                   onClick={handleSubExtract}
                   disabled={!extractSelection}

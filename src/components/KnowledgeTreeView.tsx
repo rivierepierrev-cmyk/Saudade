@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { FORMAT_LABEL } from '../lib/formats';
 import { DocumentItem, ExtractItem, ClozeItem } from '../types/saudade';
 import { SaudadeStorage } from '../lib/storage';
 import { renderTextWithMath } from '../lib/math';
@@ -55,8 +56,6 @@ interface TreeNode {
   totalClozeCount: number;
   dueCount: number;
 }
-
-const FORMAT_LABEL: Record<string, string> = { article: 'Article', book: 'Livre', pdf: 'PDF', markdown: 'Markdown', note: 'Note' };
 
 export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
   documents,

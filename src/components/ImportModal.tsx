@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { DocumentItem } from '../types/saudade';
 import { createInitialFSRSRecord } from '../lib/fsrs';
 import { ImportedDocument, importWebPage, importHtmlFile, importPdf, importEpub } from '../lib/importers';
-import { Globe, FileText, Upload, X, AlertCircle, Folder } from 'lucide-react';
+import { Globe, FileText, Upload, X, AlertCircle, Folder, PenLine } from 'lucide-react';
 
 interface ImportModalProps {
   isOpen: boolean;
@@ -38,7 +38,9 @@ function toDocument(imported: ImportedDocument, folder: string, priority: number
 }
 
 export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAddDocument, onAddDocuments }) => {
-  const [importMode, setImportMode] = useState<'url' | 'paste' | 'file'>('url');
+  const [importMode, setImportMode] = useState<'url' | 'paste' | 'file' | 'write'>('url');
+  const [writeTitle, setWriteTitle] = useState('');
+  const [writePriority, setWritePriority] = useState(70);
   const [targetFolder, setTargetFolder] = useState('Général');
 
   const [urlInput, setUrlInput] = useState('');
@@ -76,6 +78,32 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
       setIsClipping(false);
       setProgress(null);
     }
+  };
+
+  // Incremental writing: a text written over time, back in the queue by its priority.
+  const handleStartWriting = (e: React.FormEvent) => {
+    e.preventDefault();
+    const title = writeTitle.trim();
+    if (!title) return;
+    const now = new Date().toISOString();
+    onAddDocument({
+      id: `doc-${Date.now()}`,
+      title,
+      folder: folderOrDefault(),
+      format: 'writing',
+      content: `# ${title}\n\n`,
+      tags: ['Écriture'],
+      priority: writePriority,
+      readingProgress: 0,
+      lastReadOffset: 0,
+      createdAt: now,
+      updatedAt: now,
+      state: 'new',
+      extractedCount: 0,
+      fsrs: createInitialFSRSRecord(0),
+    });
+    setWriteTitle('');
+    onClose();
   };
 
   const handleSavePaste = (e: React.FormEvent) => {
@@ -212,6 +240,18 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
           >
             <Upload className="w-3.5 h-3.5" />
             <span>Fichier local</span>
+          </button>
+
+          <button
+            onClick={() => setImportMode('write')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 transition-colors cursor-pointer ${
+              importMode === 'write'
+                ? 'bg-[var(--bg-ffffff)] text-[var(--fg-28231d)] border-b-2 border-[var(--bd-8c5e32)] font-semibold'
+                : 'text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)]'
+            }`}
+          >
+            <PenLine className="w-3.5 h-3.5" />
+            <span>Écrire</span>
           </button>
         </div>
 
@@ -363,6 +403,47 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onAdd
                 className="px-4 py-2 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg shadow-xs cursor-pointer"
               >
                 Ajouter à la file
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Mode 4 : écriture incrémentale */}
+        {importMode === 'write' && (
+          <form onSubmit={handleStartWriting} className="p-6 space-y-3">
+            <p className="text-xs text-[var(--fg-695f54)] leading-relaxed">
+              Un texte que vous écrivez petit à petit (synthèse, article, chapitre…). Il revient dans la file selon sa priorité ; à chaque
+              passage, avancez un peu, puis « Continuer ». Versez-y vos extraits avec « Ajouter à un texte ».
+            </p>
+            <label className="block text-xs font-semibold text-[var(--fg-28231d)]">
+              Titre
+              <input
+                type="text"
+                required
+                autoFocus
+                placeholder="ex. Synthèse : la mémoire de travail"
+                value={writeTitle}
+                onChange={(e) => setWriteTitle(e.target.value)}
+                className="mt-1 w-full px-3 py-1.5 text-xs bg-[var(--bg-faf7f2)] border border-[var(--bd-e8e2d5)] rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--bd-8c5e32)] text-[var(--fg-28231d)] placeholder-[var(--fg-8c8072)]"
+              />
+            </label>
+            <label className="block text-xs font-semibold text-[var(--fg-28231d)]">
+              Priorité : {writePriority} %
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={writePriority}
+                onChange={(e) => setWritePriority(Number(e.target.value))}
+                className="mt-1 w-full accent-[var(--fg-8c5e32)]"
+              />
+            </label>
+            <div className="pt-2 flex justify-end gap-2">
+              <button type="button" onClick={onClose} className="px-4 py-2 text-xs text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] rounded-lg cursor-pointer">
+                Annuler
+              </button>
+              <button type="submit" className="px-4 py-2 text-xs font-semibold text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)] rounded-lg shadow-xs cursor-pointer">
+                Commencer à écrire
               </button>
             </div>
           </form>

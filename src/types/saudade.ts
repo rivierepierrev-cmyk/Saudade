@@ -30,7 +30,8 @@ export interface DocumentItem {
   author?: string;
   sourceUrl?: string;
   folder?: string; // Dossier ou chemin hiérarchique, ex. "Sciences/Neurosciences"
-  format: 'markdown' | 'article' | 'book' | 'pdf' | 'note';
+  /** 'writing': a text the user writes over time (incremental writing). */
+  format: 'markdown' | 'article' | 'book' | 'pdf' | 'note' | 'writing';
   content: string;
   tags: string[];
   priority: number; // 0 to 100 (100 = highest priority)

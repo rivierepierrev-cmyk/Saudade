@@ -5,6 +5,7 @@ import { matchesQuery } from '../lib/search';
 import { renderTextWithMath } from '../lib/math';
 import { cardKindLabel, cardPreview } from '../lib/cards';
 import { isLeech } from '../lib/leech';
+import { isWriting } from '../lib/formats';
 import { safeHtml } from '../lib/markdown';
 import type { QueueEntry } from '../lib/queue';
 import { projectMarkdown } from '../lib/sourceSync';
@@ -18,6 +19,7 @@ import {
   Trash2,
   Folder,
   Pencil,
+  PenLine,
 } from 'lucide-react';
 
 const TYPE_LABEL: Record<ItemType, string> = { document: 'Document', extract: 'Extrait', cloze: 'Carte à trou' };
@@ -376,7 +378,11 @@ export const QueueView: React.FC<QueueViewProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 text-xs text-[var(--fg-695f54)] mb-1 flex-wrap">
                       <span className="font-semibold text-[var(--fg-3b3026)] uppercase tracking-wider text-[10px]">
-                        {isCloze ? cardKindLabel(item.originalItem as ClozeItem) : TYPE_LABEL[item.type]}
+                        {isCloze
+                          ? cardKindLabel(item.originalItem as ClozeItem)
+                          : isDoc && isWriting(item.originalItem as DocumentItem)
+                            ? 'Écriture'
+                            : TYPE_LABEL[item.type]}
                       </span>
                       {isCloze && isLeech(item.originalItem as ClozeItem, leechThreshold) && (
                         <span className="px-1.5 py-0.5 rounded bg-[var(--bg-fdf2f0)] text-[var(--fg-a84236)] text-[10px] font-semibold uppercase tracking-wider">
@@ -481,8 +487,12 @@ export const QueueView: React.FC<QueueViewProps> = ({
                               : 'text-white bg-[var(--bg-8c5e32)] hover:bg-[var(--bg-774d27)]'
                           }`}
                         >
-                          {isDoc ? <BookOpen className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
-                          <span>{isDoc ? 'Lire' : 'Réviser'}</span>
+                          {isDoc ? (
+                            isWriting(item.originalItem as DocumentItem) ? <PenLine className="w-3.5 h-3.5" /> : <BookOpen className="w-3.5 h-3.5" />
+                          ) : (
+                            <Sparkles className="w-3.5 h-3.5" />
+                          )}
+                          <span>{isDoc ? (isWriting(item.originalItem as DocumentItem) ? 'Écrire' : 'Lire') : 'Réviser'}</span>
                         </button>
                       </>
                     )}

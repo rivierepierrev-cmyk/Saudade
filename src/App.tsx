@@ -25,6 +25,7 @@ import { isImageCard, isQA } from './lib/cards';
 import { OcclusionEditor, OcclusionNote } from './components/OcclusionEditor';
 import { fetchImage } from './lib/importers';
 import { isLeech, lapseMakesLeech } from './lib/leech';
+import { isWriting } from './lib/formats';
 import { parseClozes } from './lib/math';
 import { onStorageError, isDesktop, dataLocation, takeSnapshot, openDataFolder } from './lib/kv';
 import { createInitialFSRSRecord, applyCardReview, applyTopicReview, firstTopicInterval } from './lib/fsrs';
@@ -294,6 +295,26 @@ export default function App() {
     return cards.map((c) => c.id);
   };
 
+  // Incremental writing: an extract goes to the end of a text being written, as a
+  // quotation with its source. Can be undone.
+  const handleAddToWriting = (documentId: string, extractId: string) => {
+    const doc = documentsRef.current.find((d) => d.id === documentId);
+    const ext = extractsRef.current.find((e) => e.id === extractId);
+    if (!doc || !ext) return;
+    const quote = ext.text
+      .trim()
+      .split('\n')
+      .map((line) => (line.trim() ? `> ${line}` : '>'))
+      .join('\n');
+    const previous = { content: doc.content, updatedAt: doc.updatedAt };
+    const content = `${doc.content.replace(/\s*$/, '')}\n\n${quote}\n>\n> — *${ext.documentTitle}*\n\n`;
+    updateDocuments((prev) => prev.map((d) => (d.id === documentId ? { ...d, content, updatedAt: new Date().toISOString() } : d)));
+    offerUndo(`Ajouté à « ${doc.title} »`, () =>
+      updateDocuments((prev) => prev.map((d) => (d.id === documentId ? { ...d, ...previous } : d)))
+    );
+  };
+  const writingTexts = documents.filter((d) => isWriting(d) && d.state !== 'dismissed');
+
   const handleUpdateQA = (id: string, question: string, answer: string) => {
     const card = clozesRef.current.find((c) => c.id === id);
     if (!card || (card.text === question && card.answer === answer)) return;
@@ -562,6 +583,8 @@ export default function App() {
         onView={handleViewItem}
         onResetCard={viewRequest.type === 'cloze' ? () => resetCards([viewRequest.id], { reviveRetired: true }) : undefined}
         leech={viewRequest.type === 'cloze' && isLeech(item as ClozeItem, settings.leechThreshold)}
+        writingTexts={viewRequest.type === 'extract' ? writingTexts : []}
+        onAddToWriting={(docId) => handleAddToWriting(docId, viewRequest.id)}
         onClearLeech={() => clearLeech(viewRequest.id)}
         onClose={() => setViewRequest(null)}
       />
@@ -1340,6 +1363,8 @@ export default function App() {
             documents={documents}
             topicLimit={settings.dailyTopicLimit}
             leechThreshold={settings.leechThreshold}
+            writingTexts={writingTexts}
+            onAddToWriting={handleAddToWriting}
             reviewedTodayIds={reviewedTodayIds}
             showExtractHighlights={settings.showExtractHighlights}
             onClose={() => setActiveTab('queue')}

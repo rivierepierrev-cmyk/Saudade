@@ -3,6 +3,7 @@ import { X, Pencil, BookOpen, Eye, EyeOff, Sparkles, Scissors, RotateCcw } from 
 import { ClozeItem, DocumentItem, ExtractItem, FSRSRecord } from '../types/saudade';
 import { renderTextWithMath } from '../lib/math';
 import { cardPreview, isImageCard, isQA, renderCard } from '../lib/cards';
+import { AddToWriting } from './AddToWriting';
 import { safeHtml } from '../lib/markdown';
 import { formatInterval } from '../lib/fsrs';
 import { isDueToday } from '../lib/queue';
@@ -29,6 +30,9 @@ interface ItemViewerProps {
   onView: (type: 'extract' | 'cloze', id: string) => void;
   /** Cards only: back to "never reviewed" (schedule and history). */
   onResetCard?: () => void;
+  /** Extracts: texts being written, to pour the extract into (incremental writing). */
+  writingTexts?: DocumentItem[];
+  onAddToWriting?: (documentId: string) => void;
   /** Cards: forgotten again and again (see lib/leech.ts). */
   leech?: boolean;
   onClearLeech?: () => void;
@@ -63,6 +67,8 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
   onResetCard,
   leech,
   onClearLeech,
+  writingTexts = [],
+  onAddToWriting,
   onClose,
 }) => {
   const [revealed, setRevealed] = useState(false);
@@ -331,6 +337,7 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
               </button>
             )
           )}
+          {!isCloze && onAddToWriting && <AddToWriting texts={writingTexts} onAdd={onAddToWriting} className="mr-auto" />}
           {onOpenInDocument && (
             <button
               type="button"
