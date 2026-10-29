@@ -10,7 +10,12 @@
  * WebDAV can't append to a file: this device's log is kept here and uploaded whole
  * (it stays small: compacted past 4 MB, see lib/sync/client.ts).
  */
-import { Capacitor, CapacitorHttp } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+
+/** Native HTTP that accepts WebDAV methods (android/…/DavHttpPlugin.java). */
+const DavHttp = registerPlugin<{
+  request(o: { url: string; method: string; headers: Record<string, string>; body?: string }): Promise<{ status: number; data: string }>;
+}>('DavHttp');
 import { syncScrypt } from 'scrypt-js';
 import { idbDelete, idbGet, idbSet } from './idb';
 import { mediaNames, storeMedia } from './bridge';
@@ -96,9 +101,9 @@ async function request(
   const url = `${spec.url.replace(/\/+$/, '')}/${name.split('/').map(encodeURIComponent).join('/')}`;
   const headers = { Authorization: `Basic ${btoa(unescape(encodeURIComponent(`${spec.user}:${spec.password}`)))}`, ...options.headers };
   if (Capacitor.isNativePlatform()) {
-    const r = await CapacitorHttp.request({ method, url, headers, data: options.body, responseType: options.binary ? 'arraybuffer' : 'text' });
-    const data = typeof r.data === 'string' ? r.data : r.data == null ? '' : JSON.stringify(r.data);
-    return { status: r.status, text: options.binary ? '' : data, bytes: options.binary ? fromB64(data) : enc.encode(data) };
+    const r = await DavHttp.request({ url, method, headers, body: options.body });
+    const bytes = fromB64(r.data);
+    return { status: r.status, text: options.binary ? '' : dec.decode(bytes), bytes };
   }
   const r = await fetch(url, { method, headers, body: options.body });
   const bytes = new Uint8Array(await r.arrayBuffer());
