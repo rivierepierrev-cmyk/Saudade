@@ -20,6 +20,16 @@ function ago(iso: string | null): string {
   return new Date(iso).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
+/** The phone's folders come as JSON ({kind: 'folder', uri, name}); show their name. */
+function folderLabel(folder: string): string {
+  try {
+    const spec = JSON.parse(folder) as { name?: string };
+    return spec.name ?? folder;
+  } catch {
+    return folder;
+  }
+}
+
 /** Réglages › Synchronisation: a shared folder (Nextcloud…) and a passphrase. */
 export const SyncSettings: React.FC<{ onDone: (message: string) => void }> = ({ onDone }) => {
   const [status, setStatus] = useState<SyncStatus | null>(getStatus());
@@ -33,6 +43,9 @@ export const SyncSettings: React.FC<{ onDone: (message: string) => void }> = ({ 
   const [confirmOff, setConfirmOff] = useState(false);
   // Phone: Nextcloud reached through WebDAV (address of the folder, user, app password).
   const [dav, setDav] = useState({ url: '', user: '', password: '' });
+  // …or a folder of the phone that Syncthing (or another app) keeps in sync.
+  const [phoneMode, setPhoneMode] = useState<'nextcloud' | 'folder'>('nextcloud');
+  const useDav = syncTransport === 'webdav' && phoneMode === 'nextcloud';
   const [, setTick] = useState(0);
 
   useEffect(() => onStatusChanged(() => setStatus(getStatus())), []);
@@ -47,7 +60,7 @@ export const SyncSettings: React.FC<{ onDone: (message: string) => void }> = ({ 
 
   const pick = async () => {
     setError(null);
-    const chosen = syncTransport === 'webdav' ? JSON.stringify({ ...dav, url: dav.url.trim(), user: dav.user.trim() }) : await chooseFolder();
+    const chosen = useDav ? JSON.stringify({ ...dav, url: dav.url.trim(), user: dav.user.trim() }) : await chooseFolder();
     if (!chosen) return;
     setBusy(true);
     const info = await inspectFolder(chosen).finally(() => setBusy(false));
@@ -97,7 +110,7 @@ export const SyncSettings: React.FC<{ onDone: (message: string) => void }> = ({ 
         <p className="text-xs text-[var(--fg-695f54)]">
           Dernière synchronisation : {ago(status.lastSync)}
           {' · '}
-          {status.others === 0 ? 'aucun autre ordinateur pour l’instant' : `${status.others} autre${status.others > 1 ? 's' : ''} ordinateur${status.others > 1 ? 's' : ''}`}
+          {status.others === 0 ? 'aucun autre appareil pour l’instant' : `${status.others} autre${status.others > 1 ? 's' : ''} appareil${status.others > 1 ? 's' : ''}`}
           {status.pending > 0 && ` · ${status.pending} modification${status.pending > 1 ? 's' : ''} en attente d’envoi`}
         </p>
         {status.error && (
@@ -148,7 +161,7 @@ export const SyncSettings: React.FC<{ onDone: (message: string) => void }> = ({ 
           )}
         </div>
         <p className="text-xs text-[var(--fg-8c8072)]">
-          Avant de passer à l’autre ordinateur, attendez que votre client (Nextcloud…) indique que tout est synchronisé.
+          Avant de passer à un autre appareil, attendez que Nextcloud ou Syncthing indique que tout est synchronisé.
         </p>
       </div>
     );
@@ -160,7 +173,26 @@ export const SyncSettings: React.FC<{ onDone: (message: string) => void }> = ({ 
         Gardez la même bibliothèque sur plusieurs ordinateurs grâce à un dossier partagé (Nextcloud, Syncthing…). Tout ce qui y est
         écrit est chiffré avec votre phrase de passe : le serveur ne peut pas le lire.
       </p>
-      {syncTransport === 'webdav' ? (
+      {syncTransport === 'webdav' && (
+        <fieldset className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-[var(--fg-4a4137)]">
+          <legend className="sr-only">Passer par</legend>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="phone-mode" checked={phoneMode === 'nextcloud'} onChange={() => { setPhoneMode('nextcloud'); setFolder(null); setFolderInfo(null); setError(null); }} />
+            Nextcloud (WebDAV)
+          </label>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="phone-mode" checked={phoneMode === 'folder'} onChange={() => { setPhoneMode('folder'); setFolder(null); setFolderInfo(null); setError(null); }} />
+            Dossier du téléphone (Syncthing…)
+          </label>
+        </fieldset>
+      )}
+      {syncTransport === 'webdav' && phoneMode === 'folder' && (
+        <p className="text-xs text-[var(--fg-8c8072)]">
+          Partagez le dossier de synchronisation avec le téléphone dans Syncthing (par exemple dans <span className="font-mono">Documents/Saudade-sync</span>),
+          puis choisissez-le ici. Les échanges ont lieu quand Syncthing tourne sur le téléphone et sur un ordinateur en même temps.
+        </p>
+      )}
+      {useDav ? (
         <div className="space-y-2">
           <p className="text-xs text-[var(--fg-8c8072)]">
             Dans Nextcloud (Fichiers › Paramètres › WebDAV), copiez l’adresse WebDAV et ajoutez-y le nom du dossier partagé, par
@@ -191,7 +223,7 @@ export const SyncSettings: React.FC<{ onDone: (message: string) => void }> = ({ 
             <FolderOpen className="w-3.5 h-3.5" />
             {folder ? 'Changer de dossier…' : 'Choisir le dossier…'}
           </button>
-          {folder && <span className="font-mono text-xs break-all text-[var(--fg-4a4137)]">{folder}</span>}
+          {folder && <span className="font-mono text-xs break-all text-[var(--fg-4a4137)]">{folderLabel(folder)}</span>}
         </div>
       )}
 
@@ -217,7 +249,7 @@ export const SyncSettings: React.FC<{ onDone: (message: string) => void }> = ({ 
             !joining && (
               <p className="text-xs text-[var(--fg-695f54)]">
                 Nouveau dossier : la bibliothèque de cet ordinateur y sera envoyée. Choisissez une phrase de passe et notez-la : sans
-                elle, les autres ordinateurs ne pourront pas lire le dossier (les données de cet ordinateur restent intactes).
+                elle, les autres appareils ne pourront pas lire le dossier (les données d’ici restent intactes).
               </p>
             )
           )}

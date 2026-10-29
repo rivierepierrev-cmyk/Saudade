@@ -1,13 +1,14 @@
 /**
  * Synchronisation for the phone app: the same shared folder as the desktop app
  * (electron/sync.cjs: saudade-sync.json, one encrypted log per device, media/*.enc),
- * reached through Nextcloud's WebDAV instead of a local folder. Same encryption:
+ * reached either through Nextcloud's WebDAV or as a folder of the phone that another
+ * app keeps in sync (Syncthing…), opened through Android's file access. Same encryption:
  * scrypt (same parameters) and AES-256-GCM, lines and files laid out as
  * iv(12) | tag(16) | ciphertext, so both apps read each other's files.
  *
  * On the phone, requests go through Capacitor's native HTTP (no browser CORS rules,
  * which Nextcloud doesn't answer); in a browser (tests), through fetch.
- * WebDAV can't append to a file: this device's log is kept here and uploaded whole
+ * Neither can append to a file: this device's log is kept here and written whole
  * (it stays small: compacted past 4 MB, see lib/sync/client.ts).
  */
 import { Capacitor, registerPlugin } from '@capacitor/core';
@@ -16,6 +17,30 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 const DavHttp = registerPlugin<{
   request(o: { url: string; method: string; headers: Record<string, string>; body?: string }): Promise<{ status: number; data: string }>;
 }>('DavHttp');
+
+interface FolderReply {
+  exists: boolean;
+  files?: Array<{ name: string; size: number }>;
+  data?: string; // base64
+}
+/**
+ * A folder of the phone, chosen once (android/…/SyncFolderPlugin.java). `uri` is the
+ * folder's permanent access granted by Android, `path` a name inside it.
+ * In a browser (tests), a stand-in may be set on window.saudadeTestFolder.
+ */
+const SyncFolder = registerPlugin<{
+  pick(): Promise<{ uri?: string; name?: string }>;
+  list(o: { uri: string; path: string }): Promise<FolderReply>;
+  read(o: { uri: string; path: string; from: number }): Promise<FolderReply>;
+  write(o: { uri: string; path: string; data: string }): Promise<void>;
+  remove(o: { uri: string; path: string }): Promise<void>;
+}>('SyncFolder', {
+  web: async () => {
+    const stand = (window as unknown as { saudadeTestFolder?: unknown }).saudadeTestFolder;
+    if (!stand) throw new Error('Dossier du téléphone indisponible ici.');
+    return stand as never;
+  },
+});
 import { syncScrypt } from 'scrypt-js';
 import { idbDelete, idbGet, idbSet } from './idb';
 import { mediaNames, storeMedia } from './bridge';
@@ -31,6 +56,8 @@ interface Config {
   url?: string | null;
   user?: string | null;
   password?: string | null;
+  folderUri?: string | null; // a folder of the phone instead of WebDAV
+  folderName?: string | null;
   key?: string | null; // hex
   offsets: Record<string, number>;
   generation: number;
@@ -44,6 +71,14 @@ export interface WebdavSpec {
   user: string;
   password: string;
 }
+/** …or a folder of the phone (Syncthing…). */
+export interface PhoneFolderSpec {
+  kind: 'folder';
+  uri: string;
+  name: string;
+}
+type Spec = WebdavSpec | PhoneFolderSpec;
+const isPhoneFolder = (s: Spec): s is PhoneFolderSpec => (s as PhoneFolderSpec).kind === 'folder';
 
 // ---- Bytes, base64, crypto --------------------------------------------------------
 
@@ -134,6 +169,62 @@ async function list(spec: WebdavSpec, folder = ''): Promise<Map<string, number> 
   return out;
 }
 
+// ---- The folder, however it is reached ---------------------------------------------
+
+interface Remote {
+  /** Files (not folders) and their sizes; null when the folder doesn't exist. */
+  list(folder?: string): Promise<Map<string, number> | null>;
+  /** The file's bytes from `from` on; null when it doesn't exist. */
+  read(name: string, from?: number): Promise<Uint8Array | null>;
+  write(name: string, text: string): Promise<void>;
+  remove(name: string): Promise<void>;
+  /** Creates the folder itself when missing. */
+  create(): Promise<void>;
+}
+
+function webdavRemote(s: WebdavSpec): Remote {
+  return {
+    list: (folder = '') => list(s, folder),
+    async read(name, from = 0) {
+      const r = await request(s, 'GET', name, { binary: true, headers: from > 0 ? { Range: `bytes=${from}-` } : {} });
+      if (r.status === 404) return null;
+      if (!ok(r)) throw httpError(r, name);
+      return r.status === 206 || from === 0 ? r.bytes : r.bytes.subarray(from);
+    },
+    async write(name, text) {
+      const r = await request(s, 'PUT', name, { body: text, headers: { 'Content-Type': name.endsWith('.json') ? 'application/json' : 'text/plain' } });
+      if (!ok(r)) throw httpError(r, `envoi de ${name}`);
+    },
+    async remove(name) {
+      await request(s, 'DELETE', name);
+    },
+    async create() {
+      const r = await request(s, 'MKCOL', '');
+      if (!ok(r)) throw httpError(r, 'création du dossier');
+    },
+  };
+}
+
+function folderRemote(s: PhoneFolderSpec): Remote {
+  return {
+    async list(folder = '') {
+      const r = await SyncFolder.list({ uri: s.uri, path: folder });
+      return r.exists ? new Map((r.files ?? []).map((f) => [f.name, f.size])) : null;
+    },
+    async read(name, from = 0) {
+      const r = await SyncFolder.read({ uri: s.uri, path: name, from });
+      return r.exists ? fromB64(r.data ?? '') : null;
+    },
+    write: (name, text) => SyncFolder.write({ uri: s.uri, path: name, data: toB64(enc.encode(text)) }),
+    remove: (name) => SyncFolder.remove({ uri: s.uri, path: name }),
+    async create() {
+      // The folder was chosen, so it exists.
+    },
+  };
+}
+
+const remoteOf = (s: Spec): Remote => (isPhoneFolder(s) ? folderRemote(s) : webdavRemote(s));
+
 // ---- The bridge (same interface as the desktop's, see lib/sync/client.ts) ----------------
 
 export async function createWebdavSync() {
@@ -143,7 +234,16 @@ export async function createWebdavSync() {
   let lastError: string | null = null;
   let ownLog = (await idbGet<string>('sync:ownlog')) ?? '';
 
-  const spec = (): WebdavSpec | null => (config.url && config.user && config.password ? { url: config.url, user: config.user, password: config.password } : null);
+  const spec = (): Spec | null =>
+    config.folderUri
+      ? { kind: 'folder', uri: config.folderUri, name: config.folderName ?? '' }
+      : config.url && config.user && config.password
+        ? { url: config.url, user: config.user, password: config.password }
+        : null;
+  const remote = () => {
+    const s = spec();
+    return s ? remoteOf(s) : null;
+  };
   const key = () => (config.key ? fromHex(config.key) : null);
   const enabled = () => Boolean(spec() && key());
   const ownName = (g = config.generation) => (g > 0 ? `${config.deviceId}-g${g}.log` : `${config.deviceId}.log`);
@@ -153,16 +253,16 @@ export async function createWebdavSync() {
   let others = 0;
 
   const fail = (e: unknown) => {
-    lastError = `Nextcloud inaccessible : ${e instanceof Error ? e.message : String(e)}`;
+    const what = config.folderUri ? 'Dossier de synchronisation inaccessible' : 'Nextcloud inaccessible';
+    lastError = `${what} : ${e instanceof Error ? e.message : String(e)}`;
   };
 
   /** Uploads this device's log when the server is behind. */
   async function flush() {
-    const s = spec();
-    if (!s || ownLog.length <= config.uploaded) return;
+    const r = remote();
+    if (!r || ownLog.length <= config.uploaded) return;
     try {
-      const r = await request(s, 'PUT', ownName(), { body: ownLog, headers: { 'Content-Type': 'text/plain' } });
-      if (!ok(r)) throw httpError(r, 'envoi');
+      await r.write(ownName(), ownLog);
       config.uploaded = ownLog.length;
       await save();
       lastError = null;
@@ -178,20 +278,23 @@ export async function createWebdavSync() {
   }
 
   async function status() {
-    return { enabled: enabled(), folder: config.url ?? null, deviceId: config.deviceId, lastSync: config.lastSync, pending: pendingLines(), others, ownLogBytes: ownLog.length, error: lastError };
+    return { enabled: enabled(), folder: config.folderUri ? config.folderName ?? 'Dossier du téléphone' : config.url ?? null, deviceId: config.deviceId, lastSync: config.lastSync, pending: pendingLines(), others, ownLogBytes: ownLog.length, error: lastError };
   }
 
   return {
     kind: 'webdav' as const,
     initial: { status: await status(), meta: (await idbGet<string>('sync:meta')) ?? '' },
     status,
-    chooseFolder: async () => null,
+    /** A folder of the phone (Syncthing…): JSON of a PhoneFolderSpec, or null when cancelled. */
+    async chooseFolder() {
+      const r = await SyncFolder.pick();
+      return r.uri ? JSON.stringify({ kind: 'folder', uri: r.uri, name: r.name ?? 'Dossier' } satisfies PhoneFolderSpec) : null;
+    },
 
-    /** spec: JSON of WebdavSpec. */
+    /** spec: JSON of a WebdavSpec or a PhoneFolderSpec. */
     async inspect(specText: string) {
       try {
-        const s = JSON.parse(specText) as WebdavSpec;
-        const files = await list(s);
+        const files = await remoteOf(JSON.parse(specText) as Spec).list();
         if (!files) return { ok: true, used: false, others: 0 };
         return { ok: true, used: files.has(HEADER), others: devices(files) };
       } catch (e) {
@@ -202,18 +305,18 @@ export async function createWebdavSync() {
     async enable(specText: string, passphrase: string) {
       if (!passphrase || passphrase.length < 8) return { ok: false, error: 'La phrase de passe doit faire au moins 8 caractères.' };
       try {
-        const s = JSON.parse(specText) as WebdavSpec;
-        let files = await list(s);
+        const s = JSON.parse(specText) as Spec;
+        const rem = remoteOf(s);
+        let files = await rem.list();
         if (!files) {
-          const r = await request(s, 'MKCOL', '');
-          if (!ok(r)) throw httpError(r, 'création du dossier');
+          await rem.create();
           files = new Map();
         }
         let k: Uint8Array;
         if (files.has(HEADER)) {
-          const r = await request(s, 'GET', HEADER);
-          if (!ok(r)) throw httpError(r, HEADER);
-          const header = JSON.parse(r.text);
+          const bytes = await rem.read(HEADER);
+          if (!bytes) throw new Error(`${HEADER} introuvable`);
+          const header = JSON.parse(dec.decode(bytes));
           k = deriveKey(passphrase, fromB64(header.salt));
           try {
             if (dec.decode(await decrypt(k, fromB64(header.check))) !== CHECK) throw new Error();
@@ -224,10 +327,12 @@ export async function createWebdavSync() {
           const salt = randomBytes(16);
           k = deriveKey(passphrase, salt);
           const header = { app: 'saudade-sync', version: 1, salt: toB64(salt), check: toB64(await encrypt(k, enc.encode(CHECK))) };
-          const r = await request(s, 'PUT', HEADER, { body: JSON.stringify(header, null, 2), headers: { 'Content-Type': 'application/json' } });
-          if (!ok(r)) throw httpError(r, 'en-tête');
+          await rem.write(HEADER, JSON.stringify(header, null, 2));
         }
-        Object.assign(config, { url: s.url, user: s.user, password: s.password, key: toHex(k), offsets: {}, generation: 0, lastSync: null, uploaded: 0 });
+        const where = isPhoneFolder(s)
+          ? { url: null, user: null, password: null, folderUri: s.uri, folderName: s.name }
+          : { url: s.url, user: s.user, password: s.password, folderUri: null, folderName: null };
+        Object.assign(config, where, { key: toHex(k), offsets: {}, generation: 0, lastSync: null, uploaded: 0 });
         ownLog = '';
         await idbSet('sync:ownlog', ownLog);
         await save();
@@ -240,7 +345,7 @@ export async function createWebdavSync() {
     },
 
     async disable() {
-      Object.assign(config, { url: null, user: null, password: null, key: null, offsets: {}, generation: 0, lastSync: null, uploaded: 0 });
+      Object.assign(config, { url: null, user: null, password: null, folderUri: null, folderName: null, key: null, offsets: {}, generation: 0, lastSync: null, uploaded: 0 });
       ownLog = '';
       await idbSet('sync:ownlog', '');
       await idbDelete('sync:meta');
@@ -256,26 +361,26 @@ export async function createWebdavSync() {
     },
 
     async pull() {
-      const s = spec();
+      const rem = remote();
       const k = key();
-      if (!s || !k) return { events: [], token: null };
+      if (!rem || !k) return { events: [], token: null };
       await flush();
       const events: SyncEvent[] = [];
       const token: Record<string, number> = {};
       let unreadable = 0;
       try {
-        const files = (await list(s)) ?? new Map<string, number>();
+        const files = (await rem.list()) ?? new Map<string, number>();
         others = devices(files);
         // Images this phone doesn't have yet (the phone adds none).
-        const media = (await list(s, 'media')) ?? new Map<string, number>();
+        const media = (await rem.list('media')) ?? new Map<string, number>();
         const have = new Set(await mediaNames());
         for (const file of media.keys()) {
           const name = file.slice(0, -'.enc'.length);
           if (!MEDIA_RE.test(file) || have.has(name)) continue;
-          const r = await request(s, 'GET', `media/${file}`, { binary: true });
-          if (!ok(r)) continue;
+          const bytes = await rem.read(`media/${file}`).catch(() => null);
+          if (!bytes) continue;
           try {
-            await storeMedia(name, await decrypt(k, r.bytes));
+            await storeMedia(name, await decrypt(k, bytes));
           } catch {
             // still uploading, or not ours: next time
           }
@@ -285,9 +390,8 @@ export async function createWebdavSync() {
           let from = config.offsets[name] ?? 0;
           if (size < from) from = 0; // replaced: read again (applying twice is harmless)
           if (size === from) continue;
-          const r = await request(s, 'GET', name, { headers: { Range: `bytes=${from}-` } });
-          if (!ok(r)) throw httpError(r, name);
-          const bytes = r.status === 206 ? r.bytes : r.bytes.subarray(from);
+          const bytes = await rem.read(name, from);
+          if (!bytes) continue;
           const end = bytes.lastIndexOf(0x0a);
           if (end < 0) continue;
           for (const line of dec.decode(bytes.subarray(0, end)).split('\n')) {
@@ -315,14 +419,15 @@ export async function createWebdavSync() {
     },
 
     async compact(events: SyncEvent[]) {
-      const s = spec();
-      if (!s || !enabled() || events.length === 0) return { ok: false };
+      const rem = remote();
+      if (!rem || !enabled() || events.length === 0) return { ok: false };
       const previous = ownName();
       const generation = config.generation + 1;
       const text = await encryptLines(events);
-      const r = await request(s, 'PUT', ownName(generation), { body: text, headers: { 'Content-Type': 'text/plain' } });
-      if (!ok(r)) {
-        fail(httpError(r, 'compactage'));
+      try {
+        await rem.write(ownName(generation), text);
+      } catch (e) {
+        fail(e);
         return { ok: false };
       }
       config.generation = generation;
@@ -330,7 +435,7 @@ export async function createWebdavSync() {
       config.uploaded = text.length;
       await idbSet('sync:ownlog', ownLog);
       await save();
-      await request(s, 'DELETE', previous).catch(() => undefined);
+      await rem.remove(previous).catch(() => undefined);
       return { ok: true, bytes: text.length };
     },
 

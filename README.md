@@ -103,11 +103,13 @@ Ensuite tout est automatique : au démarrage, quand la fenêtre revient au premi
 
 ## Application Android (lire et réviser)
 
-L'application Android reprend la file du jour, le lecteur (extraits, cartes à trou, questions) et les révisions ; l'import de sources, les cartes image et les sauvegardes restent sur l'ordinateur. Elle se synchronise directement avec Nextcloud par WebDAV, sans client à installer.
+L'application Android reprend la file du jour, le lecteur (extraits, cartes à trou, questions) et les révisions ; l'import de sources, les cartes image et les sauvegardes restent sur l'ordinateur. Elle se synchronise directement avec Nextcloud par WebDAV, sans client à installer, ou par un dossier du téléphone que Syncthing tient à jour.
 
 1. Installer l'APK : onglet *Actions* du dépôt → dernière exécution de « Build installers » → artefact `saudade-android` (ou fichier joint à une release). Sur le téléphone, autoriser l'installation depuis cette source.
 2. Dans Nextcloud : Paramètres personnels › Sécurité → créer un mot de passe d'application ; Fichiers › Paramètres (en bas à gauche) → copier l'adresse WebDAV.
 3. Dans Saudade sur le téléphone : ⚙ → Synchronisation → adresse WebDAV suivie du nom du dossier (`…/remote.php/dav/files/vous/Saudade-sync`), identifiant, mot de passe d'application → « Se connecter », puis la phrase de passe du dossier.
+
+**Avec Syncthing plutôt que Nextcloud** : installez Syncthing-Fork (F-Droid) sur le téléphone, partagez-y le dossier de synchronisation depuis un ordinateur (par exemple dans `Documents/Saudade-sync`), puis dans Saudade : ⚙ → Synchronisation → « Dossier du téléphone (Syncthing…) » → « Choisir le dossier… » → autoriser l'accès → phrase de passe du dossier. Les échanges ont lieu quand Syncthing tourne en même temps sur le téléphone et sur un ordinateur.
 
 Les données du téléphone sont gardées dans le stockage de l'application ; le téléphone écrit son propre journal chiffré dans le dossier, comme un ordinateur.
 

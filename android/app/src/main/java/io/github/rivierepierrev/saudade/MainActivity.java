@@ -7,6 +7,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(DavHttpPlugin.class);
+        registerPlugin(SyncFolderPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

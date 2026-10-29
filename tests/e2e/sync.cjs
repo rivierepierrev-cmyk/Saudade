@@ -57,7 +57,7 @@ async function syncNow(page) {
   assert.ok(await a.page.getByRole('button', { name: 'Activer la synchronisation' }).isDisabled());
   await a.page.getByLabel('Confirmer la phrase de passe').fill('cerise-orage-42');
   await a.page.getByRole('button', { name: 'Activer la synchronisation' }).click();
-  await a.page.getByText(/aucun autre ordinateur pour l’instant/).waitFor();
+  await a.page.getByText(/aucun autre appareil pour l’instant/).waitFor();
   await a.page.screenshot({ path: path.join(OUT, 'sync-on.png') });
   const files = fs.readdirSync(shared);
   assert.ok(files.includes('saudade-sync.json') && files.some((f) => f.endsWith('.log')), files.join());
@@ -74,7 +74,7 @@ async function syncNow(page) {
   await b.page.getByText('Phrase de passe incorrecte pour ce dossier.').waitFor();
   await b.page.getByLabel('Phrase de passe du dossier').fill('cerise-orage-42');
   await b.page.getByRole('button', { name: 'Activer la synchronisation' }).click();
-  await b.page.getByText(/1 autre ordinateur/).waitFor();
+  await b.page.getByText(/1 autre appareil/).waitFor();
   await settle(b.page);
   assert.deepEqual(B.read('documents').map((d) => [d.id, d.content]), A.read('documents').map((d) => [d.id, d.content]), 'B has A’s library');
   assert.deepEqual(B.read('clozes'), A.read('clozes'));
