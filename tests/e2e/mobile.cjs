@@ -209,6 +209,18 @@ server.listen(0, '127.0.0.1', async () => {
     await syncDesktop(dpage);
     assert.equal(await dpage.getByLabel('Cartes différentes par jour').inputValue(), '30', 'setting from the second phone');
 
+    // 7. Everything deleted on that phone disappears from the desktop
+    await phone2.getByRole('button', { name: 'Bibliothèque' }).click();
+    await phone2.getByRole('tab', { name: 'Par type' }).click();
+    await phone2.getByRole('button', { name: /^Documents/ }).first().click();
+    await phone2.getByTitle('Supprimer ce document et retirer ses éléments de la file de lecture').first().click();
+    await phone2.getByRole('button', { name: 'Confirmer' }).first().click();
+    await phone2.waitForTimeout(1500);
+    await phone2.screenshot({ path: path.join(OUT, 'phone2-deleted.png') });
+    await syncDesktop(dpage);
+    assert.deepEqual(read('documents').map((d) => d.id), [], 'document deleted on the desktop');
+    assert.deepEqual(read('clozes').map((c) => c.id), [], 'its card too');
+
     assert.deepEqual(errors, []);
     console.log('MOBILE E2E OK', OUT);
   } catch (e) {
