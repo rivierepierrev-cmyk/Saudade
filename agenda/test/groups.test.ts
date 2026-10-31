@@ -130,3 +130,38 @@ test('a placement on a group that no longer exists is reported', () => {
   const a: Agenda = { ...base(), placements: [{ id: 'x', sequenceId: 'TP', classId: 'c3', groupId: 'gone' }] };
   assert.deepEqual(plan(a).warnings.map((w) => w.kind), ['unknown-group']);
 });
+
+test('option: the groups also progress during whole-class lessons', () => {
+  const shared: Agenda = { ...base(), classes: base().classes.map((c) => (c.id === 'c3' ? { ...c, groupsShareClassLessons: true } : c)) };
+  const g1 = { classId: 'c3', groupId: 'g1' };
+  // Group 1: Monday (whole class) and Tuesday (group).
+  assert.deepEqual(lessonsOf(shared, g1, '2025-09-01', '2025-09-14').map((l) => [l.date, l.groupId]), [
+    ['2025-09-01', 'g1'], ['2025-09-02', 'g1'], ['2025-09-08', 'g1'], ['2025-09-09', 'g1'],
+  ]);
+  assert.deepEqual(weeklyLessons(shared, g1), { lessons: 2, minutes: 150 });
+  assert.deepEqual(visibleTracks(shared).map((t) => trackName(shared, t)), ['2nde 3 · Groupe 1', '2nde 3 · Groupe 2', '2nde 4'], 'no whole-class chain');
+
+  const a: Agenda = {
+    ...shared,
+    placements: [
+      { id: 'tp1', sequenceId: 'Cinématique', classId: 'c3', groupId: 'g1', start: '2025-09-01' },
+      { id: 'tp2', sequenceId: 'Cinématique', classId: 'c3', groupId: 'g2', start: '2025-09-04' },
+      { id: 'whole', sequenceId: 'TP', classId: 'c3' },
+    ],
+  };
+  assert.deepEqual(dates(a, 'tp1'), ['2025-09-01', '2025-09-02', '2025-09-08']);
+  assert.deepEqual(dates(a, 'tp2'), ['2025-09-04', '2025-09-08', '2025-09-11']);
+  // On Monday 8, the whole-class lesson shows each group at its own séance.
+  const monday = plan(a).entries.filter((e) => e.lesson.date === '2025-09-08' && e.lesson.classId === 'c3');
+  assert.deepEqual(monday.map((e) => [e.lesson.groupId, e.planned?.seance.title]), [['g1', 'Cinématique 3'], ['g2', 'Cinématique 2']]);
+  assert.deepEqual(plan(a).warnings.map((w) => [w.placementId, w.kind]), [['whole', 'class-follows-groups']]);
+
+  // Off (the default): whole-class lessons stay apart.
+  assert.deepEqual(dates({ ...a, classes: base().classes }, 'tp1'), ['2025-09-02', '2025-09-09', '2025-09-16']);
+});
+
+test('a séquence placed on the whole class stays listed when the option is turned on', () => {
+  const a: Agenda = { ...base(), classes: base().classes.map((c) => (c.id === 'c3' ? { ...c, groupsShareClassLessons: true } : c)), placements: [{ id: 'w', sequenceId: 'TP', classId: 'c3' }] };
+  const s = plan(a).sequences.find((x) => x.placement.id === 'w')!;
+  assert.deepEqual([s.seances.length, s.unscheduled, s.start], [0, 2, undefined]);
+});

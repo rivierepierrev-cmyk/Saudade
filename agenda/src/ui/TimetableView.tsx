@@ -189,6 +189,19 @@ export function TimetableView({ agenda, onChange }: Props) {
                     })}
                   </ul>
                   <button type="button" className="ghost small-btn" onClick={() => onChange(addGroup(agenda, selectedClass.id).agenda)}>+ Ajouter un groupe</button>
+                  <label className="check share-option">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(selectedClass.groupsShareClassLessons)}
+                      onChange={(e) => onChange(updateClass(agenda, selectedClass.id, { groupsShareClassLessons: e.target.checked || undefined }))}
+                    />
+                    <span>Les groupes avancent aussi pendant les cours en classe entière</span>
+                  </label>
+                  <p className="muted small">
+                    {selectedClass.groupsShareClassLessons
+                      ? 'Chaque groupe compte ses cours et ceux de la classe entière ; placez les séquences sur les groupes.'
+                      : 'Sinon, les cours en classe entière ont leur propre suite de séquences.'}
+                  </p>
                 </>
               )}
             </div>

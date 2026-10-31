@@ -1,6 +1,6 @@
 import { minutes, type ISODate } from './dates.ts';
 import type { Agenda, Seance, SchoolClass, Sequence, TimetableSlot } from './model.ts';
-import { sameTrack, toTrack, type Track } from './tracks.ts';
+import { lessonCountsFor, sameTrack, toTrack, type Track } from './tracks.ts';
 import { guessLevel } from './levels.ts';
 
 /**
@@ -142,7 +142,7 @@ export function weeklyLessons(agenda: Agenda, target: Track | string, on: ISODat
   let lessons = 0;
   let total = 0;
   for (const s of agenda.timetable) {
-    if (allOfClass ? s.classId !== track.classId : !sameTrack(s, track)) continue;
+    if (allOfClass ? s.classId !== track.classId : !lessonCountsFor(agenda, s, track)) continue;
     if ((s.validFrom && on < s.validFrom) || (s.validTo && on > s.validTo)) continue;
     const weight = ab && s.week ? 0.5 : 1;
     lessons += weight;

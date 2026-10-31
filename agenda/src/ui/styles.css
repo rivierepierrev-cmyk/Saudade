@@ -368,6 +368,8 @@ legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
 .groups li input { flex: 1; min-width: 0; width: 0; }
 .groups li > span { white-space: nowrap; }
 .groups > button { justify-self: start; }
+.share-option { white-space: normal; align-items: flex-start; font-size: 13px; }
+.share-option input { margin-top: 3px; }
 .start-choice { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .form label.check { display: inline-flex; }
 .start-choice input[type='date'] { width: auto; }

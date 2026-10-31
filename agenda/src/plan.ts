@@ -1,6 +1,6 @@
 import { addDays, eachDay, minutes, mondayOf, weekday, type ISODate } from './dates.ts';
 import type { Agenda, Closure, Placement, SchoolCalendar, Seance, Sequence } from './model.ts';
-import { allTracks, sameTrack, toTrack, trackKey, type Track } from './tracks.ts';
+import { allTracks, classFollowsGroups, lessonCountsFor, sameTrack, toTrack, trackKey, type Track } from './tracks.ts';
 
 /** One actual lesson of a class on a given day. */
 export interface Lesson {
@@ -42,7 +42,7 @@ export interface PlannedSequence {
   unscheduled: number;
 }
 
-export type WarningKind = 'unknown-sequence' | 'unknown-class' | 'unknown-group' | 'empty-sequence' | 'pushed-back' | 'overflow';
+export type WarningKind = 'unknown-sequence' | 'unknown-class' | 'unknown-group' | 'class-follows-groups' | 'empty-sequence' | 'pushed-back' | 'overflow';
 
 export interface PlanWarning {
   kind: WarningKind;
@@ -116,7 +116,8 @@ export function lessonsOf(agenda: Agenda, target: Track | string, from = agenda.
   const { calendar } = agenda;
   const track = toTrack(target);
   const { classId, groupId } = track;
-  const slots = agenda.timetable.filter((s) => sameTrack(s, track));
+  // A group sharing whole-class lessons gets them too, as its own lessons.
+  const slots = agenda.timetable.filter((s) => lessonCountsFor(agenda, s, track));
   const cancelled = new Set((agenda.cancellations ?? []).map((c) => `${c.slotId}@${c.date}`));
   const weekTypes = new Map<ISODate, 'A' | 'B' | undefined>();
   const lessons: Lesson[] = [];
@@ -137,7 +138,7 @@ export function lessonsOf(agenda: Agenda, target: Track | string, from = agenda.
     }
   }
   for (const x of agenda.extraSlots ?? []) {
-    if (!sameTrack(x, track) || x.date < from || x.date > to) continue;
+    if (!lessonCountsFor(agenda, x, track) || x.date < from || x.date > to) continue;
     lessons.push({ classId, ...(groupId ? { groupId } : {}), date: x.date, start: x.start, end: x.end, room: x.room, extraSlotId: x.id });
   }
   return lessons.sort(byTime);
@@ -233,7 +234,12 @@ export function plan(agenda: Agenda): PlanResult {
 
   for (const p of agenda.placements) {
     if (!classIds.has(p.classId)) warnings.push({ kind: 'unknown-class', placementId: p.id, message: 'Classe introuvable.' });
-    else if (!knownTracks.has(trackKey(p))) warnings.push({ kind: 'unknown-group', placementId: p.id, message: 'Groupe introuvable.' });
+    else if (!p.groupId && classFollowsGroups(agenda, p.classId)) {
+      // Kept in the list (with no lesson), so that it can be moved to a group.
+      const sequence = sequences.get(p.sequenceId);
+      if (sequence) planned.push({ placement: p, sequence, seances: [], unscheduled: sequence.seances.length });
+      warnings.push({ kind: 'class-follows-groups', placementId: p.id, message: 'Les groupes de cette classe avancent aussi pendant les cours en classe entière : placez la séquence sur les groupes.' });
+    } else if (!knownTracks.has(trackKey(p))) warnings.push({ kind: 'unknown-group', placementId: p.id, message: 'Groupe introuvable.' });
   }
   entries.sort((a, b) => byTime(a.lesson, b.lesson));
   planned.sort((a, b) => agenda.placements.indexOf(a.placement) - agenda.placements.indexOf(b.placement));

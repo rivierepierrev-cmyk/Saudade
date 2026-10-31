@@ -130,6 +130,25 @@ module.exports = async (page, { shot }) => {
   assert.match(norm(await dialog.locator('.big').textContent()), /3 séances pour 2nde 3 · Groupe 2, du jeu\. 16 oct\. au jeu\. 30 oct\./);
   await dialog.getByRole('button', { name: 'Annuler' }).click();
 
+  // Option: the groups also progress during whole-class lessons. The Monday lesson then shows each group.
+  await page.getByRole('button', { name: 'Emploi du temps', exact: true }).click();
+  await page.locator('.class-pick', { hasText: '2nde 3' }).click();
+  await page.getByLabel('Les groupes avancent aussi pendant les cours en classe entière').check();
+  await page.getByRole('button', { name: 'Agenda', exact: true }).click();
+  await page.getByRole('button', { name: 'Suivant' }).click();
+  await page.getByRole('button', { name: 'Suivant' }).click();
+  assert.equal(await lesson('2nde 3 · Groupe 1, lundi 13 octobre 2025, 08:00').count(), 1);
+  assert.equal(await lesson('2nde 3 · Groupe 2, lundi 13 octobre 2025, 08:00').count(), 1);
+  assert.equal(await lesson('2nde 3, lundi 13 octobre 2025').count(), 0);
+  assert.deepEqual(await page.locator('.class-plan', { hasText: '2nde 3' }).locator('.class-plan-head b').allTextContents(), ['Groupe 1', 'Groupe 2']);
+  await page.getByRole('button', { name: 'Séquences', exact: true }).click();
+  await page.locator('.seq-pick', { hasText: 'Cinématique' }).click();
+  assert.match(norm(await page.locator('.assigned-chip', { hasText: '2nde 3' }).textContent()), /sans cours/);
+  await page.getByRole('button', { name: 'Emploi du temps', exact: true }).click();
+  await page.locator('.class-pick', { hasText: '2nde 3' }).click();
+  await page.getByLabel('Les groupes avancent aussi pendant les cours en classe entière').uncheck();
+  await page.getByRole('button', { name: 'Agenda', exact: true }).click();
+
   // Saved (the agenda reopens on today's week).
   await page.reload();
   await page.getByRole('button', { name: 'Suivant' }).click();

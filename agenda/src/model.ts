@@ -7,6 +7,11 @@ export interface SchoolClass {
   color?: string;
   /** Half-groups (or more): each has its own lessons and its own progress. */
   groups?: ClassGroup[];
+  /**
+   * Each group also progresses during whole-class lessons (its séquences use both). The class as a
+   * whole then has no chain of its own. Off by default: whole-class lessons are a chain apart.
+   */
+  groupsShareClassLessons?: boolean;
 }
 
 export interface ClassGroup {
