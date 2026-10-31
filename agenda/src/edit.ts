@@ -1,5 +1,6 @@
 import { minutes, type ISODate } from './dates.ts';
 import type { Agenda, Seance, SchoolClass, Sequence, TimetableSlot } from './model.ts';
+import { sameTrack, toTrack, type Track } from './tracks.ts';
 
 /**
  * Editing operations on the agenda. Each returns a new agenda and leaves the one it is given
@@ -39,6 +40,52 @@ export function removeClass(agenda: Agenda, id: string): Agenda {
     placements: agenda.placements.filter((p) => p.classId !== id),
     cancellations: agenda.cancellations?.filter((c) => !slotIds.has(c.slotId)),
     extraSlots: agenda.extraSlots?.filter((x) => x.classId !== id),
+  };
+}
+
+// Groups
+
+/** Adds a group to a class, named « Groupe N » with the smallest free N unless a name is given. */
+export function addGroup(agenda: Agenda, classId: string, name?: string): { agenda: Agenda; id: string } {
+  const id = newId('group');
+  const classes = agenda.classes.map((c) => {
+    if (c.id !== classId) return c;
+    const groups = c.groups ?? [];
+    let n = 1;
+    while (groups.some((g) => g.name === `Groupe ${n}`)) n++;
+    return { ...c, groups: [...groups, { id, name: name?.trim() || `Groupe ${n}` }] };
+  });
+  return { agenda: { ...agenda, classes }, id };
+}
+
+/** Splits a class into two half-groups, « Groupe 1 » and « Groupe 2 ». */
+export function splitInHalves(agenda: Agenda, classId: string): Agenda {
+  return addGroup(addGroup(agenda, classId).agenda, classId).agenda;
+}
+
+export function renameGroup(agenda: Agenda, classId: string, groupId: string, name: string): Agenda {
+  return {
+    ...agenda,
+    classes: agenda.classes.map((c) => (c.id === classId ? { ...c, groups: c.groups?.map((g) => (g.id === groupId ? { ...g, name } : g)) } : c)),
+  };
+}
+
+/** Removes a group with its lessons and the séquences placed on it. The séquences themselves stay. */
+export function removeGroup(agenda: Agenda, classId: string, groupId: string): Agenda {
+  const track = { classId, groupId };
+  const slotIds = new Set(agenda.timetable.filter((s) => sameTrack(s, track)).map((s) => s.id));
+  return {
+    ...agenda,
+    classes: agenda.classes.map((c) => {
+      if (c.id !== classId) return c;
+      const groups = c.groups?.filter((g) => g.id !== groupId);
+      const { groups: _, ...rest } = c;
+      return groups?.length ? { ...c, groups } : rest;
+    }),
+    timetable: agenda.timetable.filter((s) => !slotIds.has(s.id)),
+    placements: agenda.placements.filter((p) => !sameTrack(p, track)),
+    cancellations: agenda.cancellations?.filter((c) => !slotIds.has(c.slotId)),
+    extraSlots: agenda.extraSlots?.filter((x) => !sameTrack(x, track)),
   };
 }
 
@@ -83,15 +130,17 @@ export function slotConflicts(timetable: TimetableSlot[], slot: Omit<TimetableSl
 }
 
 /**
- * Lessons a class has in a normal week, on a given date. With A/B weeks, a lesson of one week counts
- * for half. `minutes` is the teaching time, counted the same way.
+ * Lessons in a normal week, on a given date: of a class as a whole, of one of its groups, or (with
+ * `allOfClass`) every lesson of the class, groups included. With A/B weeks, a lesson of one week
+ * counts for half. `minutes` is the teaching time, counted the same way.
  */
-export function weeklyLessons(agenda: Agenda, classId: string, on: ISODate = agenda.calendar.start): { lessons: number; minutes: number } {
+export function weeklyLessons(agenda: Agenda, target: Track | string, on: ISODate = agenda.calendar.start, allOfClass = false): { lessons: number; minutes: number } {
+  const track = toTrack(target);
   const ab = Boolean(agenda.calendar.abWeeks);
   let lessons = 0;
   let total = 0;
   for (const s of agenda.timetable) {
-    if (s.classId !== classId) continue;
+    if (allOfClass ? s.classId !== track.classId : !sameTrack(s, track)) continue;
     if ((s.validFrom && on < s.validFrom) || (s.validTo && on > s.validTo)) continue;
     const weight = ab && s.week ? 0.5 : 1;
     lessons += weight;

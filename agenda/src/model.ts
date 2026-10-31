@@ -5,6 +5,13 @@ export interface SchoolClass {
   name: string;
   level?: string;
   color?: string;
+  /** Half-groups (or more): each has its own lessons and its own progress. */
+  groups?: ClassGroup[];
+}
+
+export interface ClassGroup {
+  id: string;
+  name: string;
 }
 
 /** A recurring weekly lesson of one class. */
@@ -21,6 +28,8 @@ export interface TimetableSlot {
   /** Lets the timetable change during the year (both included). */
   validFrom?: ISODate;
   validTo?: ISODate;
+  /** A lesson of one group of the class; the whole class when absent. */
+  groupId?: string;
 }
 
 /** A building block of a séquence: what happens during one lesson (or several, for a double lesson). */
@@ -44,13 +53,15 @@ export interface Sequence {
 }
 
 /**
- * A séquence placed on a class. Placements of a class are taught in array order:
+ * A séquence placed on a class, or on one of its groups. Placements of a class are taught in array order:
  * without `start`, a séquence begins at the first free lesson after the previous one ends.
  */
 export interface Placement {
   id: string;
   sequenceId: string;
   classId: string;
+  /** Placed on one group of the class (its lessons only); the whole class when absent. */
+  groupId?: string;
   start?: ISODate;
 }
 
@@ -76,6 +87,7 @@ export interface Cancellation {
 export interface ExtraSlot {
   id: string;
   classId: string;
+  groupId?: string;
   date: ISODate;
   start: string;
   end: string;

@@ -22,6 +22,7 @@ export function SlotWindow({ agenda, slot, onSave, onDelete, onClose }: Props) {
   const [showErrors, setShowErrors] = useState(false);
   const set = (change: Partial<SlotDraft>) => setDraft((d) => ({ ...d, ...change }));
   const ab = Boolean(agenda.calendar.abWeeks);
+  const groups = agenda.classes.find((c) => c.id === draft.classId)?.groups ?? [];
 
   const timesOk = /^\d{1,2}:\d{2}$/.test(draft.start) && /^\d{1,2}:\d{2}$/.test(draft.end);
   const error = !draft.classId
@@ -38,7 +39,7 @@ export function SlotWindow({ agenda, slot, onSave, onDelete, onClose }: Props) {
 
   const save = () => {
     if (error) return setShowErrors(true);
-    onSave({ ...draft, room: draft.room?.trim() || undefined, week: ab ? draft.week : undefined });
+    onSave({ ...draft, room: draft.room?.trim() || undefined, week: ab ? draft.week : undefined, groupId: groups.some((g) => g.id === draft.groupId) ? draft.groupId : undefined });
   };
 
   return (
@@ -58,11 +59,20 @@ export function SlotWindow({ agenda, slot, onSave, onDelete, onClose }: Props) {
       <div className="form">
         <label>
           <span>Classe</span>
-          <select value={draft.classId} onChange={(e) => set({ classId: e.target.value })}>
+          <select value={draft.classId} onChange={(e) => set({ classId: e.target.value, groupId: undefined })}>
             {!draft.classId && <option value="">Choisir…</option>}
             {agenda.classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </label>
+        {groups.length > 0 && (
+          <label>
+            <span>Groupe</span>
+            <select value={draft.groupId ?? ''} onChange={(e) => set({ groupId: e.target.value || undefined })}>
+              <option value="">Classe entière</option>
+              {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+          </label>
+        )}
         <label>
           <span>Jour</span>
           <select value={draft.weekday} onChange={(e) => set({ weekday: Number(e.target.value) as Weekday })}>

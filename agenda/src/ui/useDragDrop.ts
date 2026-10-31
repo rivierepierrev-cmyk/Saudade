@@ -3,8 +3,8 @@ import type { ISODate } from '../dates.ts';
 
 export type DragPayload = { kind: 'sequence'; sequenceId: string } | { kind: 'move'; placementId: string };
 
-/** Where something can be dropped: a lesson (starts there) or a class (follows its séquences). */
-export type DropTarget = { kind: 'lesson'; classId: string; date: ISODate } | { kind: 'class'; classId: string };
+/** Where something can be dropped: a lesson (starts there) or a class or group (follows its séquences). */
+export type DropTarget = { kind: 'lesson'; classId: string; groupId?: string; date: ISODate } | { kind: 'class'; classId: string; groupId?: string };
 
 export interface DragState {
   payload: DragPayload;
@@ -14,14 +14,15 @@ export interface DragState {
 }
 
 /** Props that make an element a drop target. */
-export const dropLesson = (classId: string, date: ISODate) => ({ 'data-drop': 'lesson', 'data-class': classId, 'data-date': date });
-export const dropClass = (classId: string) => ({ 'data-drop': 'class', 'data-class': classId });
+export const dropLesson = (classId: string, date: ISODate, groupId?: string) => ({ 'data-drop': 'lesson', 'data-class': classId, 'data-date': date, ...(groupId ? { 'data-group': groupId } : {}) });
+export const dropClass = (classId: string, groupId?: string) => ({ 'data-drop': 'class', 'data-class': classId, ...(groupId ? { 'data-group': groupId } : {}) });
 
 function targetAt(x: number, y: number): DropTarget | undefined {
   const el = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-drop]');
   if (!el) return undefined;
   const classId = el.dataset.class!;
-  return el.dataset.drop === 'lesson' ? { kind: 'lesson', classId, date: el.dataset.date! } : { kind: 'class', classId };
+  const groupId = el.dataset.group || undefined;
+  return el.dataset.drop === 'lesson' ? { kind: 'lesson', classId, groupId, date: el.dataset.date! } : { kind: 'class', classId, groupId };
 }
 
 const THRESHOLD = 5;

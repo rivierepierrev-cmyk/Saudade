@@ -1,9 +1,12 @@
 import { addDays, eachDay, minutes, mondayOf, weekday, type ISODate } from './dates.ts';
 import type { Agenda, Closure, Placement, SchoolCalendar, Seance, Sequence } from './model.ts';
+import { allTracks, sameTrack, toTrack, trackKey, type Track } from './tracks.ts';
 
 /** One actual lesson of a class on a given day. */
 export interface Lesson {
   classId: string;
+  /** Set for a lesson of one group of the class. */
+  groupId?: string;
   date: ISODate;
   start: string;
   end: string;
@@ -18,6 +21,7 @@ export interface PlannedSeance {
   placementId: string;
   sequenceId: string;
   classId: string;
+  groupId?: string;
   seance: Seance;
   /** 0-based position in the séquence. */
   index: number;
@@ -38,7 +42,7 @@ export interface PlannedSequence {
   unscheduled: number;
 }
 
-export type WarningKind = 'unknown-sequence' | 'unknown-class' | 'empty-sequence' | 'pushed-back' | 'overflow';
+export type WarningKind = 'unknown-sequence' | 'unknown-class' | 'unknown-group' | 'empty-sequence' | 'pushed-back' | 'overflow';
 
 export interface PlanWarning {
   kind: WarningKind;
@@ -104,10 +108,15 @@ export function weekType(calendar: SchoolCalendar, date: ISODate): 'A' | 'B' | u
   return count % 2 === 0 ? 'A' : 'B';
 }
 
-/** Every lesson a class actually has during the school year, holidays, closures and cancellations removed. */
-export function lessonsOf(agenda: Agenda, classId: string, from = agenda.calendar.start, to = agenda.calendar.end): Lesson[] {
+/**
+ * Every lesson a class (or one of its groups) actually has during the school year, holidays, closures and
+ * cancellations removed. For a class, only its whole-class lessons; for a group, only that group's.
+ */
+export function lessonsOf(agenda: Agenda, target: Track | string, from = agenda.calendar.start, to = agenda.calendar.end): Lesson[] {
   const { calendar } = agenda;
-  const slots = agenda.timetable.filter((s) => s.classId === classId);
+  const track = toTrack(target);
+  const { classId, groupId } = track;
+  const slots = agenda.timetable.filter((s) => sameTrack(s, track));
   const cancelled = new Set((agenda.cancellations ?? []).map((c) => `${c.slotId}@${c.date}`));
   const weekTypes = new Map<ISODate, 'A' | 'B' | undefined>();
   const lessons: Lesson[] = [];
@@ -124,12 +133,12 @@ export function lessonsOf(agenda: Agenda, classId: string, from = agenda.calenda
         if (weekTypes.get(monday) !== s.week) continue;
       }
       if (cancelled.has(`${s.id}@${date}`)) continue;
-      lessons.push({ classId, date, start: s.start, end: s.end, room: s.room, slotId: s.id });
+      lessons.push({ classId, ...(groupId ? { groupId } : {}), date, start: s.start, end: s.end, room: s.room, slotId: s.id });
     }
   }
   for (const x of agenda.extraSlots ?? []) {
-    if (x.classId !== classId || x.date < from || x.date > to) continue;
-    lessons.push({ classId, date: x.date, start: x.start, end: x.end, room: x.room, extraSlotId: x.id });
+    if (!sameTrack(x, track) || x.date < from || x.date > to) continue;
+    lessons.push({ classId, ...(groupId ? { groupId } : {}), date: x.date, start: x.start, end: x.end, room: x.room, extraSlotId: x.id });
   }
   return lessons.sort(byTime);
 }
@@ -145,17 +154,20 @@ const fmt = (d: ISODate) => d.split('-').reverse().join('/');
 export function plan(agenda: Agenda): PlanResult {
   const sequences = new Map(agenda.sequences.map((s) => [s.id, s]));
   const classIds = new Set(agenda.classes.map((c) => c.id));
+  const tracks = allTracks(agenda);
+  const knownTracks = new Set(tracks.map(trackKey));
   const warnings: PlanWarning[] = [];
   const planned: PlannedSequence[] = [];
   const entries: AgendaEntry[] = [];
 
-  for (const classId of classIds) {
-    const lessons = lessonsOf(agenda, classId);
+  for (const track of tracks) {
+    const { classId, groupId } = track;
+    const lessons = lessonsOf(agenda, track);
     const taken: (AgendaEntry['planned'] | undefined)[] = new Array(lessons.length);
     let next = 0;
 
     for (const placement of agenda.placements) {
-      if (placement.classId !== classId) continue;
+      if (!sameTrack(placement, track)) continue;
       const sequence = sequences.get(placement.sequenceId);
       if (!sequence) {
         warnings.push({ kind: 'unknown-sequence', placementId: placement.id, message: 'Séquence introuvable.' });
@@ -197,7 +209,7 @@ export function plan(agenda: Agenda): PlanResult {
         for (let d = addDays(first, 1); d < last && !interrupted; d = addDays(d, 1)) {
           interrupted = isClosed(agenda.calendar, d, classId) !== undefined;
         }
-        result.seances.push({ placementId: placement.id, sequenceId: sequence.id, classId, seance, index, total: sequence.seances.length, lessons: own, interrupted });
+        result.seances.push({ placementId: placement.id, sequenceId: sequence.id, classId, ...(groupId ? { groupId } : {}), seance, index, total: sequence.seances.length, lessons: own, interrupted });
       });
 
       if (result.seances.length) {
@@ -221,6 +233,7 @@ export function plan(agenda: Agenda): PlanResult {
 
   for (const p of agenda.placements) {
     if (!classIds.has(p.classId)) warnings.push({ kind: 'unknown-class', placementId: p.id, message: 'Classe introuvable.' });
+    else if (!knownTracks.has(trackKey(p))) warnings.push({ kind: 'unknown-group', placementId: p.id, message: 'Groupe introuvable.' });
   }
   entries.sort((a, b) => byTime(a.lesson, b.lesson));
   planned.sort((a, b) => agenda.placements.indexOf(a.placement) - agenda.placements.indexOf(b.placement));
@@ -231,12 +244,13 @@ export function plan(agenda: Agenda): PlanResult {
  * When a séquence leaves the front of a class's chain (moved or removed), the one that followed it
  * would otherwise jump back to the start of the year: it keeps the start it had instead.
  */
-function keepFollowers(placements: Placement[], before: PlanResult, classIds: (string | undefined)[]): Placement[] {
+function keepFollowers(placements: Placement[], before: PlanResult, tracks: (Track | undefined)[]): Placement[] {
+  const keys = new Set(tracks.filter((t): t is Track => Boolean(t)).map(trackKey));
   return placements.map((p, i) => {
-    if (p.start || !classIds.includes(p.classId)) return p;
-    if (placements.findIndex((q) => q.classId === p.classId) !== i) return p;
+    if (p.start || !keys.has(trackKey(p))) return p;
+    if (placements.findIndex((q) => sameTrack(q, p)) !== i) return p;
     const was = before.sequences.find((s) => s.placement.id === p.id);
-    const wasFirst = before.sequences.find((s) => s.placement.classId === p.classId)?.placement.id === p.id;
+    const wasFirst = before.sequences.find((s) => sameTrack(s.placement, p))?.placement.id === p.id;
     return was?.start && !wasFirst ? { ...p, start: was.start } : p;
   });
 }
@@ -246,13 +260,13 @@ export function withPlacement(agenda: Agenda, placement: Placement, index: numbe
   const old = agenda.placements.find((p) => p.id === placement.id);
   const placements = agenda.placements.filter((p) => p.id !== placement.id);
   placements.splice(Math.max(0, Math.min(index, placements.length)), 0, placement);
-  return { ...agenda, placements: keepFollowers(placements, before, [placement.classId, old?.classId]) };
+  return { ...agenda, placements: keepFollowers(placements, before, [placement, old]) };
 }
 
 /** The agenda without a placement; the séquence that followed it stays where it was. */
 export function withoutPlacement(agenda: Agenda, id: string, before: PlanResult = plan(agenda)): Agenda {
   const old = agenda.placements.find((p) => p.id === id);
-  return { ...agenda, placements: keepFollowers(agenda.placements.filter((p) => p.id !== id), before, [old?.classId]) };
+  return { ...agenda, placements: keepFollowers(agenda.placements.filter((p) => p.id !== id), before, [old]) };
 }
 
 /**
@@ -266,7 +280,7 @@ export function previewPlacement(agenda: Agenda, placement: Placement, index = a
   const after = plan(next);
   const endOf = (r: PlanResult, id: string) => r.sequences.find((s) => s.placement.id === id)?.end;
   const shifted = after.sequences
-    .filter((s) => s.placement.id !== placement.id && s.placement.classId === placement.classId)
+    .filter((s) => s.placement.id !== placement.id && sameTrack(s.placement, placement))
     .map((s) => ({ placementId: s.placement.id, title: s.sequence.title, endBefore: endOf(before, s.placement.id), endAfter: s.end }))
     .filter((s) => s.endBefore !== s.endAfter);
   return {

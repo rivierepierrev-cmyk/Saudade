@@ -1,6 +1,7 @@
 import { addDays, type ISODate } from './dates.ts';
 import { newId } from './edit.ts';
 import type { Agenda, Closure, Placement } from './model.ts';
+import { sameTrack, toTrack, type Track } from './tracks.ts';
 import { lessonsOf, plan, withoutPlacement, withPlacement, type PlanResult } from './plan.ts';
 
 /**
@@ -8,33 +9,36 @@ import { lessonsOf, plan, withoutPlacement, withPlacement, type PlanResult } fro
  * start before that date. One starting on that very date goes after it: dropping on the first lesson
  * of a séquence puts the new one there and pushes the other back.
  */
-export function insertionIndex(agenda: Agenda, classId: string, date: ISODate | undefined, result: PlanResult = plan(agenda), excludeId?: string): number {
+export function insertionIndex(agenda: Agenda, target: Track | string, date: ISODate | undefined, result: PlanResult = plan(agenda), excludeId?: string): number {
+  const track = toTrack(target);
   // Starts are those of the agenda as it is (with the placement being moved), positions those of the list without it.
   const list = agenda.placements.filter((p) => p.id !== excludeId);
   if (!date) return list.length;
   const starts = new Map(result.sequences.map((s) => [s.placement.id, s.start ?? s.placement.start]));
   let index = -1;
   list.forEach((p, i) => {
-    if (p.classId !== classId) return;
+    if (!sameTrack(p, track)) return;
     const start = starts.get(p.id);
     if (start && start < date) index = i;
   });
   if (index !== -1) return index + 1;
-  const firstOfClass = list.findIndex((p) => p.classId === classId);
+  const firstOfClass = list.findIndex((p) => sameTrack(p, track));
   return firstOfClass === -1 ? list.length : firstOfClass;
 }
 
 /**
- * The placement a drop proposes. Without a start date it follows the class's last séquence; when the
- * class has none yet, it starts with the first lesson from `today` (or from the start of the year).
+ * The placement a drop proposes, on a class or one of its groups. Without a start date it follows the
+ * last séquence of that class (or group); when there is none yet, it starts with the first lesson from
+ * `today` (or from the start of the year).
  */
-export function proposePlacement(agenda: Agenda, sequenceId: string, classId: string, start: ISODate | undefined, today: ISODate, id = newId('place')): { placement: Placement; index: number } {
+export function proposePlacement(agenda: Agenda, sequenceId: string, target: Track | string, start: ISODate | undefined, today: ISODate, id = newId('place')): { placement: Placement; index: number } {
+  const track = toTrack(target);
   let date = start;
-  if (!date && !agenda.placements.some((p) => p.classId === classId && p.id !== id)) {
+  if (!date && !agenda.placements.some((p) => sameTrack(p, track) && p.id !== id)) {
     date = today > agenda.calendar.start && today <= agenda.calendar.end ? today : agenda.calendar.start;
   }
-  const placement: Placement = date ? { id, sequenceId, classId, start: date } : { id, sequenceId, classId };
-  return { placement, index: insertionIndex(agenda, classId, date, plan(agenda), id) };
+  const placement: Placement = { id, sequenceId, classId: track.classId, ...(track.groupId ? { groupId: track.groupId } : {}), ...(date ? { start: date } : {}) };
+  return { placement, index: insertionIndex(agenda, track, date, plan(agenda), id) };
 }
 
 /** Adds or moves a placement, at `index` in the list without it. */
@@ -77,8 +81,9 @@ export interface ClassProgress {
   freeAhead: number;
 }
 
-export function classProgress(agenda: Agenda, result: PlanResult, classId: string, today: ISODate): ClassProgress {
-  const entries = result.entries.filter((e) => e.lesson.classId === classId);
+export function classProgress(agenda: Agenda, result: PlanResult, target: Track | string, today: ISODate): ClassProgress {
+  const track = toTrack(target);
+  const entries = result.entries.filter((e) => sameTrack(e.lesson, track));
   const planned = entries.filter((e) => e.planned);
   const past = entries.filter((e) => e.lesson.date < today).length;
   const nextEntry = entries.find((e) => e.lesson.date >= today);
@@ -107,7 +112,7 @@ export function cancelledLessons(agenda: Agenda, from: ISODate, to: ISODate) {
   return cancellations.flatMap((c) => {
     const slot = agenda.timetable.find((s) => s.id === c.slotId);
     if (!slot) return [];
-    const lesson = lessonsOf(withoutThem, slot.classId, c.date, c.date).find((l) => l.slotId === c.slotId);
+    const lesson = lessonsOf(withoutThem, slot, c.date, c.date).find((l) => l.slotId === c.slotId);
     return lesson ? [{ ...lesson, reason: c.reason }] : [];
   });
 }

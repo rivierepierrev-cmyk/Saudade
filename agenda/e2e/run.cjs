@@ -5,7 +5,7 @@ const path = require('node:path');
 
 const shots = process.argv[2];
 const port = 4179;
-const suites = (process.env.SUITES || 'holidays,timetable,sequences,agenda').split(',');
+const suites = (process.env.SUITES || 'holidays,timetable,sequences,agenda,groups').split(',');
 
 (async () => {
   const server = spawn('npx', ['vite', 'preview', '--port', String(port), '--strictPort'], { cwd: path.join(__dirname, '..'), stdio: 'ignore' });

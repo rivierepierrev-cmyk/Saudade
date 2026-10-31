@@ -5,3 +5,5 @@ export * from './holidays.ts';
 export * from './edit.ts';
 export * from './timetableLayout.ts';
 export * from './closureRows.ts';
+export * from './placements.ts';
+export * from './tracks.ts';

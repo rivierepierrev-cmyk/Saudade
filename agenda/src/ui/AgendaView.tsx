@@ -4,6 +4,7 @@ import { addDays, addMonths, mondayOf, today as todayOf, type ISODate } from '..
 import { updateSeance, sequenceLessons } from '../edit.ts';
 import { plan, previewPlacement, weekType, type AgendaEntry, type Lesson } from '../plan.ts';
 import { cancelLesson, classProgress, proposePlacement, removePlacement, restoreLesson } from '../placements.ts';
+import { sameTrack, trackKey, trackName, visibleTracks } from '../tracks.ts';
 import { DayView, MonthView, WeekView, lessonKey, type Cancelled, type Incoming, type ViewProps } from './CalendarViews.tsx';
 import { LessonWindow } from './LessonWindow.tsx';
 import { PlacementWindow, type PlacementRequest } from './PlacementWindow.tsx';
@@ -39,14 +40,15 @@ export function AgendaView({ agenda, onChange, onGoTo }: Props) {
   const [open, setOpen] = useState<{ lesson: Lesson; planned?: AgendaEntry['planned']; cancelled?: Cancelled } | undefined>();
   const [editingSeance, setEditingSeance] = useState<{ sequenceId: string; seanceId: string } | undefined>();
   const result = useMemo(() => plan(agenda), [agenda]);
-  const classes = new Map(agenda.classes.map((c) => [c.id, c]));
+  const tracks = visibleTracks(agenda);
   const sequences = new Map(agenda.sequences.map((s) => [s.id, s]));
 
   const requestFor = (payload: DragPayload, target: DropTarget): PlacementRequest | undefined => {
     const start = target.kind === 'lesson' ? target.date : undefined;
-    if (payload.kind === 'sequence') return { sequenceId: payload.sequenceId, classId: target.classId, start };
+    const track = { classId: target.classId, groupId: target.groupId };
+    if (payload.kind === 'sequence') return { sequenceId: payload.sequenceId, target: track, start };
     const p = agenda.placements.find((x) => x.id === payload.placementId);
-    return p && { sequenceId: p.sequenceId, classId: target.classId, start, placementId: p.id };
+    return p && { sequenceId: p.sequenceId, target: track, start, placementId: p.id };
   };
 
   const { drag, begin, click } = useDragDrop((payload, target) => setPlacing(requestFor(payload, target)));
@@ -56,8 +58,8 @@ export function AgendaView({ agenda, onChange, onGoTo }: Props) {
   const hover = useMemo(() => {
     if (!drag?.target) return undefined;
     const req = requestFor(drag.payload, drag.target);
-    if (!req) return undefined;
-    const { placement, index } = proposePlacement(agenda, req.sequenceId, req.classId, req.start, today, req.placementId ?? 'preview');
+    if (!req?.target) return undefined;
+    const { placement, index } = proposePlacement(agenda, req.sequenceId, req.target, req.start, today, req.placementId ?? 'preview');
     const p = previewPlacement(agenda, placement, index);
     const incoming: Incoming = new Map();
     for (const s of p.result?.seances ?? []) for (const l of s.lessons) incoming.set(lessonKey(l), { index: s.index, total: s.total, title: s.seance.title });
@@ -112,7 +114,7 @@ export function AgendaView({ agenda, onChange, onGoTo }: Props) {
           {agenda.sequences.length === 0 ? (
             <p className="muted">Aucune séquence. <button type="button" className="link" onClick={() => onGoTo('sequences')}>En créer une</button></p>
           ) : (
-            <p className="muted small">Glissez une séquence sur un cours de l'agenda, ou sur une classe ci-dessous.</p>
+            <p className="muted small">Glissez une séquence sur un cours de l'agenda, ou sur une classe (ou un groupe) ci-dessous.</p>
           )}
           <ul className="palette">
             {agenda.sequences.map((s) => (
@@ -124,7 +126,7 @@ export function AgendaView({ agenda, onChange, onGoTo }: Props) {
                     <span className="muted small">{plural(s.seances.length, 'séance')}{sequenceLessons(s) !== s.seances.length ? ` · ${plural(sequenceLessons(s), 'cours', 'cours')}` : ''}</span>
                   </span>
                 </div>
-                <button type="button" className="ghost small-btn" onClick={() => setPlacing({ sequenceId: s.id, classId: agenda.classes[0].id })}>Placer…</button>
+                <button type="button" className="ghost small-btn" onClick={() => setPlacing({ sequenceId: s.id })}>Placer…</button>
               </li>
             ))}
           </ul>
@@ -134,45 +136,55 @@ export function AgendaView({ agenda, onChange, onGoTo }: Props) {
           <h2>Classes</h2>
           <ul className="class-plans">
             {agenda.classes.map((c) => {
-              const progress = classProgress(agenda, result, c.id, today);
-              const own = result.sequences.filter((s) => s.placement.classId === c.id);
-              const isTarget = drag?.target?.kind === 'class' && drag.target.classId === c.id;
+              const own = tracks.filter((t) => t.classId === c.id);
               return (
-                <li key={c.id} className={`class-plan${isTarget ? ' drop-over' : ''}`} style={{ '--class-color': c.color } as CSSProperties} {...dropClass(c.id)}>
-                  <div className="class-plan-head">
-                    <b>{c.name}</b>
-                    <span className="muted small">{progress.plannedUntil ? `prévu jusqu'au ${shortDate(progress.plannedUntil)}` : 'rien de prévu'}</span>
-                  </div>
-                  <div
-                    className="progress"
-                    role="img"
-                    aria-label={`${progress.planned} cours prévus sur ${progress.lessons}`}
-                    title={`${progress.planned} cours prévus sur ${progress.lessons} · ${progress.freeAhead} cours libres à venir`}
-                  >
-                    <span className="progress-fill" style={{ width: `${progress.lessons ? (progress.planned / progress.lessons) * 100 : 0}%` }} />
-                    <span className="progress-now" style={{ left: `${progress.elapsed * 100}%` }} />
-                  </div>
-                  {progress.next && (
-                    <p className="small">Prochain cours ({shortDay(progress.next.date)}) : {progress.next.sequenceTitle} {progress.next.index + 1}/{progress.next.total}</p>
-                  )}
-                  {own.length > 0 && (
-                    <ol className="placed">
-                      {own.map((s) => {
-                        const warn = result.warnings.filter((w) => w.placementId === s.placement.id);
-                        return (
-                          <li key={s.placement.id} style={{ '--seq-color': s.sequence.color } as CSSProperties}>
-                            <button type="button" className="placed-btn" onClick={() => setPlacing({ sequenceId: s.sequence.id, classId: c.id, start: s.start, placementId: s.placement.id })}>
-                              <span className="dot" aria-hidden="true" />
-                              <span>{s.sequence.title}</span>
-                              <span className="muted small">{s.start && s.end ? `${shortDate(s.start)} → ${shortDate(s.end)}` : 'sans cours'}</span>
-                              {warn.length > 0 && <span className="warn-icon" title={warn.map((w) => w.message).join('\n')} aria-label={warn.map((w) => w.message).join(' ')}>!</span>}
-                            </button>
-                            <button type="button" className="icon" aria-label={`Retirer ${s.sequence.title} de ${c.name}`} title="Retirer de la classe" onClick={() => onChange(removePlacement(agenda, s.placement.id))}>×</button>
-                          </li>
-                        );
-                      })}
-                    </ol>
-                  )}
+                <li key={c.id} className="class-plan" style={{ '--class-color': c.color } as CSSProperties}>
+                  {own.map((t) => {
+                    const progress = classProgress(agenda, result, t, today);
+                    const placed = result.sequences.filter((s) => sameTrack(s.placement, t));
+                    const isTarget = drag?.target?.kind === 'class' && sameTrack(drag.target, t);
+                    const name = trackName(agenda, t);
+                    const label = own.length === 1 ? c.name : t.groupId ? c.groups?.find((g) => g.id === t.groupId)?.name : 'Classe entière';
+                    return (
+                      <div key={trackKey(t)} className={`track-plan${isTarget ? ' drop-over' : ''}${own.length > 1 ? ' sub' : ''}`} aria-label={name} {...dropClass(t.classId, t.groupId)}>
+                        {own.length > 1 && t === own[0] && <b className="class-plan-name">{c.name}</b>}
+                        <div className="class-plan-head">
+                          <b>{label}</b>
+                          <span className="muted small">{progress.plannedUntil ? `prévu jusqu'au ${shortDate(progress.plannedUntil)}` : 'rien de prévu'}</span>
+                        </div>
+                        <div
+                          className="progress"
+                          role="img"
+                          aria-label={`${progress.planned} cours prévus sur ${progress.lessons}`}
+                          title={`${progress.planned} cours prévus sur ${progress.lessons} · ${progress.freeAhead} cours libres à venir`}
+                        >
+                          <span className="progress-fill" style={{ width: `${progress.lessons ? (progress.planned / progress.lessons) * 100 : 0}%` }} />
+                          <span className="progress-now" style={{ left: `${progress.elapsed * 100}%` }} />
+                        </div>
+                        {progress.next && (
+                          <p className="small">Prochain cours ({shortDay(progress.next.date)}) : {progress.next.sequenceTitle} {progress.next.index + 1}/{progress.next.total}</p>
+                        )}
+                        {placed.length > 0 && (
+                          <ol className="placed">
+                            {placed.map((s) => {
+                              const warn = result.warnings.filter((w) => w.placementId === s.placement.id);
+                              return (
+                                <li key={s.placement.id} style={{ '--seq-color': s.sequence.color } as CSSProperties}>
+                                  <button type="button" className="placed-btn" onClick={() => setPlacing({ sequenceId: s.sequence.id, target: t, start: s.start, placementId: s.placement.id })}>
+                                    <span className="dot" aria-hidden="true" />
+                                    <span>{s.sequence.title}</span>
+                                    <span className="muted small">{s.start && s.end ? `${shortDate(s.start)} → ${shortDate(s.end)}` : 'sans cours'}</span>
+                                    {warn.length > 0 && <span className="warn-icon" title={warn.map((w) => w.message).join('\n')} aria-label={warn.map((w) => w.message).join(' ')}>!</span>}
+                                  </button>
+                                  <button type="button" className="icon" aria-label={`Retirer ${s.sequence.title} de ${name}`} title="Retirer" onClick={() => onChange(removePlacement(agenda, s.placement.id))}>×</button>
+                                </li>
+                              );
+                            })}
+                          </ol>
+                        )}
+                      </div>
+                    );
+                  })}
                 </li>
               );
             })}
@@ -204,7 +216,7 @@ export function AgendaView({ agenda, onChange, onGoTo }: Props) {
           <b>{dragged.title}</b>
           {hover?.req && (
             <span>
-              → {classes.get(hover.req.classId)?.name}
+              → {hover.req.target && trackName(agenda, hover.req.target)}
               {hover.result?.end ? ` · fin ${shortDay(hover.result.end)}` : ' · pas de cours'}
             </span>
           )}
@@ -241,7 +253,7 @@ export function AgendaView({ agenda, onChange, onGoTo }: Props) {
             const p = open.planned && agenda.placements.find((x) => x.id === open.planned!.placementId);
             if (!p) return;
             const s = result.sequences.find((x) => x.placement.id === p.id);
-            setPlacing({ sequenceId: p.sequenceId, classId: p.classId, start: s?.start ?? p.start, placementId: p.id });
+            setPlacing({ sequenceId: p.sequenceId, target: { classId: p.classId, groupId: p.groupId }, start: s?.start ?? p.start, placementId: p.id });
             setOpen(undefined);
           }}
           onRemoveSequence={() => {

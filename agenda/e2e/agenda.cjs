@@ -95,7 +95,7 @@ module.exports = async (page, { shot }) => {
 
   // « Géométrie » dropped on the class follows « Fractions ».
   await dragTo(page.locator('.palette-card', { hasText: 'Géométrie' }), sidebar, async () => {
-    assert.equal(await page.locator('.class-plan.drop-over').count(), 1);
+    assert.equal(await page.locator('.track-plan.drop-over').count(), 1);
   });
   await dialog.waitFor();
   assert.equal(await dialog.getByLabel('À la suite de la séquence précédente').isChecked(), true);
@@ -159,7 +159,8 @@ module.exports = async (page, { shot }) => {
 
   // Placing without dragging, then removing from the class.
   await page.locator('.palette li', { hasText: 'Géométrie' }).getByRole('button', { name: 'Placer…' }).click();
-  await dialog.getByLabel('Classe').selectOption({ label: '4e A' });
+  assert.equal(await dialog.getByRole('button', { name: 'Placer' }).isDisabled(), true, 'nothing chosen yet');
+  await dialog.getByLabel('4e A').check();
   await dialog.getByLabel('À partir du').check();
   await dialog.getByLabel('Date de début').fill('2025-11-04');
   assert.match(norm(await dialog.locator('.big').textContent()), /2 séances pour 4e A, du mar\. 4 nov\. au mar\. 18 nov\./);

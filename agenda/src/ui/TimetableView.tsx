@@ -1,7 +1,8 @@
 import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import type { Agenda, TimetableSlot } from '../model.ts';
 import { minutes, mondayOf, timeOf, today, type Weekday } from '../dates.ts';
-import { addClass, addSlot, removeClass, removeSlot, slotConflicts, updateClass, updateSlot, weeklyLessons } from '../edit.ts';
+import { addClass, addGroup, addSlot, removeClass, removeGroup, removeSlot, renameGroup, slotConflicts, splitInHalves, updateClass, updateSlot, weeklyLessons } from '../edit.ts';
+import { trackName } from '../tracks.ts';
 import { weekType } from '../plan.ts';
 import { layoutDay } from '../timetableLayout.ts';
 import { DAY_NAMES, duration, plural } from './format.ts';
@@ -38,9 +39,14 @@ export function TimetableView({ agenda, onChange }: Props) {
   const [drawing, setDrawing] = useState<{ weekday: Weekday; from: number; to: number } | undefined>();
   const [hint, setHint] = useState<string | undefined>();
   const [saturday, setSaturday] = useState(readSaturday);
+  const [drawGroup, setDrawGroup] = useState<string | undefined>();
   const columns = useRef(new Map<number, HTMLDivElement>());
 
   const selectedClass = classes.find((c) => c.id === selected) ?? classes[0];
+  const groups = selectedClass?.groups ?? [];
+  // Lessons drawn go to the whole class or to the chosen group of the selected class.
+  const groupId = groups.some((g) => g.id === drawGroup) ? drawGroup : undefined;
+  const drawTarget = selectedClass && trackName(agenda, { classId: selectedClass.id, groupId });
   const classOf = (id: string) => classes.find((c) => c.id === id);
 
   const days: Weekday[] = saturday || timetable.some((s) => s.weekday === 6) ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5];
@@ -51,7 +57,7 @@ export function TimetableView({ agenda, onChange }: Props) {
 
   const totals = classes.reduce(
     (t, c) => {
-      const w = weeklyLessons(agenda, c.id);
+      const w = weeklyLessons(agenda, c.id, undefined, true);
       return { lessons: t.lessons + w.lessons, minutes: t.minutes + w.minutes };
     },
     { lessons: 0, minutes: 0 },
@@ -73,6 +79,13 @@ export function TimetableView({ agenda, onChange }: Props) {
     if (!window.confirm(`Supprimer ${name}${details ? ` avec ses ${details}` : ''} ? Les séquences restent dans la bibliothèque.`)) return;
     onChange(removeClass(agenda, id));
     if (selected === id) setSelected(classes.find((c) => c.id !== id)?.id);
+  };
+  const deleteGroup = (classId: string, gid: string, name: string) => {
+    const lessons = timetable.filter((s) => s.classId === classId && s.groupId === gid).length;
+    const placed = agenda.placements.filter((p) => p.classId === classId && p.groupId === gid).length;
+    const details = [lessons && plural(lessons, 'cours', 'cours'), placed && plural(placed, 'séquence placée', 'séquences placées')].filter(Boolean).join(' et ');
+    if (details && !window.confirm(`Supprimer ${name}${details ? ` avec ses ${details}` : ''} ?`)) return;
+    onChange(removeGroup(agenda, classId, gid));
   };
 
   // Drawing a lesson: press in an empty part of a day, drag down to its end, release.
@@ -99,7 +112,7 @@ export function TimetableView({ agenda, onChange }: Props) {
   const endDrawing = () => {
     if (!drawing || !selectedClass) return;
     const to = drawing.to - drawing.from < 15 ? Math.min(last, drawing.from + DEFAULT_LENGTH) : drawing.to;
-    onChange(addSlot(agenda, { classId: selectedClass.id, weekday: drawing.weekday, start: timeOf(drawing.from), end: timeOf(to) }).agenda);
+    onChange(addSlot(agenda, { classId: selectedClass.id, ...(groupId ? { groupId } : {}), weekday: drawing.weekday, start: timeOf(drawing.from), end: timeOf(to) }).agenda);
     setDrawing(undefined);
   };
 
@@ -124,7 +137,7 @@ export function TimetableView({ agenda, onChange }: Props) {
         {classes.length === 0 && <p className="muted">Ajoutez vos classes, puis dessinez leurs cours dans la grille.</p>}
         <ul>
           {classes.map((c) => {
-            const w = weeklyLessons(agenda, c.id);
+            const w = weeklyLessons(agenda, c.id, undefined, true);
             const isSelected = c.id === selectedClass?.id;
             return (
               <li key={c.id} className={isSelected ? 'selected' : undefined} style={{ '--class-color': c.color } as CSSProperties}>
@@ -141,10 +154,39 @@ export function TimetableView({ agenda, onChange }: Props) {
           })}
         </ul>
         {selectedClass && (
-          <label className="rename">
-            <span className="muted small">Nom de la classe sélectionnée</span>
-            <input value={selectedClass.name} onChange={(e) => onChange(updateClass(agenda, selectedClass.id, { name: e.target.value }))} />
-          </label>
+          <div className="class-settings">
+            <label className="rename">
+              <span className="muted small">Nom de la classe sélectionnée</span>
+              <input value={selectedClass.name} onChange={(e) => onChange(updateClass(agenda, selectedClass.id, { name: e.target.value }))} />
+            </label>
+            <div className="groups" aria-label={`Groupes de ${selectedClass.name}`}>
+              <span className="muted small">Groupes</span>
+              {groups.length === 0 ? (
+                <>
+                  <p className="muted small">Classe entière. Divisez-la si certains cours ont lieu en demi-groupes : chaque groupe aura son propre avancement.</p>
+                  <button type="button" className="ghost" onClick={() => onChange(splitInHalves(agenda, selectedClass.id))}>Diviser en demi-groupes</button>
+                </>
+              ) : (
+                <>
+                  <ul>
+                    {groups.map((g) => {
+                      const w = weeklyLessons(agenda, { classId: selectedClass.id, groupId: g.id });
+                      return (
+                        <li key={g.id}>
+                          <input aria-label={`Nom du ${g.name}`} value={g.name} onChange={(e) => onChange(renameGroup(agenda, selectedClass.id, g.id, e.target.value))} />
+                          <span className="muted small">{w.lessons ? `${plural(w.lessons, 'cours', 'cours')} / sem.` : 'aucun cours'}</span>
+                          <button type="button" className="delete" aria-label={`Supprimer ${g.name}`} title="Supprimer le groupe" onClick={() => deleteGroup(selectedClass.id, g.id, g.name)}>
+                            <TrashIcon />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <button type="button" className="ghost small-btn" onClick={() => onChange(addGroup(agenda, selectedClass.id).agenda)}>+ Ajouter un groupe</button>
+                </>
+              )}
+            </div>
+          </div>
         )}
         <form className="add-class" onSubmit={(e) => { e.preventDefault(); createClass(); }}>
           <input aria-label="Nouvelle classe" placeholder="6e B, 2nde 4…" value={newName} onChange={(e) => setNewName(e.target.value)} />
@@ -167,7 +209,7 @@ export function TimetableView({ agenda, onChange }: Props) {
               type="button"
               className="primary"
               disabled={!selectedClass}
-              onClick={() => selectedClass && setEditing({ classId: selectedClass.id, weekday: 1, start: '08:00', end: '08:55' })}
+              onClick={() => selectedClass && setEditing({ classId: selectedClass.id, ...(groupId ? { groupId } : {}), weekday: 1, start: '08:00', end: '08:55' })}
             >
               + Ajouter un cours
             </button>
@@ -183,8 +225,19 @@ export function TimetableView({ agenda, onChange }: Props) {
         )}
 
         <p className="muted small hint" aria-live="polite">
-          {hint ?? (selectedClass ? <>Cliquez-glissez dans un jour pour ajouter un cours de <strong>{selectedClass.name}</strong>. Cliquez sur un cours pour le modifier.</> : "Ajoutez d'abord une classe.")}
+          {hint ?? (selectedClass ? <>Cliquez-glissez dans un jour pour ajouter un cours de <strong>{drawTarget}</strong>. Cliquez sur un cours pour le modifier.</> : "Ajoutez d'abord une classe.")}
         </p>
+        {selectedClass && groups.length > 0 && (
+          <div className="draw-for" role="radiogroup" aria-label="Dessiner pour">
+            <span className="muted small">Dessiner pour :</span>
+            <div className="mode">
+              <button type="button" role="radio" aria-checked={!groupId} onClick={() => setDrawGroup(undefined)}>Classe entière</button>
+              {groups.map((g) => (
+                <button key={g.id} type="button" role="radio" aria-checked={groupId === g.id} onClick={() => setDrawGroup(g.id)}>{g.name}</button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid-scroll">
           <div className="week-grid" style={{ '--days': days.length } as CSSProperties}>
@@ -215,7 +268,7 @@ export function TimetableView({ agenda, onChange }: Props) {
                       height={(minutes(s.end) - minutes(s.start)) * PX}
                       col={col}
                       cols={cols}
-                      name={classOf(s.classId)?.name ?? '?'}
+                      name={trackName(agenda, s)}
                       color={classOf(s.classId)?.color}
                       ab={Boolean(ab)}
                       clash={slotConflicts(timetable, s).length > 0}

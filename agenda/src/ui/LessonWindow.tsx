@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import type { Agenda } from '../model.ts';
 import type { AgendaEntry, Lesson } from '../plan.ts';
 import { longDate } from './format.ts';
+import { trackName } from '../tracks.ts';
 import { Window } from './Window.tsx';
 
 interface Props {
@@ -22,7 +23,6 @@ interface Props {
 export function LessonWindow({ agenda, lesson, planned, cancelled, onEditSeance, onMoveSequence, onRemoveSequence, onCancelLesson, onRestoreLesson, onClose }: Props) {
   const [cancelling, setCancelling] = useState(false);
   const [reason, setReason] = useState('');
-  const cls = agenda.classes.find((c) => c.id === lesson.classId);
   const sequence = planned && agenda.sequences.find((s) => s.id === planned.sequenceId);
   const s = planned?.seance;
   const sections: [string, string | undefined][] = s
@@ -32,7 +32,7 @@ export function LessonWindow({ agenda, lesson, planned, cancelled, onEditSeance,
 
   return (
     <Window
-      title={`${cls?.name ?? '?'} · ${longDate(lesson.date)}`}
+      title={`${trackName(agenda, lesson)} · ${longDate(lesson.date)}`}
       subtitle={`${lesson.start}–${lesson.end}${lesson.room ? ` · salle ${lesson.room}` : ''}`}
       className="window-medium"
       onClose={onClose}
@@ -81,7 +81,7 @@ export function LessonWindow({ agenda, lesson, planned, cancelled, onEditSeance,
           <div className="lesson-actions">
             <button type="button" className="ghost" onClick={onEditSeance}>Modifier la séance</button>
             <button type="button" className="ghost" onClick={onMoveSequence}>Déplacer la séquence…</button>
-            <button type="button" className="ghost danger-text" onClick={onRemoveSequence}>Retirer la séquence de {cls?.name}</button>
+            <button type="button" className="ghost danger-text" onClick={onRemoveSequence}>Retirer la séquence de {trackName(agenda, lesson)}</button>
           </div>
         </div>
       ) : (

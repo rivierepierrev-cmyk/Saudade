@@ -1,10 +1,15 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import type { Agenda, Seance, Sequence } from '../model.ts';
 import {
   addSeance, addSequence, duplicateSeance, duplicateSequence, moveSeance, removeSeance, removeSequence,
   sequenceLessons, updateSeance, updateSequence, weeklyLessons,
 } from '../edit.ts';
-import { number, plural } from './format.ts';
+import { number, plural, shortDate } from './format.ts';
+import { plan } from '../plan.ts';
+import { today } from '../dates.ts';
+import { trackName, visibleTracks } from '../tracks.ts';
+import { removePlacement } from '../placements.ts';
+import { PlacementWindow, type PlacementRequest } from './PlacementWindow.tsx';
 import { SeanceWindow } from './SeanceWindow.tsx';
 import { TrashIcon } from './Window.tsx';
 
@@ -24,6 +29,7 @@ export function SequencesView({ agenda, onChange }: Props) {
   const [selectedId, setSelectedId] = useState<string | undefined>(sequences[0]?.id);
   const [newTitle, setNewTitle] = useState('');
   const [editing, setEditing] = useState<{ seance: Seance; isNew: boolean } | undefined>();
+  const [placing, setPlacing] = useState<PlacementRequest | undefined>();
   const selected = sequences.find((s) => s.id === selectedId) ?? sequences[0];
 
   const create = () => {
@@ -66,11 +72,24 @@ export function SequencesView({ agenda, onChange }: Props) {
           onOpen={(seance, isNew) => setEditing({ seance, isNew })}
           onDuplicated={setSelectedId}
           onDeleted={() => setSelectedId(sequences.find((s) => s.id !== selected.id)?.id)}
+          onAssign={setPlacing}
         />
       ) : (
         <section className="card empty-builder">
           <p className="muted">Aucune séquence. Donnez-lui un titre à gauche, puis ajoutez ses séances comme des blocs.</p>
         </section>
+      )}
+
+      {placing && (
+        <PlacementWindow
+          key={JSON.stringify(placing)}
+          agenda={agenda}
+          request={placing}
+          today={today()}
+          onConfirm={(next) => { onChange(next); setPlacing(undefined); }}
+          onRemove={placing.placementId ? () => { onChange(removePlacement(agenda, placing.placementId!)); setPlacing(undefined); } : undefined}
+          onClose={() => setPlacing(undefined)}
+        />
       )}
 
       {editing && selected && (
@@ -103,6 +122,7 @@ interface BuilderProps {
   onOpen: (seance: Seance, isNew: boolean) => void;
   onDuplicated: (id: string) => void;
   onDeleted: () => void;
+  onAssign: (request: PlacementRequest) => void;
 }
 
 interface Drag {
@@ -115,16 +135,19 @@ interface Drag {
   height: number;
 }
 
-function Builder({ agenda, sequence, onChange, onOpen, onDuplicated, onDeleted }: BuilderProps) {
+function Builder({ agenda, sequence, onChange, onOpen, onDuplicated, onDeleted, onAssign }: BuilderProps) {
   const [drag, setDrag] = useState<Drag | undefined>();
   const list = useRef<HTMLOListElement>(null);
   const { seances } = sequence;
   const lessons = sequenceLessons(sequence);
 
-  const estimates = agenda.classes
-    .map((c) => ({ c, perWeek: weeklyLessons(agenda, c.id).lessons }))
+  const estimates = visibleTracks(agenda)
+    .map((t) => ({ t, perWeek: weeklyLessons(agenda, t).lessons }))
     .filter((x) => x.perWeek > 0 && lessons > 0)
-    .map(({ c, perWeek }) => `${c.name} : ≈ ${plural(Math.ceil((lessons / perWeek) * 2) / 2, 'semaine')} (${number(perWeek)} cours/sem.)`);
+    .map(({ t, perWeek }) => `${trackName(agenda, t)} : ≈ ${plural(Math.ceil((lessons / perWeek) * 2) / 2, 'semaine')} (${number(perWeek)} cours/sem.)`);
+  // Where this séquence is assigned, each class or group with its own dates.
+  const result = useMemo(() => plan(agenda), [agenda]);
+  const assigned = result.sequences.filter((s) => s.sequence.id === sequence.id);
 
   // Moving a block in the page can take the focus off its handle: put it back as soon as the list is redrawn,
   // before the next key press.
@@ -203,6 +226,21 @@ function Builder({ agenda, sequence, onChange, onOpen, onDuplicated, onDeleted }
           {seances.length ? summary(sequence) : 'Aucune séance.'}
           {estimates.length > 0 && <> — {estimates.join(' · ')}</>}
         </p>
+        <div className="assigned" aria-label="Assignée à">
+          <span className="muted small">Assignée à :</span>
+          {assigned.length === 0 && <span className="muted small">aucune classe pour l'instant.</span>}
+          {assigned.map((a) => {
+            const t = { classId: a.placement.classId, groupId: a.placement.groupId };
+            return (
+              <span key={a.placement.id} className="assigned-chip">
+                <button type="button" onClick={() => onAssign({ sequenceId: sequence.id, target: t, start: a.start, placementId: a.placement.id })}>
+                  <b>{trackName(agenda, t)}</b> {a.start && a.end ? `${shortDate(a.start)} → ${shortDate(a.end)}` : 'sans cours'}
+                </button>
+              </span>
+            );
+          })}
+          <button type="button" className="ghost small-btn" disabled={agenda.classes.length === 0} onClick={() => onAssign({ sequenceId: sequence.id })}>Assigner à des classes…</button>
+        </div>
       </div>
 
       <ol className={`blocks${drag ? ' dragging' : ''}`} ref={list}>

@@ -4,12 +4,13 @@ import { addDays, minutes, mondayOf, timeOf, weekday, type ISODate, type Weekday
 import { dayEntries, isClosed, weekEntries, type AgendaEntry, type Lesson, type PlanResult } from '../plan.ts';
 import { cancelledLessons, monthGridStart } from '../placements.ts';
 import { layoutDay } from '../timetableLayout.ts';
+import { trackName } from '../tracks.ts';
 import { DAY_NAMES, longDate, shortDate } from './format.ts';
 import { dropLesson, type DragPayload } from './useDragDrop.ts';
 
 /** What the agenda shows on a lesson while a séquence is dragged over it. */
 export type Incoming = Map<string, { index: number; total: number; title: string }>;
-export const lessonKey = (l: Pick<Lesson, 'classId' | 'date' | 'start'>) => `${l.classId}|${l.date}|${l.start}`;
+export const lessonKey = (l: Pick<Lesson, 'classId' | 'groupId' | 'date' | 'start'>) => `${l.classId}|${l.groupId ?? ''}|${l.date}|${l.start}`;
 
 export type Cancelled = Lesson & { reason?: string };
 
@@ -51,6 +52,7 @@ function LessonBlock({ props, entry, cancelled, style, compact }: { props: ViewP
   const lesson = entry?.lesson ?? cancelled!;
   const planned = entry?.planned;
   const cls = classes.get(lesson.classId);
+  const name = trackName(props.agenda, lesson);
   const seq = planned && sequences.get(planned.sequenceId);
   const incoming = !cancelled ? props.incoming?.get(lessonKey(lesson)) : undefined;
   const kind = cancelled ? 'cancelled' : planned ? 'planned' : 'free';
@@ -59,12 +61,12 @@ function LessonBlock({ props, entry, cancelled, style, compact }: { props: ViewP
       type="button"
       className={`lesson ${kind}${incoming ? ' incoming' : ''}${compact ? ' compact' : ''}${lesson.date === props.today ? ' today' : ''}`}
       style={{ ...style, '--class-color': cls?.color, '--seq-color': seq?.color } as CSSProperties}
-      aria-label={lessonLabel(cls?.name ?? '?', lesson, planned, seq?.title, cancelled)}
-      {...(!cancelled ? dropLesson(lesson.classId, lesson.date) : {})}
+      aria-label={lessonLabel(name, lesson, planned, seq?.title, cancelled)}
+      {...(!cancelled ? dropLesson(lesson.classId, lesson.date, lesson.groupId) : {})}
       onPointerDown={planned ? (e) => props.begin({ kind: 'move', placementId: planned.placementId }, e) : undefined}
       onClick={props.click(() => props.onOpen(lesson, planned, cancelled))}
     >
-      <span className="lesson-head">{compact ? lesson.start : `${lesson.start} · `}{compact ? ' ' : ''}<b>{cls?.name}</b></span>
+      <span className="lesson-head">{compact ? lesson.start : `${lesson.start} · `}{compact ? ' ' : ''}<b>{name}</b></span>
       {incoming ? (
         <span className="lesson-main">→ {incoming.index + 1}. {incoming.title}</span>
       ) : cancelled ? (
@@ -163,7 +165,7 @@ export function DayView(props: ViewProps) {
           return (
             <article key={`x${lessonKey(l)}`} className="day-card cancelled" style={{ '--class-color': cls?.color } as CSSProperties}>
               <button type="button" className="day-card-head" onClick={() => props.onOpen(l, undefined, item.cancelled)}>
-                <span className="time">{l.start}–{l.end}</span> <b>{cls?.name}</b> · Annulé{item.cancelled.reason ? ` (${item.cancelled.reason})` : ''}
+                <span className="time">{l.start}–{l.end}</span> <b>{trackName(agenda, l)}</b> · Annulé{item.cancelled.reason ? ` (${item.cancelled.reason})` : ''}
               </button>
             </article>
           );
@@ -177,7 +179,7 @@ export function DayView(props: ViewProps) {
             key={lessonKey(l)}
             className={`day-card${planned ? ' planned' : ' free'}${incoming ? ' incoming' : ''}`}
             style={{ '--class-color': cls?.color, '--seq-color': seq?.color } as CSSProperties}
-            {...dropLesson(l.classId, l.date)}
+            {...dropLesson(l.classId, l.date, l.groupId)}
           >
             <button
               type="button"
@@ -185,7 +187,7 @@ export function DayView(props: ViewProps) {
               onPointerDown={planned ? (e) => props.begin({ kind: 'move', placementId: planned.placementId }, e) : undefined}
               onClick={props.click(() => props.onOpen(l, planned))}
             >
-              <span className="time">{l.start}–{l.end}</span> <b>{cls?.name}</b>
+              <span className="time">{l.start}–{l.end}</span> <b>{trackName(agenda, l)}</b>
               {l.room && <span className="muted"> · salle {l.room}</span>}
               {incoming ? <span className="pill">→ {incoming.index + 1}. {incoming.title}</span> : planned ? <span className="muted"> · {seq?.title} {planned.index + 1}/{planned.total}</span> : <span className="muted"> · libre</span>}
             </button>
