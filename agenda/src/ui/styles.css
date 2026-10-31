@@ -54,7 +54,18 @@ textarea { resize: vertical; line-height: 1.4; }
 .app { max-width: 1240px; margin: 0 auto; padding: 20px 16px 40px; display: grid; gap: 18px; }
 .app-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .app-head > div:first-child { margin-right: auto; }
-.head-actions { display: flex; gap: 6px; align-items: center; }
+.head-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.sync-btn { display: inline-flex; align-items: center; gap: 6px; }
+.sync-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+.sync-btn.ok .sync-dot { background: #2fa36b; }
+.sync-btn.error .sync-dot { background: var(--error); }
+.sync-status { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; }
+.sync-status dt { color: var(--muted); }
+.sync-status dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.sync-checked { margin: 0; padding: 8px 10px; border-radius: 8px; background: var(--accent-soft); }
+.pick-folder { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+p.small { font-size: 13px; }
+.form p { margin: 0; }
 .file-menu { position: relative; }
 .menu {
   position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; width: 300px; display: grid; padding: 6px;

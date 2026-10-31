@@ -59,6 +59,17 @@ Tout est enregistré dans le navigateur (`localStorage`) pour l'instant.
 - **Imprimer / PDF** : la vue affichée, seule (sans panneaux ni boutons), couleurs comprises. « Enregistrer en PDF » dans la fenêtre d'impression.
 - **Sauvegarder dans un fichier** (`agenda-AAAA-MM-JJ.json`) et **Restaurer une sauvegarde** : tout l'agenda. Un fichier qui n'est pas une sauvegarde est refusé ; une restauration s'annule avec ↶.
 
+## Synchronisation (ordinateur et téléphone)
+
+Comme Saudade : un dossier partagé, où chaque appareil écrit son propre journal chiffré.
+
+- Bouton **Synchro** en haut (point vert : à jour, rouge : erreur). Au choix : **Nextcloud (WebDAV)** — adresse WebDAV du dossier (Nextcloud › Fichiers › Paramètres › WebDAV, suivie d'un nom de dossier, créé s'il manque), identifiant, mot de passe d'application — ou, dans les applications, un **dossier** que Nextcloud, Syncthing ou Dropbox tient à jour.
+- Premier appareil : choisir une phrase de passe (deux fois). Les suivants : la même phrase, puis « Prendre l'agenda du dossier » (celui de l'appareil est gardé en copie) ou « Fusionner les deux agendas ».
+- Ensuite tout est automatique : chaque modification part aussitôt ; les autres appareils sont lus au démarrage, toutes les 2 minutes et au retour sur l'application (ou « Synchroniser maintenant »). Hors connexion, les modifications attendent et partent à la synchronisation suivante.
+- Dans le dossier : `agenda-sync.json` (sel et contrôle de la phrase de passe, aucune donnée) et `<appareil>.log`, écrit par cet appareil seul : jamais de copie en conflit. Tout est chiffré (AES-256-GCM, clé tirée de la phrase de passe par scrypt), comme Saudade. Un journal de plus de 4 Mo est compacté.
+- Fusion : classes, cours, séquences (avec leurs séances), placements, cours annulés ou reportés, séances faites, champ par champ : la modification la plus récente gagne, une suppression l'emporte. L'ordre des séquences d'une classe et le calendrier (année, vacances, semaines A/B) aussi : le plus récent gagne.
+- Dans un simple navigateur, Nextcloud refuse en général la connexion (règles CORS) : il faut l'application pour ordinateur ou pour téléphone, qui passe par une connexion native (voir « Suite »).
+
 ## Fenêtre « Vacances »
 
 Le bouton « Vacances » ouvre l'année scolaire (premier et dernier jour de cours) et la liste des jours sans cours. Une ligne par période, avec un nom (facultatif) et :
@@ -80,8 +91,9 @@ Le bouton « Vacances » ouvre l'année scolaire (premier et dernier jour de cou
 - **Cibles** (`src/tracks.ts`) : une classe entière ou l'un de ses groupes ; chaque cible a ses cours et sa chaîne de séquences.
 - **Placements** (`src/placements.ts`) : où insérer une séquence déposée dans l'enchaînement d'une classe, annuler / rétablir un cours, progression d'une classe.
 - **`dayEntries` / `weekEntries`** : les cours d'un jour ou d'une semaine, avec la séance prévue ou libres.
+- **Synchronisation** (`src/sync/`) : `model.ts` (événements et fusion, pur), `engine.ts` (dossier, chiffrement, journaux), `client.ts` (relie l'agenda au dossier), `remotes.ts` (WebDAV, dossier via l'application).
 - **Vacances** (`src/holidays.ts`) : jours fériés calculés à partir de Pâques (avec l'option Alsace-Moselle), et import des vacances scolaires par zone depuis le jeu de données officiel « Calendrier scolaire » de data.education.gouv.fr. Le jour de reprise est exclu, et les dates sont prises à l'heure de Paris.
 
 ## Suite
 
-1. Synchronisation entre appareils (en attendant, la sauvegarde dans un fichier permet de passer d'un appareil à l'autre).
+1. Applications pour ordinateur (Electron) et téléphone (Android, Capacitor), comme Saudade : elles donnent à la synchronisation la connexion native à Nextcloud et l'accès à un dossier (Syncthing…). À construire dans le dépôt propre de l'agenda, dont la CI produira les installateurs et l'APK.

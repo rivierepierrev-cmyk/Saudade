@@ -89,11 +89,9 @@ export function createSyncClient(engine: Engine, store: Store, options: { compac
           engine.ack(token);
         } else {
           await engine.append(snapshotEvents(current, new Date(), engine.deviceId(), meta));
-          if (r.joined) {
-            const { events, token } = await engine.pull();
-            agenda = applyRemote(current, meta, events).agenda;
-            engine.ack(token);
-          }
+          const { events, token } = r.joined ? await engine.pull() : { events: [], token: null };
+          agenda = applyRemote(current, meta, events).agenda;
+          engine.ack(token);
         }
         base = agenda;
         saveState();

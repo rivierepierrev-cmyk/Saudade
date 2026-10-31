@@ -5,7 +5,7 @@ const path = require('node:path');
 
 const shots = process.argv[2];
 const port = 4179;
-const suites = (process.env.SUITES || 'holidays,timetable,sequences,agenda,groups,levels,today,export').split(',');
+const suites = (process.env.SUITES || 'holidays,timetable,sequences,agenda,groups,levels,today,export,sync').split(',');
 
 (async () => {
   const server = spawn('npx', ['vite', 'preview', '--port', String(port), '--strictPort'], { cwd: path.join(__dirname, '..'), stdio: 'ignore' });
@@ -25,7 +25,7 @@ const suites = (process.env.SUITES || 'holidays,timetable,sequences,agenda,group
       await page.clock.setFixedTime(new Date('2025-10-01T10:00:00')); // school year 2025-2026
       await page.goto(url);
       try {
-        await require(`./${name}.cjs`)(page, { shot: (file) => shots && page.screenshot({ path: path.join(shots, file) }) });
+        await require(`./${name}.cjs`)(page, { shot: (file, p = page) => shots && p.screenshot({ path: path.join(shots, file) }), browser, url });
         if (errors.length) throw new Error(`Page errors: ${errors.join(' | ')}`);
         console.log(`${name}: ok`);
       } catch (e) {

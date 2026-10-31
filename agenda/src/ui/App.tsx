@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Agenda } from '../model.ts';
 import { HolidaysWindow } from './HolidaysWindow.tsx';
 import { TimetableView } from './TimetableView.tsx';
@@ -7,6 +7,8 @@ import { AgendaView } from './AgendaView.tsx';
 import { loadAgenda, saveAgenda } from './storage.ts';
 import { LevelOptions } from './LevelFilter.tsx';
 import { FileMenu } from './FileMenu.tsx';
+import { SyncWindow } from './SyncWindow.tsx';
+import { SYNC_EVERY_MS, syncClient } from './syncSetup.ts';
 import { record, redo, startHistory, undo, type History } from '../history.ts';
 
 type Tab = 'agenda' | 'timetable' | 'sequences';
@@ -48,6 +50,33 @@ export function App() {
   const [status, setStatus] = useState('');
   const [tab, setTab] = useState<Tab>(initialTab);
   const [holidaysOpen, setHolidaysOpen] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(() => syncClient.status());
+  const latest = useRef(agenda);
+  latest.current = agenda;
+
+  // Synchronisation: each change goes to this device's log; the other devices are read regularly.
+  useEffect(() => {
+    void syncClient.recordLocal(agenda).then(() => setSyncStatus(syncClient.status()));
+  }, [agenda]);
+  const syncNow = useCallback(async () => {
+    if (!syncClient.status().enabled) return;
+    const merged = await syncClient.syncNow(() => latest.current);
+    if (merged) setHistory((h) => record(h, merged, Date.now()));
+    setSyncStatus(syncClient.status());
+  }, []);
+  useEffect(() => {
+    void syncNow();
+    const timer = setInterval(syncNow, SYNC_EVERY_MS);
+    const onFront = () => document.visibilityState === 'visible' && void syncNow();
+    window.addEventListener('focus', onFront);
+    document.addEventListener('visibilitychange', onFront);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', onFront);
+      document.removeEventListener('visibilitychange', onFront);
+    };
+  }, [syncNow]);
 
   const doUndo = useCallback(() => {
     setHistory((h) => {
@@ -110,6 +139,14 @@ export function App() {
           <button type="button" className="ghost" onClick={() => setHolidaysOpen(true)}>
             Vacances{calendar.closures.length ? ` (${calendar.closures.length})` : ''}
           </button>
+          <button
+            type="button"
+            className={`ghost sync-btn ${!syncStatus.enabled ? 'off' : syncStatus.error ? 'error' : 'ok'}`}
+            title={!syncStatus.enabled ? 'Synchronisation désactivée' : syncStatus.error ?? 'Synchronisé'}
+            onClick={() => setSyncOpen(true)}
+          >
+            <span className="sync-dot" aria-hidden="true" /> Synchro
+          </button>
           <FileMenu agenda={agenda} onRestore={setAgenda} onMessage={setStatus} />
         </div>
       </header>
@@ -125,6 +162,32 @@ export function App() {
           <SequencesView agenda={agenda} onChange={setAgenda} />
         )}
       </main>
+
+      {syncOpen && (
+        <SyncWindow
+          client={syncClient}
+          agenda={agenda}
+          onStarted={(next, previous) => {
+            if (previous) {
+              try {
+                localStorage.setItem('agenda.beforeSync', JSON.stringify(previous));
+              } catch {
+                // No room for the copy: the agenda is still in the undo history.
+              }
+            }
+            setHistory((h) => record(h, next, Date.now()));
+            setSyncStatus(syncClient.status());
+            setSyncOpen(false);
+            setStatus('Synchronisation activée');
+          }}
+          onSyncNow={syncNow}
+          onStopped={() => {
+            setSyncStatus(syncClient.status());
+            setSyncOpen(false);
+          }}
+          onClose={() => setSyncOpen(false)}
+        />
+      )}
 
       {holidaysOpen && (
         <HolidaysWindow
