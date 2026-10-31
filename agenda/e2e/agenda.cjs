@@ -140,7 +140,7 @@ module.exports = async (page, { shot }) => {
 
   // Day view: everything to teach that day.
   await page.getByRole('button', { name: 'Voir le jeudi 16 octobre 2025' }).click();
-  assert.equal(await page.getByRole('tab', { name: 'Jour' }).getAttribute('aria-selected'), 'true');
+  assert.equal(await page.getByRole('tab', { name: 'Jour', exact: true }).getAttribute('aria-selected'), 'true');
   const card = page.locator('.day-card').first();
   assert.match(await card.textContent(), /10:00–10:55 6e B · Fractions 1\/4.*Découverte.*Objectifs\. Comparer des fractions simples.*10 min : rappel.*Devoirs\. Exercice 3 p\. 42/s);
   await shot('agenda-day.png');

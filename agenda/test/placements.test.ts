@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   cancelledLessons, cancelLesson, classProgress, closuresBetween, insertionIndex, monthGridStart, proposePlacement, putPlacement,
-  removeExtraSlot, removePlacement, restoreLesson,
+  removeExtraSlot, removePlacement, restoreLesson, postponeLesson, markDone, unmarkDone, isDone, toConfirm,
 } from '../src/placements.ts';
 import { plan, previewPlacement } from '../src/plan.ts';
 import type { Agenda, Sequence } from '../src/model.ts';
@@ -128,4 +128,40 @@ test('closures between two dates, progress of a class, month grid', () => {
   assert.equal(monthGridStart('2025-10-15'), '2025-09-29');
   assert.equal(monthGridStart('2025-09-20'), '2025-09-01');
   assert.equal(monthGridStart('2026-02-10'), '2026-01-26');
+});
+
+test('a séance not done is postponed: it and what follows move to the next lesson', () => {
+  let a: Agenda = { ...base(), placements: [{ id: 'pa', sequenceId: 'A', classId: '6B', start: '2025-09-01' }] };
+  const r0 = plan(a);
+  const first = r0.entries.find((e) => e.lesson.date === '2025-09-01')!;
+  a = markDone(a, first.lesson, first.planned!.seance.id);
+  assert.equal(isDone(a, first), true);
+  a = postponeLesson(a, 'thu', '2025-09-04', 'Pas fini');
+  const r = plan(a);
+  assert.deepEqual(r.sequences[0].seances.map((s) => s.lessons[0].date), ['2025-09-01', '2025-09-08', '2025-09-11', '2025-09-15']);
+  assert.deepEqual(cancelledLessons(a, '2025-09-01', '2025-09-07').map((l) => [l.date, l.reason, l.postponed]), [['2025-09-04', 'Pas fini', true]]);
+  assert.equal(isDone(a, r.entries.find((e) => e.lesson.date === '2025-09-01')!), true, 'the lesson before is still done');
+  assert.equal(restoreLesson(a, 'thu', '2025-09-04').cancellations!.length, 0);
+});
+
+test('a done mark only counts while the same séance is planned in that lesson', () => {
+  let a: Agenda = { ...base(), placements: [{ id: 'pa', sequenceId: 'A', classId: '6B', start: '2025-09-01' }] };
+  const entry = (x: Agenda, date: string) => plan(x).entries.find((e) => e.lesson.date === date)!;
+  a = markDone(a, entry(a, '2025-09-04').lesson, entry(a, '2025-09-04').planned!.seance.id);
+  assert.equal(isDone(a, entry(a, '2025-09-04')), true);
+  // Cancelling the lesson before moves another séance onto 4 September: it is no longer the one done.
+  const moved = cancelLesson(a, 'mon', '2025-09-01');
+  assert.equal(isDone(moved, entry(moved, '2025-09-04')), false);
+  assert.equal(isDone(unmarkDone(a, entry(a, '2025-09-04').lesson), entry(a, '2025-09-04')), false);
+  // Postponing a lesson removes its mark.
+  assert.deepEqual(postponeLesson(a, 'thu', '2025-09-04').done, []);
+});
+
+test('past lessons left to confirm', () => {
+  let a: Agenda = { ...base(), placements: [{ id: 'pa', sequenceId: 'A', classId: '6B', start: '2025-09-01' }] };
+  const r = plan(a);
+  assert.deepEqual(toConfirm(a, r, '2025-09-09').map((e) => e.lesson.date), ['2025-09-08', '2025-09-04', '2025-09-01']);
+  const e = r.entries.find((x) => x.lesson.date === '2025-09-04')!;
+  a = markDone(a, e.lesson, e.planned!.seance.id);
+  assert.deepEqual(toConfirm(a, plan(a), '2025-09-09').map((x) => x.lesson.date), ['2025-09-08', '2025-09-01']);
 });

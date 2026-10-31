@@ -24,6 +24,9 @@ Ce dossier est un projet autonome, prévu pour devenir son propre dépôt. Il ne
 
 L'onglet principal : vos vrais cours, avec la séance prévue dans chacun.
 
+- **Aujourd'hui** : les cours du jour (ou du prochain jour de cours) avec tout ce qu'il faut faire dans chacun, et deux boutons : « ✓ Marquer comme faite » et « Pas faite : reporter… ». Une séance pas faite ou pas finie est refaite au cours suivant, et tout ce qui suit se décale ; le cours reste affiché « Séance reportée », et le report peut être annulé. En dessous, « À confirmer » liste les cours passés pas encore cochés.
+- Une coche « faite » retient la séance faite : si les dates bougent ensuite et qu'une autre séance arrive sur ce cours, elle n'est plus cochée.
+
 - **Vues Jour, Semaine, Mois**, avec ‹ › et « Aujourd'hui ». Les vacances et jours fériés sont hachurés et nommés. La semaine indique A ou B. La vue Jour montre tout ce qu'il y a à faire dans chaque cours (objectifs, déroulé, matériel, devoirs).
 - **Glisser une séquence** (panneau de gauche) **sur un cours** : elle commence à ce cours. **Sur une classe** : elle suit la dernière séquence de la classe (ou commence au prochain cours, si la classe n'en a pas). Pendant le glisser, les cours qui recevraient ses séances sont surlignés et l'étiquette indique la date de fin.
 - **Au dépôt, une fenêtre montre ce que cela donne avant de valider** : chaque séance avec son jour et son heure, la date de fin, les vacances sautées, les séquences suivantes décalées, et les avertissements (séance coupée par des vacances, séquence qui déborde de l'année). On peut y changer la classe ou la date de début. « Placer… » ouvre la même fenêtre sans glisser (clavier, téléphone).
@@ -45,6 +48,8 @@ L'onglet principal : vos vrais cours, avec la séance prévue dans chacun.
 - **Séances en blocs** : glisser la poignée ⠿ pour réordonner (souris ou doigt), ou flèches haut/bas sur la poignée, ou boutons ↑ ↓. Dupliquer, supprimer (confirmation si la séance a du contenu).
 - **Fiche séance** (clic sur un bloc) : titre, durée en cours (une séance peut prendre 2 cours ou plus), objectifs, déroulé, matériel, devoirs. « Réutiliser dans une autre séquence » en ajoute une copie à la fin d'une autre séquence.
 - La séquence affiche son nombre de cours et sa durée estimée pour chaque classe, d'après son emploi du temps (« ≈ 3,5 semaines en 6e B »).
+
+**Annuler / rétablir** : boutons ↶ ↷ en haut, ou Ctrl+Z / Ctrl+Maj+Z (Ctrl+Y). Toute modification s'annule (100 étapes). Ce qu'on tape d'affilée dans un même champ compte pour une seule étape. Dans un champ texte, Ctrl+Z annule la frappe comme d'habitude.
 
 Tout est enregistré dans le navigateur (`localStorage`) pour l'instant.
 

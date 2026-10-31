@@ -1,8 +1,8 @@
 import { addDays, type ISODate } from './dates.ts';
 import { newId } from './edit.ts';
-import type { Agenda, Closure, Placement } from './model.ts';
+import type { Agenda, Closure, DoneMark, Placement } from './model.ts';
 import { sameTrack, toTrack, type Track } from './tracks.ts';
-import { lessonsOf, plan, withoutPlacement, withPlacement, type PlanResult } from './plan.ts';
+import { lessonsOf, plan, withoutPlacement, withPlacement, type AgendaEntry, type Lesson, type PlanResult } from './plan.ts';
 
 /**
  * Where a séquence starting on `date` goes in a class's chain: after the séquences of that class that
@@ -50,6 +50,37 @@ export const removePlacement = (agenda: Agenda, id: string): Agenda => withoutPl
 export function cancelLesson(agenda: Agenda, slotId: string, date: ISODate, reason?: string): Agenda {
   const others = (agenda.cancellations ?? []).filter((c) => !(c.slotId === slotId && c.date === date));
   return { ...agenda, cancellations: [...others, reason ? { slotId, date, reason } : { slotId, date }] };
+}
+
+/** The lesson happened but its séance was not done (or not finished): it moves to the next lesson, and so does everything after. */
+export function postponeLesson(agenda: Agenda, slotId: string, date: ISODate, reason?: string): Agenda {
+  const others = (agenda.cancellations ?? []).filter((c) => !(c.slotId === slotId && c.date === date));
+  return { ...agenda, cancellations: [...others, { slotId, date, ...(reason ? { reason } : {}), kind: 'postponed' }], done: withoutMark(agenda.done, { slotId, date }) };
+}
+
+type LessonRef = Pick<Lesson, 'slotId' | 'extraSlotId' | 'date'>;
+const sameLesson = (m: LessonRef, l: LessonRef) => m.date === l.date && (m.slotId ?? '') === (l.slotId ?? '') && (m.extraSlotId ?? '') === (l.extraSlotId ?? '');
+const withoutMark = (marks: DoneMark[] | undefined, l: LessonRef) => (marks ?? []).filter((m) => !sameLesson(m, l));
+
+/** Marks the séance of a lesson as done. */
+export function markDone(agenda: Agenda, lesson: LessonRef, seanceId: string): Agenda {
+  const mark: DoneMark = { ...(lesson.slotId ? { slotId: lesson.slotId } : { extraSlotId: lesson.extraSlotId }), date: lesson.date, seanceId };
+  return { ...agenda, done: [...withoutMark(agenda.done, lesson), mark] };
+}
+
+export function unmarkDone(agenda: Agenda, lesson: LessonRef): Agenda {
+  return { ...agenda, done: withoutMark(agenda.done, lesson) };
+}
+
+/** Was the séance planned in this lesson marked as done (and is it still the one planned there)? */
+export function isDone(agenda: Agenda, entry: AgendaEntry): boolean {
+  const mark = (agenda.done ?? []).find((m) => sameLesson(m, entry.lesson));
+  return Boolean(mark && entry.planned && mark.seanceId === entry.planned.seance.id);
+}
+
+/** Past lessons with a séance, neither marked done nor postponed, most recent first. */
+export function toConfirm(agenda: Agenda, result: PlanResult, today: ISODate): AgendaEntry[] {
+  return result.entries.filter((e) => e.planned && e.lesson.date < today && !isDone(agenda, e)).reverse();
 }
 
 export function restoreLesson(agenda: Agenda, slotId: string, date: ISODate): Agenda {
@@ -113,7 +144,7 @@ export function cancelledLessons(agenda: Agenda, from: ISODate, to: ISODate) {
     const slot = agenda.timetable.find((s) => s.id === c.slotId);
     if (!slot) return [];
     const lesson = lessonsOf(withoutThem, slot, c.date, c.date).find((l) => l.slotId === c.slotId);
-    return lesson ? [{ ...lesson, reason: c.reason }] : [];
+    return lesson ? [{ ...lesson, reason: c.reason, postponed: c.kind === 'postponed' }] : [];
   });
 }
 

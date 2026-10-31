@@ -2,7 +2,7 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import type { Agenda } from '../model.ts';
 import { addDays, minutes, mondayOf, timeOf, weekday, type ISODate, type Weekday } from '../dates.ts';
 import { dayEntries, isClosed, weekEntries, type AgendaEntry, type Lesson, type PlanResult } from '../plan.ts';
-import { cancelledLessons, monthGridStart } from '../placements.ts';
+import { cancelledLessons, isDone, monthGridStart } from '../placements.ts';
 import { layoutDay } from '../timetableLayout.ts';
 import { trackName } from '../tracks.ts';
 import { DAY_NAMES, longDate, shortDate } from './format.ts';
@@ -12,7 +12,7 @@ import { dropLesson, type DragPayload } from './useDragDrop.ts';
 export type Incoming = Map<string, { index: number; total: number; title: string }>;
 export const lessonKey = (l: Pick<Lesson, 'classId' | 'groupId' | 'date' | 'start'>) => `${l.classId}|${l.groupId ?? ''}|${l.date}|${l.start}`;
 
-export type Cancelled = Lesson & { reason?: string };
+export type Cancelled = Lesson & { reason?: string; postponed?: boolean };
 
 export interface ViewProps {
   agenda: Agenda;
@@ -40,10 +40,10 @@ function weekDays(agenda: Agenda): Weekday[] {
   return saturday ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5];
 }
 
-function lessonLabel(className: string, l: Lesson, planned: AgendaEntry['planned'] | undefined, seqTitle: string | undefined, cancelled?: Cancelled) {
+function lessonLabel(className: string, l: Lesson, planned: AgendaEntry['planned'] | undefined, seqTitle: string | undefined, cancelled?: Cancelled, done?: boolean) {
   const head = `${className}, ${longDate(l.date)}, ${l.start}–${l.end}`;
-  if (cancelled) return `${head} : annulé${cancelled.reason ? ` (${cancelled.reason})` : ''}`;
-  return planned ? `${head} : ${seqTitle}, séance ${planned.index + 1}/${planned.total}, ${planned.seance.title}` : `${head} : libre`;
+  if (cancelled) return `${head} : ${cancelled.postponed ? 'séance reportée' : 'annulé'}${cancelled.reason ? ` (${cancelled.reason})` : ''}`;
+  return planned ? `${head} : ${seqTitle}, séance ${planned.index + 1}/${planned.total}, ${planned.seance.title}${done ? ', faite' : ''}` : `${head} : libre`;
 }
 
 /** One lesson as a block: the planned séance, or free. Drop target; a planned one can be dragged to move its séquence. */
@@ -55,22 +55,23 @@ function LessonBlock({ props, entry, cancelled, style, compact }: { props: ViewP
   const name = trackName(props.agenda, lesson);
   const seq = planned && sequences.get(planned.sequenceId);
   const incoming = !cancelled ? props.incoming?.get(lessonKey(lesson)) : undefined;
-  const kind = cancelled ? 'cancelled' : planned ? 'planned' : 'free';
+  const kind = cancelled ? (cancelled.postponed ? 'postponed' : 'cancelled') : planned ? 'planned' : 'free';
+  const done = Boolean(entry && isDone(props.agenda, entry));
   return (
     <button
       type="button"
-      className={`lesson ${kind}${incoming ? ' incoming' : ''}${compact ? ' compact' : ''}${lesson.date === props.today ? ' today' : ''}`}
+      className={`lesson ${kind}${done ? ' done' : ''}${incoming ? ' incoming' : ''}${compact ? ' compact' : ''}${lesson.date === props.today ? ' today' : ''}`}
       style={{ ...style, '--class-color': cls?.color, '--seq-color': seq?.color } as CSSProperties}
-      aria-label={lessonLabel(name, lesson, planned, seq?.title, cancelled)}
+      aria-label={lessonLabel(name, lesson, planned, seq?.title, cancelled, done)}
       {...(!cancelled ? dropLesson(lesson.classId, lesson.date, lesson.groupId) : {})}
       onPointerDown={planned ? (e) => props.begin({ kind: 'move', placementId: planned.placementId }, e) : undefined}
       onClick={props.click(() => props.onOpen(lesson, planned, cancelled))}
     >
-      <span className="lesson-head">{compact ? lesson.start : `${lesson.start} · `}{compact ? ' ' : ''}<b>{name}</b></span>
+      <span className="lesson-head">{done && <span className="check-mark" aria-hidden="true">✓ </span>}{compact ? lesson.start : `${lesson.start} · `}{compact ? ' ' : ''}<b>{name}</b></span>
       {incoming ? (
         <span className="lesson-main">→ {incoming.index + 1}. {incoming.title}</span>
       ) : cancelled ? (
-        <span className="lesson-main">Annulé</span>
+        <span className="lesson-main">{cancelled.postponed ? 'Séance reportée' : 'Annulé'}</span>
       ) : planned ? (
         <>
           <span className="lesson-main">{planned.seance.title}</span>
@@ -163,9 +164,9 @@ export function DayView(props: ViewProps) {
         const cls = classes.get(l.classId);
         if ('cancelled' in item && item.cancelled) {
           return (
-            <article key={`x${lessonKey(l)}`} className="day-card cancelled" style={{ '--class-color': cls?.color } as CSSProperties}>
+            <article key={`x${lessonKey(l)}`} className={`day-card ${item.cancelled.postponed ? 'postponed' : 'cancelled'}`} style={{ '--class-color': cls?.color } as CSSProperties}>
               <button type="button" className="day-card-head" onClick={() => props.onOpen(l, undefined, item.cancelled)}>
-                <span className="time">{l.start}–{l.end}</span> <b>{trackName(agenda, l)}</b> · Annulé{item.cancelled.reason ? ` (${item.cancelled.reason})` : ''}
+                <span className="time">{l.start}–{l.end}</span> <b>{trackName(agenda, l)}</b> · {item.cancelled.postponed ? 'Séance reportée' : 'Annulé'}{item.cancelled.reason ? ` (${item.cancelled.reason})` : ''}
               </button>
             </article>
           );
@@ -187,6 +188,7 @@ export function DayView(props: ViewProps) {
               onPointerDown={planned ? (e) => props.begin({ kind: 'move', placementId: planned.placementId }, e) : undefined}
               onClick={props.click(() => props.onOpen(l, planned))}
             >
+              {'entry' in item && item.entry && isDone(agenda, item.entry) && <span className="check-mark" aria-label="faite">✓ </span>}
               <span className="time">{l.start}–{l.end}</span> <b>{trackName(agenda, l)}</b>
               {l.room && <span className="muted"> · salle {l.room}</span>}
               {incoming ? <span className="pill">→ {incoming.index + 1}. {incoming.title}</span> : planned ? <span className="muted"> · {seq?.title} {planned.index + 1}/{planned.total}</span> : <span className="muted"> · libre</span>}

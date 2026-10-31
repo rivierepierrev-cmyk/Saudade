@@ -83,11 +83,23 @@ export interface Closure {
   classIds?: string[];
 }
 
-/** One lesson that will not happen (strike, trip, exam…). */
+/**
+ * A lesson that gives no séance: it will not happen (strike, trip, exam…), or it happened but its
+ * séance was not done or not finished (`postponed`). Either way the séances move to the next lesson.
+ */
 export interface Cancellation {
   slotId: string;
   date: ISODate;
   reason?: string;
+  kind?: 'postponed';
+}
+
+/** A séance marked as done in a lesson. Only counts while that séance is still the one planned there. */
+export interface DoneMark {
+  slotId?: string;
+  extraSlotId?: string;
+  date: ISODate;
+  seanceId: string;
 }
 
 /** A one-off lesson outside the timetable (a moved or extra lesson). */
@@ -124,4 +136,5 @@ export interface Agenda {
   calendar: SchoolCalendar;
   cancellations?: Cancellation[];
   extraSlots?: ExtraSlot[];
+  done?: DoneMark[];
 }

@@ -3,7 +3,8 @@ import type { Agenda } from '../model.ts';
 import { addDays, addMonths, mondayOf, today as todayOf, type ISODate } from '../dates.ts';
 import { updateSeance, sequenceLessons } from '../edit.ts';
 import { plan, previewPlacement, weekType, type AgendaEntry, type Lesson } from '../plan.ts';
-import { cancelLesson, classProgress, proposePlacement, removePlacement, restoreLesson } from '../placements.ts';
+import { cancelLesson, classProgress, isDone, markDone, postponeLesson, proposePlacement, removePlacement, restoreLesson, unmarkDone } from '../placements.ts';
+import { TodayView } from './TodayView.tsx';
 import { sameTrack, trackKey, trackName, visibleTracks } from '../tracks.ts';
 import { levelMismatch, levelRank, levelsIn } from '../levels.ts';
 import { LevelFilter, useLevelFilter } from './LevelFilter.tsx';
@@ -11,16 +12,16 @@ import { DayView, MonthView, WeekView, lessonKey, type Cancelled, type Incoming,
 import { LessonWindow } from './LessonWindow.tsx';
 import { PlacementWindow, type PlacementRequest } from './PlacementWindow.tsx';
 import { SeanceWindow } from './SeanceWindow.tsx';
-import { longDate, monthLabel, plural, shortDate, shortDay } from './format.ts';
+import { longDate, longDay, monthLabel, plural, shortDate, shortDay } from './format.ts';
 import { dropClass, useDragDrop, type DragPayload, type DropTarget } from './useDragDrop.ts';
 
-type View = 'week' | 'day' | 'month';
+type View = 'today' | 'week' | 'day' | 'month';
 const VIEW_KEY = 'agenda.view';
 
 function initialView(): View {
   try {
     const v = localStorage.getItem(VIEW_KEY);
-    return v === 'day' || v === 'month' ? v : 'week';
+    return v === 'today' || v === 'day' || v === 'month' ? v : 'week';
   } catch {
     return 'week';
   }
@@ -87,7 +88,7 @@ export function AgendaView({ agenda, onChange, onGoTo }: Props) {
     }
   };
   const title =
-    view === 'week' ? `Semaine du ${shortDate(mondayOf(cursor))}` : view === 'day' ? longDate(cursor) : monthLabel(cursor).replace(/^./, (c) => c.toUpperCase());
+    view === 'today' ? `Aujourd'hui, ${longDay(today)}` : view === 'week' ? `Semaine du ${shortDate(mondayOf(cursor))}` : view === 'day' ? longDate(cursor) : monthLabel(cursor).replace(/^./, (c) => c.toUpperCase());
   const ab = view === 'week' ? weekType(calendar, cursor) : undefined;
 
   const viewProps: ViewProps = {
@@ -206,20 +207,40 @@ export function AgendaView({ agenda, onChange, onGoTo }: Props) {
       <section className="card agenda-main" aria-label="Agenda">
         <div className="toolbar">
           <div className="nav">
-            <button type="button" className="ghost icon-btn" aria-label="Précédent" onClick={() => step(-1)}>‹</button>
-            <button type="button" className="ghost" onClick={() => setCursor(today)}>Aujourd'hui</button>
-            <button type="button" className="ghost icon-btn" aria-label="Suivant" onClick={() => step(1)}>›</button>
+            {view !== 'today' && (
+              <>
+                <button type="button" className="ghost icon-btn" aria-label="Précédent" onClick={() => step(-1)}>‹</button>
+                <button type="button" className="ghost" onClick={() => setCursor(today)}>Aujourd'hui</button>
+                <button type="button" className="ghost icon-btn" aria-label="Suivant" onClick={() => step(1)}>›</button>
+              </>
+            )}
             <h2 className="agenda-title">{title}{ab && <span className="pill">Semaine {ab}</span>}</h2>
           </div>
           <div className="tabs" role="tablist" aria-label="Vue">
-            {(['day', 'week', 'month'] as View[]).map((v) => (
+            {(['today', 'day', 'week', 'month'] as View[]).map((v) => (
               <button key={v} type="button" role="tab" aria-selected={view === v} aria-current={view === v ? 'page' : undefined} onClick={() => changeView(v)}>
-                {v === 'day' ? 'Jour' : v === 'week' ? 'Semaine' : 'Mois'}
+                {v === 'today' ? 'Aujourd\'hui' : v === 'day' ? 'Jour' : v === 'week' ? 'Semaine' : 'Mois'}
               </button>
             ))}
           </div>
         </div>
-        {view === 'week' ? <WeekView {...viewProps} /> : view === 'day' ? <DayView {...viewProps} /> : <MonthView {...viewProps} />}
+        {view === 'today' ? (
+          <TodayView
+            agenda={agenda}
+            result={result}
+            today={today}
+            onOpen={(e) => setOpen({ lesson: e.lesson, planned: e.planned })}
+            onDone={(e, done) => e.planned && onChange(done ? markDone(agenda, e.lesson, e.planned.seance.id) : unmarkDone(agenda, e.lesson))}
+            onPostpone={(e, reason) => e.lesson.slotId && onChange(postponeLesson(agenda, e.lesson.slotId, e.lesson.date, reason || undefined))}
+            onRestore={(slotId, date) => onChange(restoreLesson(agenda, slotId, date))}
+          />
+        ) : view === 'week' ? (
+          <WeekView {...viewProps} />
+        ) : view === 'day' ? (
+          <DayView {...viewProps} />
+        ) : (
+          <MonthView {...viewProps} />
+        )}
       </section>
 
       {drag && dragged && (
@@ -258,6 +279,16 @@ export function AgendaView({ agenda, onChange, onGoTo }: Props) {
           lesson={open.lesson}
           planned={open.planned}
           cancelled={open.cancelled}
+          done={isDone(agenda, { lesson: open.lesson, planned: open.planned })}
+          onToggleDone={() => {
+            if (!open.planned) return;
+            const entry = { lesson: open.lesson, planned: open.planned };
+            onChange(isDone(agenda, entry) ? unmarkDone(agenda, open.lesson) : markDone(agenda, open.lesson, open.planned.seance.id));
+          }}
+          onPostpone={(reason) => {
+            if (open.lesson.slotId) onChange(postponeLesson(agenda, open.lesson.slotId, open.lesson.date, reason || undefined));
+            setOpen(undefined);
+          }}
           onEditSeance={() => {
             if (!open.planned) return;
             setEditingSeance({ sequenceId: open.planned.sequenceId, seanceId: open.planned.seance.id });
