@@ -53,6 +53,12 @@ L'onglet principal : vos vrais cours, avec la séance prévue dans chacun.
 
 Tout est enregistré dans le navigateur (`localStorage`) pour l'instant.
 
+## Fichier : export, impression, sauvegarde
+
+- **Exporter vers un calendrier (.ics)** : chaque cours de l'année devient un événement (classe, séquence, séance ; objectifs, déroulé, matériel et devoirs en description ; salle), à l'heure de Paris. Les cours annulés ou reportés n'y sont pas. Réimporter le fichier met les événements à jour (mêmes identifiants).
+- **Imprimer / PDF** : la vue affichée, seule (sans panneaux ni boutons), couleurs comprises. « Enregistrer en PDF » dans la fenêtre d'impression.
+- **Sauvegarder dans un fichier** (`agenda-AAAA-MM-JJ.json`) et **Restaurer une sauvegarde** : tout l'agenda. Un fichier qui n'est pas une sauvegarde est refusé ; une restauration s'annule avec ↶.
+
 ## Fenêtre « Vacances »
 
 Le bouton « Vacances » ouvre l'année scolaire (premier et dernier jour de cours) et la liste des jours sans cours. Une ligne par période, avec un nom (facultatif) et :
@@ -78,4 +84,4 @@ Le bouton « Vacances » ouvre l'année scolaire (premier et dernier jour de cou
 
 ## Suite
 
-1. Annuler/rétablir, vue « Aujourd'hui », séances faites ou non faites, export PDF/iCal, synchronisation (P4).
+1. Synchronisation entre appareils (à choisir : voir ci-dessus, la sauvegarde permet déjà de passer d'un appareil à l'autre).

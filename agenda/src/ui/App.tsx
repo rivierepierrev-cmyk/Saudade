@@ -6,6 +6,7 @@ import { SequencesView } from './SequencesView.tsx';
 import { AgendaView } from './AgendaView.tsx';
 import { loadAgenda, saveAgenda } from './storage.ts';
 import { LevelOptions } from './LevelFilter.tsx';
+import { FileMenu } from './FileMenu.tsx';
 import { record, redo, startHistory, undo, type History } from '../history.ts';
 
 type Tab = 'agenda' | 'timetable' | 'sequences';
@@ -109,6 +110,7 @@ export function App() {
           <button type="button" className="ghost" onClick={() => setHolidaysOpen(true)}>
             Vacances{calendar.closures.length ? ` (${calendar.closures.length})` : ''}
           </button>
+          <FileMenu agenda={agenda} onRestore={setAgenda} onMessage={setStatus} />
         </div>
       </header>
       <p className="toast" role="status" aria-live="polite">{status}</p>

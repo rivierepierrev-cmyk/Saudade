@@ -8,3 +8,6 @@ export * from './closureRows.ts';
 export * from './placements.ts';
 export * from './tracks.ts';
 export * from './levels.ts';
+export * from './ics.ts';
+export * from './backup.ts';
+export * from './history.ts';

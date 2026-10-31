@@ -5,7 +5,7 @@ const path = require('node:path');
 
 const shots = process.argv[2];
 const port = 4179;
-const suites = (process.env.SUITES || 'holidays,timetable,sequences,agenda,groups,levels,today').split(',');
+const suites = (process.env.SUITES || 'holidays,timetable,sequences,agenda,groups,levels,today,export').split(',');
 
 (async () => {
   const server = spawn('npx', ['vite', 'preview', '--port', String(port), '--strictPort'], { cwd: path.join(__dirname, '..'), stdio: 'ignore' });
@@ -17,7 +17,7 @@ const suites = (process.env.SUITES || 'holidays,timetable,sequences,agenda,group
   let failed = false;
   try {
     for (const name of suites) {
-      const context = await browser.newContext({ viewport: { width: 1280, height: 860 }, locale: 'fr-FR' });
+      const context = await browser.newContext({ viewport: { width: 1280, height: 860 }, locale: 'fr-FR', acceptDownloads: true });
       const page = await context.newPage();
       const errors = [];
       page.on('pageerror', (e) => errors.push(e.message));

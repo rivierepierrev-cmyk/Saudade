@@ -55,6 +55,14 @@ textarea { resize: vertical; line-height: 1.4; }
 .app-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .app-head > div:first-child { margin-right: auto; }
 .head-actions { display: flex; gap: 6px; align-items: center; }
+.file-menu { position: relative; }
+.menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; width: 300px; display: grid; padding: 6px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 14px 36px rgb(0 0 0 / 0.18);
+}
+.menu button { display: grid; gap: 1px; text-align: left; padding: 8px 10px; border-radius: 8px; }
+.menu button:hover, .menu button:focus-visible { background: var(--surface-2); }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; width: 100%; }
 .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); margin: 0; padding: 8px 16px; border-radius: 99px; background: var(--text); color: var(--bg); font-size: 14px; z-index: 50; pointer-events: none; }
 .toast:empty { display: none; }
 .tabs { display: inline-flex; background: var(--surface-2); border-radius: 10px; padding: 3px; }
@@ -439,4 +447,17 @@ legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
   .form-pair, .title-pair { grid-template-columns: 1fr; }
   .block-actions .icon:nth-child(-n + 2) { display: none; }
   .placement-list li { grid-template-columns: 1fr; gap: 2px; }
+}
+
+/* Printing: the agenda (or the page shown) on its own, colours kept. */
+@media print {
+  @page { margin: 12mm; }
+  body { background: #fff; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .app { max-width: none; padding: 0; }
+  .head-actions, .tabs, .agenda-side, .classes, .library, .toast, .nav button, .agenda-main .tabs, .hint, .draw-for, .toolbar-actions, .add-block, .block-actions, .handle, .today-actions, .lesson-actions { display: none !important; }
+  .agenda-page, .timetable-page, .sequences-page { display: block; }
+  .card { border: 0; padding: 0; box-shadow: none; }
+  .grid-scroll { overflow: visible; }
+  .week-grid, .month-grid { min-width: 0; }
+  .lesson, .day-card, .today-card, .month-cell { break-inside: avoid; }
 }
