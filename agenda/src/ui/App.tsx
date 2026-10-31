@@ -1,75 +1,68 @@
-import { useState } from 'react';
-import type { Closure } from '../model.ts';
+import { useEffect, useState } from 'react';
+import type { Agenda } from '../model.ts';
 import { HolidaysWindow } from './HolidaysWindow.tsx';
+import { TimetableView } from './TimetableView.tsx';
+import { SequencesView } from './SequencesView.tsx';
+import { loadAgenda, saveAgenda } from './storage.ts';
 
-const STORAGE_KEY = 'agenda.closures';
+type Tab = 'timetable' | 'sequences';
+const TAB_KEY = 'agenda.tab';
 
-function load(): Closure[] {
+function initialTab(): Tab {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Closure[]) : [];
+    return localStorage.getItem(TAB_KEY) === 'sequences' ? 'sequences' : 'timetable';
   } catch {
-    return [];
+    return 'timetable';
   }
 }
-
-function store(closures: Closure[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(closures));
-  } catch {
-    // Storage unavailable (private window): the list stays for this session only.
-  }
-}
-
-/** School year containing today: from 1 September to 10 July (summer starts early July). */
-function currentSchoolYear(today = new Date()) {
-  const y = today.getMonth() >= 7 ? today.getFullYear() : today.getFullYear() - 1;
-  return { start: `${y}-09-01`, end: `${y + 1}-07-10`, label: `${y}-${y + 1}` };
-}
-
-const longDate = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
-const show = (d: string) => longDate.format(new Date(`${d}T00:00:00Z`));
 
 export function App() {
-  const year = currentSchoolYear();
-  const [closures, setClosures] = useState<Closure[]>(load);
-  const [open, setOpen] = useState(false);
+  const [agenda, setAgenda] = useState<Agenda>(loadAgenda);
+  const [tab, setTab] = useState<Tab>(initialTab);
+  const [holidaysOpen, setHolidaysOpen] = useState(false);
 
-  const save = (next: Closure[]) => {
-    setClosures(next);
-    store(next);
-    setOpen(false);
-  };
+  useEffect(() => saveAgenda(agenda), [agenda]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(TAB_KEY, tab);
+    } catch {
+      // Not remembered: fine.
+    }
+  }, [tab]);
+
+  const { calendar } = agenda;
+  const yearLabel = `${calendar.start.slice(0, 4)}-${calendar.end.slice(0, 4)}`;
 
   return (
-    <main className="app">
+    <div className="app">
       <header className="app-head">
         <div>
           <h1>Agenda</h1>
-          <p className="muted">Année scolaire {year.label}</p>
+          <p className="muted">Année scolaire {yearLabel}</p>
         </div>
-        <button type="button" className="primary" onClick={() => setOpen(true)}>
-          Vacances{closures.length ? ` (${closures.length})` : ''}
+        <nav className="tabs" aria-label="Sections">
+          <button type="button" aria-current={tab === 'timetable' ? 'page' : undefined} onClick={() => setTab('timetable')}>Emploi du temps</button>
+          <button type="button" aria-current={tab === 'sequences' ? 'page' : undefined} onClick={() => setTab('sequences')}>Séquences</button>
+        </nav>
+        <button type="button" className="ghost" onClick={() => setHolidaysOpen(true)}>
+          Vacances{calendar.closures.length ? ` (${calendar.closures.length})` : ''}
         </button>
       </header>
 
-      <section className="card">
-        <h2>Jours sans cours</h2>
-        {closures.length === 0 ? (
-          <p className="muted">Aucune date. Ouvrez « Vacances » pour en ajouter.</p>
-        ) : (
-          <ul className="closures">
-            {closures.map((c) => (
-              <li key={`${c.start}-${c.end}-${c.label}`}>
-                <span>{c.label}</span>
-                <span className="muted">{c.start === c.end ? show(c.start) : `${show(c.start)} → ${show(c.end)}`}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <main>
+        {tab === 'timetable' ? <TimetableView agenda={agenda} onChange={setAgenda} /> : <SequencesView agenda={agenda} onChange={setAgenda} />}
+      </main>
 
-      {open && <HolidaysWindow closures={closures} yearStart={year.start} yearEnd={year.end} onSave={save} onClose={() => setOpen(false)} />}
-    </main>
+      {holidaysOpen && (
+        <HolidaysWindow
+          calendar={calendar}
+          onSave={(next) => {
+            setAgenda((a) => ({ ...a, calendar: next }));
+            setHolidaysOpen(false);
+          }}
+          onClose={() => setHolidaysOpen(false)}
+        />
+      )}
+    </div>
   );
 }

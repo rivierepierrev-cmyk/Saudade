@@ -43,3 +43,9 @@ export function minutes(time: string): number {
   if (!m) throw new Error(`Invalid time: ${time}`);
   return Number(m[1]) * 60 + Number(m[2]);
 }
+
+/** Minutes since midnight → 'HH:MM'. */
+export function timeOf(mins: number): string {
+  const m = Math.max(0, Math.min(24 * 60 - 1, Math.round(mins)));
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}

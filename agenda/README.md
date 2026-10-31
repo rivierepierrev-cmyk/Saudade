@@ -10,18 +10,33 @@ Ce dossier est un projet autonome, prévu pour devenir son propre dépôt. Il ne
     npm run test:e2e  # test dans un navigateur (Playwright)
     npm run lint      # vérification des types
 
+## Emploi du temps
+
+- **Classes** (à gauche) : ajouter, renommer, changer la couleur, supprimer (avec ses cours ; les séquences restent). Chaque classe affiche son nombre de cours par semaine et ses heures.
+- **Dessiner un cours** : sélectionnez une classe, puis cliquez-glissez dans un jour, de l'heure de début à l'heure de fin (au pas de 5 min). Un simple clic donne un cours de 55 min. « + Ajouter un cours » fait la même chose avec un formulaire (au clavier, sur téléphone).
+- **Modifier un cours** : cliquez dessus. Classe, jour, heures, salle, semaine A ou B, et période de validité si l'emploi du temps change en cours d'année.
+- Deux cours à la même heure sont signalés en rouge et affichés côte à côte (sauf un cours de semaine A et un de semaine B).
+- **Semaines A/B** : la semaine A de référence, et si les semaines de vacances comptent ou non. Un cours d'une seule semaine compte pour un demi-cours par semaine.
+
+## Séquences
+
+- **Bibliothèque** (à gauche) : créer, choisir une séquence. Titre, matière, couleur, dupliquer, supprimer.
+- **Séances en blocs** : glisser la poignée ⠿ pour réordonner (souris ou doigt), ou flèches haut/bas sur la poignée, ou boutons ↑ ↓. Dupliquer, supprimer (confirmation si la séance a du contenu).
+- **Fiche séance** (clic sur un bloc) : titre, durée en cours (une séance peut prendre 2 cours ou plus), objectifs, déroulé, matériel, devoirs. « Réutiliser dans une autre séquence » en ajoute une copie à la fin d'une autre séquence.
+- La séquence affiche son nombre de cours et sa durée estimée pour chaque classe, d'après son emploi du temps (« ≈ 3,5 semaines en 6e B »).
+
+Tout est enregistré dans le navigateur (`localStorage`) pour l'instant.
+
 ## Fenêtre « Vacances »
 
-Le bouton « Vacances » ouvre la liste des jours sans cours. Une ligne par période, avec un nom (facultatif) et :
+Le bouton « Vacances » ouvre l'année scolaire (premier et dernier jour de cours) et la liste des jours sans cours. Une ligne par période, avec un nom (facultatif) et :
 
 - **Un jour** : une seule date (jour férié, pont, journée banalisée) ;
 - **Période** : du … au …, les deux dates comprises. Si la date de début passe après la date de fin, la fin suit.
 
-« + Ajouter une ligne » ajoute une ligne vide, la corbeille la supprime. « Ajouter les jours fériés » ajoute ceux de l'année scolaire qui manquent. Une ligne incomplète est signalée en rouge et empêche d'enregistrer. « Annuler » ou Échap ferment sans rien changer. Pour l'instant, la liste est gardée dans le navigateur (`localStorage`).
+« + Ajouter une ligne » ajoute une ligne vide, la corbeille la supprime. « Ajouter les jours fériés » ajoute ceux de l'année scolaire qui manquent. Une ligne incomplète est signalée en rouge et empêche d'enregistrer. « Annuler » ou Échap ferment sans rien changer.
 
-## État : le moteur de planification (P0) et les vacances (P1)
-
-Interface : seulement la fenêtre « Vacances » pour l'instant. Le moteur :
+## Le moteur de planification
 
 - **Modèle** (`src/model.ts`) : classes, créneaux de l'emploi du temps (semaines A/B, changement d'emploi du temps en cours d'année), séances (une séance peut durer plusieurs cours), séquences, placements, calendrier (vacances, jours fériés, fermetures pour une classe), cours annulés, cours exceptionnels.
 - **`plan(agenda)`** (`src/plan.ts`) : donne à chaque séance ses cours réels, dans l'ordre. Elle saute les vacances, les jours fériés, les fermetures et les cours annulés, et calcule la date de fin de chaque séquence. Les séquences d'une classe s'enchaînent : sans date de début, une séquence commence au cours qui suit la fin de la précédente.
@@ -34,6 +49,5 @@ Interface : seulement la fenêtre « Vacances » pour l'instant. Le moteur :
 
 ## Suite
 
-1. Éditeur d'emploi du temps et éditeur de séquences par blocs (P2).
-2. Vues jour / semaine / mois et glisser-déposer des séquences, avec l'aperçu de `previewPlacement` (P3).
-3. Annuler/rétablir, vue « Aujourd'hui », séances faites ou non faites, export PDF/iCal, synchronisation (P4).
+1. Vues jour / semaine / mois et glisser-déposer des séquences sur les classes, avec l'aperçu de `previewPlacement` (P3).
+2. Annuler/rétablir, vue « Aujourd'hui », séances faites ou non faites, export PDF/iCal, synchronisation (P4).

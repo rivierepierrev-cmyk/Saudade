@@ -163,6 +163,8 @@ test('A/B weeks, counted over school weeks only', () => {
   assert.deepEqual(lessonsOf(a, '6B', '2025-09-01', '2025-09-14').map((l) => `${l.date} ${l.slotId}`), [
     '2025-09-01 mon', '2025-09-05 fri-a', '2025-09-08 mon',
   ]);
+  const noAB = { ...a, calendar: { ...calendar, abWeeks: undefined } };
+  assert.equal(lessonsOf(noAB, '6B', '2025-09-01', '2025-09-14').length, 4, 'A/B switched off: every week');
 });
 
 test('timetable changes during the year, and one-off extra lessons', () => {

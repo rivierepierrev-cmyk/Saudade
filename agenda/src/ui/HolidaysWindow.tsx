@@ -1,33 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Closure } from '../model.ts';
+import type { SchoolCalendar } from '../model.ts';
 import { publicHolidaysBetween } from '../holidays.ts';
 import { closuresToRows, emptyRow, rowDays, rowError, rowErrorText, rowsToClosures, setMode, setStart, sortRows, type ClosureRow } from '../closureRows.ts';
-import type { ISODate } from '../dates.ts';
+import { TrashIcon, Window } from './Window.tsx';
 
 interface Props {
-  closures: Closure[];
-  /** School year, used by « Ajouter les jours fériés ». */
-  yearStart: ISODate;
-  yearEnd: ISODate;
-  onSave: (closures: Closure[]) => void;
+  calendar: SchoolCalendar;
+  onSave: (calendar: SchoolCalendar) => void;
   onClose: () => void;
 }
 
 /**
- * Window listing the days without lessons: one line per holiday, a single day or from one date to another.
- * Mount it to open it: it edits a copy of `closures`, which only changes through `onSave`.
+ * The school year and its days without lessons: one line per holiday, a single day or from one date to another.
+ * Mount it to open it: it edits a copy of the calendar, which only changes through `onSave`.
  */
-export function HolidaysWindow({ closures, yearStart, yearEnd, onSave, onClose }: Props) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const [rows, setRows] = useState<ClosureRow[]>(() => sortRows(closuresToRows(closures)));
+export function HolidaysWindow({ calendar, onSave, onClose }: Props) {
+  const [yearStart, setYearStart] = useState(calendar.start);
+  const [yearEnd, setYearEnd] = useState(calendar.end);
+  const [rows, setRows] = useState<ClosureRow[]>(() => sortRows(closuresToRows(calendar.closures)));
   const [showErrors, setShowErrors] = useState(false);
   const focusRow = useRef<string | null>(null);
-
-  useEffect(() => {
-    const d = dialog.current;
-    if (d && !d.open) d.showModal();
-    return () => d?.close();
-  }, []);
 
   useEffect(() => {
     if (!focusRow.current) return;
@@ -42,7 +34,9 @@ export function HolidaysWindow({ closures, yearStart, yearEnd, onSave, onClose }
     focusRow.current = r.id;
     setRows((rs) => [...rs, r]);
   };
+  const yearError = !yearStart || !yearEnd ? 'Choisissez le premier et le dernier jour de cours.' : yearEnd <= yearStart ? "La fin de l'année est avant son début." : undefined;
   const addPublicHolidays = () => {
+    if (yearError) return;
     const taken = new Set(rows.map((r) => r.start));
     const missing = closuresToRows(publicHolidaysBetween(yearStart, yearEnd).filter((c) => !taken.has(c.start)));
     setRows((rs) => sortRows([...rs, ...missing]));
@@ -50,20 +44,36 @@ export function HolidaysWindow({ closures, yearStart, yearEnd, onSave, onClose }
 
   const invalid = rows.filter((r) => rowError(r));
   const save = () => {
-    if (invalid.length) {
+    if (yearError || invalid.length) {
       setShowErrors(true);
-      document.querySelector<HTMLInputElement>(`[data-row="${invalid[0].id}"] input[type=date]`)?.focus();
+      const target = yearError ? '.year input' : `[data-row="${invalid[0].id}"] input[type=date]`;
+      document.querySelector<HTMLInputElement>(target)?.focus();
       return;
     }
-    onSave(rowsToClosures(rows));
+    onSave({ ...calendar, start: yearStart, end: yearEnd, closures: rowsToClosures(rows) });
   };
 
+  const errorCount = invalid.length + (yearError ? 1 : 0);
   return (
-    <dialog ref={dialog} className="window" aria-labelledby="holidays-title" onCancel={(e) => { e.preventDefault(); onClose(); }}>
-      <header className="window-head">
-        <h2 id="holidays-title">Vacances et jours sans cours</h2>
-        <p>Aucune séance n'est placée ces jours-là : les séquences sont décalées après.</p>
-      </header>
+    <Window
+      title="Vacances et jours sans cours"
+      subtitle="Aucune séance n'est placée ces jours-là : les séquences sont décalées après."
+      onClose={onClose}
+      footer={
+        <>
+          {showErrors && errorCount > 0 && <span className="error">{errorCount === 1 ? 'Une ligne est incomplète.' : `${errorCount} lignes sont incomplètes.`}</span>}
+          <button type="button" className="ghost" onClick={onClose}>Annuler</button>
+          <button type="button" className="primary" onClick={save}>Enregistrer</button>
+        </>
+      }
+    >
+      <div className={`year${showErrors && yearError ? ' has-error' : ''}`}>
+        <span>Année scolaire : du</span>
+        <input type="date" aria-label="Premier jour de cours" value={yearStart} onChange={(e) => setYearStart(e.target.value)} />
+        <span>au</span>
+        <input type="date" aria-label="Dernier jour de cours" value={yearEnd} min={yearStart || undefined} onChange={(e) => setYearEnd(e.target.value)} />
+        {showErrors && yearError && <span className="note error">{yearError}</span>}
+      </div>
 
       <div className="rows">
         {rows.length === 0 && <p className="empty">Aucune ligne. Ajoutez des vacances, un jour férié ou un pont.</p>}
@@ -98,7 +108,7 @@ export function HolidaysWindow({ closures, yearStart, yearEnd, onSave, onClose }
                 {error ? rowErrorText[error] : days ? `${days} jour${days > 1 ? 's' : ''}` : ''}
               </span>
               <button type="button" className="delete" aria-label={`Supprimer ${r.label || 'la ligne'}`} title="Supprimer" onClick={() => remove(r.id)}>
-                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                <TrashIcon />
               </button>
             </div>
           );
@@ -107,14 +117,8 @@ export function HolidaysWindow({ closures, yearStart, yearEnd, onSave, onClose }
 
       <div className="add-bar">
         <button type="button" className="ghost" onClick={add}>+ Ajouter une ligne</button>
-        <button type="button" className="ghost" onClick={addPublicHolidays}>Ajouter les jours fériés</button>
+        <button type="button" className="ghost" onClick={addPublicHolidays} disabled={Boolean(yearError)}>Ajouter les jours fériés</button>
       </div>
-
-      <footer className="window-foot">
-        {showErrors && invalid.length > 0 && <span className="error">{invalid.length === 1 ? 'Une ligne est incomplète.' : `${invalid.length} lignes sont incomplètes.`}</span>}
-        <button type="button" className="ghost" onClick={onClose}>Annuler</button>
-        <button type="button" className="primary" onClick={save}>Enregistrer</button>
-      </footer>
-    </dialog>
+    </Window>
   );
 }

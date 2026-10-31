@@ -117,7 +117,8 @@ export function lessonsOf(agenda: Agenda, classId: string, from = agenda.calenda
     for (const s of slots) {
       if (s.weekday !== wd) continue;
       if ((s.validFrom && date < s.validFrom) || (s.validTo && date > s.validTo)) continue;
-      if (s.week) {
+      // Without A/B weeks in the calendar, a lesson marked A or B happens every week.
+      if (s.week && calendar.abWeeks) {
         const monday = mondayOf(date);
         if (!weekTypes.has(monday)) weekTypes.set(monday, weekType(calendar, date));
         if (weekTypes.get(monday) !== s.week) continue;
