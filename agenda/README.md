@@ -84,4 +84,4 @@ Le bouton « Vacances » ouvre l'année scolaire (premier et dernier jour de cou
 
 ## Suite
 
-1. Synchronisation entre appareils (à choisir : voir ci-dessus, la sauvegarde permet déjà de passer d'un appareil à l'autre).
+1. Synchronisation entre appareils (en attendant, la sauvegarde dans un fichier permet de passer d'un appareil à l'autre).
