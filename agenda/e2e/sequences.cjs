@@ -35,7 +35,7 @@ module.exports = async (page, { shot }) => {
   await newSeq.fill('Fractions');
   await page.getByRole('button', { name: 'Créer' }).click();
   assert.equal(await page.getByLabel('Titre de la séquence').inputValue(), 'Fractions');
-  await page.getByLabel('Matière ou niveau').fill('Maths 6e');
+  await page.getByLabel('Matière', { exact: true }).fill('Maths 6e');
 
   // Séance blocks, each through the séance window.
   const add = async (title, fields = {}) => {

@@ -10,6 +10,8 @@ import { today } from '../dates.ts';
 import { trackName, visibleTracks } from '../tracks.ts';
 import { removePlacement } from '../placements.ts';
 import { PlacementWindow, type PlacementRequest } from './PlacementWindow.tsx';
+import { LevelFilter, useLevelFilter } from './LevelFilter.tsx';
+import { levelMismatch, levelsIn } from '../levels.ts';
 import { SeanceWindow } from './SeanceWindow.tsx';
 import { TrashIcon } from './Window.tsx';
 
@@ -30,11 +32,15 @@ export function SequencesView({ agenda, onChange }: Props) {
   const [newTitle, setNewTitle] = useState('');
   const [editing, setEditing] = useState<{ seance: Seance; isNew: boolean } | undefined>();
   const [placing, setPlacing] = useState<PlacementRequest | undefined>();
-  const selected = sequences.find((s) => s.id === selectedId) ?? sequences[0];
+  const levels = levelsIn([...sequences, ...agenda.classes]);
+  const [levelFilter, setLevelFilter] = useLevelFilter(levels);
+  const shown = sequences.filter((s) => !levelFilter || s.level === levelFilter);
+  const selected = sequences.find((s) => s.id === selectedId) ?? shown[0] ?? sequences[0];
 
   const create = () => {
     const r = addSequence(agenda, newTitle);
-    onChange(r.agenda);
+    // A séquence created while a level is chosen is for that level.
+    onChange(levelFilter ? updateSequence(r.agenda, r.id, { level: levelFilter }) : r.agenda);
     setSelectedId(r.id);
     setNewTitle('');
   };
@@ -44,14 +50,15 @@ export function SequencesView({ agenda, onChange }: Props) {
       <aside className="card library" aria-label="Séquences">
         <h2>Séquences</h2>
         {sequences.length === 0 && <p className="muted">Une séquence est une suite de séances. Créez la première :</p>}
+        <LevelFilter levels={levels} value={levelFilter} onChange={setLevelFilter} />
         <ul>
-          {sequences.map((s) => (
+          {shown.map((s) => (
             <li key={s.id}>
               <button type="button" className="seq-pick" aria-pressed={s.id === selected?.id} style={{ '--seq-color': s.color } as CSSProperties} onClick={() => setSelectedId(s.id)}>
                 <span className="dot" aria-hidden="true" />
                 <span className="seq-text">
                   <span className="seq-title">{s.title}</span>
-                  <span className="muted small">{[s.subject, summary(s)].filter(Boolean).join(' · ')}</span>
+                  <span className="muted small">{[s.level, s.subject, summary(s)].filter(Boolean).join(' · ')}</span>
                 </span>
               </button>
             </li>
@@ -141,7 +148,9 @@ function Builder({ agenda, sequence, onChange, onOpen, onDuplicated, onDeleted, 
   const { seances } = sequence;
   const lessons = sequenceLessons(sequence);
 
+  // Durations for the classes (and groups) of the séquence's level, or every class when it has none.
   const estimates = visibleTracks(agenda)
+    .filter((t) => !levelMismatch(sequence.level, agenda.classes.find((c) => c.id === t.classId)?.level))
     .map((t) => ({ t, perWeek: weeklyLessons(agenda, t).lessons }))
     .filter((x) => x.perWeek > 0 && lessons > 0)
     .map(({ t, perWeek }) => `${trackName(agenda, t)} : ≈ ${plural(Math.ceil((lessons / perWeek) * 2) / 2, 'semaine')} (${number(perWeek)} cours/sem.)`);
@@ -217,7 +226,8 @@ function Builder({ agenda, sequence, onChange, onOpen, onDuplicated, onDeleted, 
       <div className="builder-head">
         <input className="seq-title-input" aria-label="Titre de la séquence" value={sequence.title} onChange={(e) => onChange(updateSequence(agenda, sequence.id, { title: e.target.value }))} />
         <div className="builder-meta">
-          <input aria-label="Matière ou niveau" placeholder="Matière, niveau…" value={sequence.subject ?? ''} onChange={(e) => onChange(updateSequence(agenda, sequence.id, { subject: e.target.value || undefined }))} />
+          <input className="level-input" aria-label="Niveau de la séquence" list="levels" placeholder="Niveau" value={sequence.level ?? ''} onChange={(e) => onChange(updateSequence(agenda, sequence.id, { level: e.target.value || undefined }))} />
+          <input aria-label="Matière" placeholder="Matière, thème…" value={sequence.subject ?? ''} onChange={(e) => onChange(updateSequence(agenda, sequence.id, { subject: e.target.value || undefined }))} />
           <input type="color" className="swatch" aria-label="Couleur de la séquence" value={sequence.color ?? '#4f7cff'} onChange={(e) => onChange(updateSequence(agenda, sequence.id, { color: e.target.value }))} />
           <button type="button" className="ghost" onClick={() => { const r = duplicateSequence(agenda, sequence.id); onChange(r.agenda); onDuplicated(r.id); }}>Dupliquer</button>
           <button type="button" className="ghost danger-text" onClick={deleteSequence}>Supprimer</button>

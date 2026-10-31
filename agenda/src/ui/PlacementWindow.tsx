@@ -6,6 +6,7 @@ import { previewPlacement } from '../plan.ts';
 import { closuresBetween, proposePlacement, putPlacement } from '../placements.ts';
 import { sameTrack, trackKey, trackName, visibleTracks, type Track } from '../tracks.ts';
 import { longDate, plural, shortDate, shortDay } from './format.ts';
+import { levelMismatch, levelRank } from '../levels.ts';
 import { Window } from './Window.tsx';
 
 export interface PlacementRequest {
@@ -78,7 +79,12 @@ export function PlacementWindow({ agenda, request, today, onConfirm, onRemove, o
     onConfirm(next);
   };
   const ready = previews.length > 0 && previews.every((p) => p.preview.result?.start);
+  // Classes grouped by level, the séquence's level first.
   const byClass = agenda.classes.map((c) => ({ c, tracks: tracks.filter((t) => t.classId === c.id) })).filter((x) => x.tracks.length);
+  const levelKey = (l?: string) => (l && sequence?.level && !levelMismatch(sequence.level, l) ? '!' : levelRank(l));
+  const byLevel = [...new Set(byClass.map((x) => x.c.level || ''))]
+    .sort((a, b) => (levelKey(a) < levelKey(b) ? -1 : 1))
+    .map((level) => ({ level, classes: byClass.filter((x) => (x.c.level || '') === level) }));
 
   return (
     <Window
@@ -116,7 +122,15 @@ export function PlacementWindow({ agenda, request, today, onConfirm, onRemove, o
         ) : (
           <fieldset className="targets">
             <legend>Pour quelles classes ou quels groupes ?</legend>
-            {byClass.map(({ c, tracks: own }) => (
+            {byLevel.map(({ level, classes }) => (
+              <div key={level || 'none'} className="target-level">
+                {byLevel.length > 1 && (
+                  <span className="target-level-name">
+                    {level || 'Sans niveau'}
+                    {level && sequence.level && !levelMismatch(sequence.level, level) && <span className="muted small"> · niveau de la séquence</span>}
+                  </span>
+                )}
+                {classes.map(({ c, tracks: own }) => (
               <div key={c.id} className="target-class">
                 {own.map((t) => {
                   const on = targets.some((x) => sameTrack(x, t));
@@ -127,6 +141,8 @@ export function PlacementWindow({ agenda, request, today, onConfirm, onRemove, o
                     </label>
                   );
                 })}
+              </div>
+                ))}
               </div>
             ))}
           </fieldset>
@@ -162,6 +178,11 @@ export function PlacementWindow({ agenda, request, today, onConfirm, onRemove, o
         </ul>
       )}
 
+      {previews.filter((p) => levelMismatch(sequence.level, agenda.classes.find((c) => c.id === p.track.classId)?.level)).map((p) => (
+        <p key={`lvl${p.key}`} className="warning level-warning">
+          « {sequence.title} » est prévue pour la {sequence.level} ; {trackName(agenda, p.track)} est en {agenda.classes.find((c) => c.id === p.track.classId)?.level}.
+        </p>
+      ))}
       {detail && sequence.seances.length > 0 && <Detail agenda={agenda} name={trackName(agenda, detail.track)} track={detail.track} preview={detail.preview} alone={detail.alone} sequenceSeances={sequence.seances} />}
     </Window>
   );

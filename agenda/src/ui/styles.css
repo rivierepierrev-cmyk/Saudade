@@ -349,6 +349,16 @@ legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
 .target-summaries button { width: 100%; display: flex; gap: 10px; align-items: center; text-align: left; padding: 6px 10px; border: 1px solid var(--line); }
 .target-summaries button[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-soft); }
 .target-summaries button span:first-of-type { margin-left: auto; color: var(--muted); font-size: 13px; }
+.level-filter { display: flex; flex-wrap: wrap; gap: 4px; }
+.level-filter button { padding: 3px 10px; border-radius: 99px; border: 1px solid var(--line); font-size: 13px; }
+.level-filter button[aria-checked='true'] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.level-badge { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 99px; font-size: 11px; font-weight: 600; background: var(--surface-2); color: var(--muted); vertical-align: 1px; }
+.level-input { flex: 0 0 90px !important; min-width: 0 !important; }
+.name-level { display: grid; grid-template-columns: 1fr 84px; gap: 8px; }
+.target-level { display: grid; gap: 6px; }
+.target-level + .target-level { padding-top: 6px; border-top: 1px dashed var(--line); }
+.target-level-name { font-size: 13px; font-weight: 600; }
+.ghost-warning { color: var(--warning); font-weight: 600; }
 .draw-for { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .class-settings { display: grid; gap: 12px; }
 .groups { display: grid; gap: 6px; }

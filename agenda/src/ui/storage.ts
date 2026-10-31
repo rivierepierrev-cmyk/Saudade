@@ -1,4 +1,5 @@
 import type { Agenda, Closure } from '../model.ts';
+import { guessLevel } from '../levels.ts';
 
 const KEY = 'agenda.v1';
 /** Where the holidays window kept its list before the whole agenda was saved. */
@@ -30,6 +31,8 @@ export function loadAgenda(): Agenda {
     return {
       ...base,
       ...saved,
+      // Classes saved before levels existed get the level of their name.
+      classes: (saved.classes ?? []).map((c) => (c.level === undefined && guessLevel(c.name) ? { ...c, level: guessLevel(c.name) } : c)),
       calendar: { ...base.calendar, ...saved.calendar, closures: saved.calendar?.closures ?? [] },
     };
   }

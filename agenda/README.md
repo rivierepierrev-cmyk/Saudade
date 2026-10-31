@@ -13,6 +13,7 @@ Ce dossier est un projet autonome, prévu pour devenir son propre dépôt. Il ne
 ## Classes, groupes et avancements
 
 - **Chaque classe avance à son rythme** : la même séquence assignée à 6e A et 6e B a ses propres dates dans chacune. Deux classes du même niveau peuvent donc être à des séances différentes le même jour.
+- **Niveaux** : chaque classe a un niveau, deviné depuis son nom (« 6e B » → 6e, « 2nde 3 » → 2nde, « Tle 1 » → Tle) et modifiable ; chaque séquence peut avoir le sien. Plusieurs cours le même jour, de niveaux différents, ont chacun leur séance. Un filtre « Tous · 6e · 4e… » trie la bibliothèque et le panneau de l'agenda ; une séquence créée sous un niveau filtré prend ce niveau. La fenêtre de placement regroupe les classes par niveau, celui de la séquence en premier, et avertit (sans interdire) si on pose une séquence sur une classe d'un autre niveau, comme l'étiquette pendant le glisser. Les durées estimées ne concernent que les classes du niveau de la séquence.
 - **Demi-groupes** (Emploi du temps › classe sélectionnée › « Diviser en demi-groupes ») : la classe peut avoir des groupes, renommables, autant que nécessaire. Un cours de l'emploi du temps est pour la classe entière ou pour un groupe (« Dessiner pour : Classe entière / Groupe 1 / Groupe 2 », ou le champ Groupe d'un cours).
 - **Chaque groupe a son propre avancement** : ses cours, sa chaîne de séquences, sa progression. Les cours en classe entière forment une chaîne à part. Annuler un cours d'un groupe ne décale que ce groupe.
 - **Assigner une séquence** à une ou plusieurs classes ou groupes à la fois : « Assigner à des classes… » (onglet Séquences) ou « Placer… » (Agenda). La fenêtre montre un résumé par cible, et le détail de chacune. On peut aussi glisser une séquence sur un cours ou sur une classe ou un groupe du panneau de l'agenda.
@@ -63,6 +64,7 @@ Le bouton « Vacances » ouvre l'année scolaire (premier et dernier jour de cou
   - Avertissements, jamais d'erreurs : séquence qui déborde de l'année, date de début repoussée parce que la séquence précédente n'est pas finie, séquence vide ou introuvable.
   - Une séance sur plusieurs cours séparés par des vacances est signalée (`interrupted`).
 - **`previewPlacement(agenda, placement, index)`** : ce que donnerait le glisser-déposer d'une séquence sur une classe, sans rien modifier. Elle renvoie les dates des séances, la date de fin, et les séquences suivantes qui seraient décalées.
+- **Niveaux** (`src/levels.ts`) : liste des niveaux, ordre scolaire, niveau deviné depuis le nom d'une classe.
 - **Cibles** (`src/tracks.ts`) : une classe entière ou l'un de ses groupes ; chaque cible a ses cours et sa chaîne de séquences.
 - **Placements** (`src/placements.ts`) : où insérer une séquence déposée dans l'enchaînement d'une classe, annuler / rétablir un cours, progression d'une classe.
 - **`dayEntries` / `weekEntries`** : les cours d'un jour ou d'une semaine, avec la séance prévue ou libres.

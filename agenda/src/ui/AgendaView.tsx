@@ -5,6 +5,8 @@ import { updateSeance, sequenceLessons } from '../edit.ts';
 import { plan, previewPlacement, weekType, type AgendaEntry, type Lesson } from '../plan.ts';
 import { cancelLesson, classProgress, proposePlacement, removePlacement, restoreLesson } from '../placements.ts';
 import { sameTrack, trackKey, trackName, visibleTracks } from '../tracks.ts';
+import { levelMismatch, levelRank, levelsIn } from '../levels.ts';
+import { LevelFilter, useLevelFilter } from './LevelFilter.tsx';
 import { DayView, MonthView, WeekView, lessonKey, type Cancelled, type Incoming, type ViewProps } from './CalendarViews.tsx';
 import { LessonWindow } from './LessonWindow.tsx';
 import { PlacementWindow, type PlacementRequest } from './PlacementWindow.tsx';
@@ -41,7 +43,15 @@ export function AgendaView({ agenda, onChange, onGoTo }: Props) {
   const [editingSeance, setEditingSeance] = useState<{ sequenceId: string; seanceId: string } | undefined>();
   const result = useMemo(() => plan(agenda), [agenda]);
   const tracks = visibleTracks(agenda);
+  const levels = levelsIn([...agenda.sequences, ...agenda.classes]);
+  const [levelFilter, setLevelFilter] = useLevelFilter(levels);
+  const palette = agenda.sequences.filter((s) => !levelFilter || s.level === levelFilter);
+  // Classes in school order (6e, 5e…), then by name.
+  const classList = [...agenda.classes].sort((a, b) => levelRank(a.level).localeCompare(levelRank(b.level)) || a.name.localeCompare(b.name, 'fr', { numeric: true }));
   const sequences = new Map(agenda.sequences.map((s) => [s.id, s]));
+  const classes = new Map(agenda.classes.map((c) => [c.id, c]));
+  const levelBadge = (c: { name: string; level?: string }) =>
+    c.level && !c.name.toLowerCase().startsWith(c.level.toLowerCase()) ? <span className="level-badge">{c.level}</span> : null;
 
   const requestFor = (payload: DragPayload, target: DropTarget): PlacementRequest | undefined => {
     const start = target.kind === 'lesson' ? target.date : undefined;
@@ -116,14 +126,15 @@ export function AgendaView({ agenda, onChange, onGoTo }: Props) {
           ) : (
             <p className="muted small">Glissez une séquence sur un cours de l'agenda, ou sur une classe (ou un groupe) ci-dessous.</p>
           )}
+          <LevelFilter levels={levels} value={levelFilter} onChange={setLevelFilter} />
           <ul className="palette">
-            {agenda.sequences.map((s) => (
+            {palette.map((s) => (
               <li key={s.id} style={{ '--seq-color': s.color } as CSSProperties}>
                 <div className="palette-card" onPointerDown={(e) => begin({ kind: 'sequence', sequenceId: s.id }, e)} aria-label={`Séquence ${s.title}, à glisser`}>
                   <span className="dot" aria-hidden="true" />
                   <span className="seq-text">
                     <span className="seq-title">{s.title}</span>
-                    <span className="muted small">{plural(s.seances.length, 'séance')}{sequenceLessons(s) !== s.seances.length ? ` · ${plural(sequenceLessons(s), 'cours', 'cours')}` : ''}</span>
+                    <span className="muted small">{s.level ? `${s.level} · ` : ''}{plural(s.seances.length, 'séance')}{sequenceLessons(s) !== s.seances.length ? ` · ${plural(sequenceLessons(s), 'cours', 'cours')}` : ''}</span>
                   </span>
                 </div>
                 <button type="button" className="ghost small-btn" onClick={() => setPlacing({ sequenceId: s.id })}>Placer…</button>
@@ -135,7 +146,7 @@ export function AgendaView({ agenda, onChange, onGoTo }: Props) {
         <section className="card" aria-label="Classes">
           <h2>Classes</h2>
           <ul className="class-plans">
-            {agenda.classes.map((c) => {
+            {classList.map((c) => {
               const own = tracks.filter((t) => t.classId === c.id);
               return (
                 <li key={c.id} className="class-plan" style={{ '--class-color': c.color } as CSSProperties}>
@@ -147,9 +158,9 @@ export function AgendaView({ agenda, onChange, onGoTo }: Props) {
                     const label = own.length === 1 ? c.name : t.groupId ? c.groups?.find((g) => g.id === t.groupId)?.name : 'Classe entière';
                     return (
                       <div key={trackKey(t)} className={`track-plan${isTarget ? ' drop-over' : ''}${own.length > 1 ? ' sub' : ''}`} aria-label={name} {...dropClass(t.classId, t.groupId)}>
-                        {own.length > 1 && t === own[0] && <b className="class-plan-name">{c.name}</b>}
+                        {own.length > 1 && t === own[0] && <b className="class-plan-name">{c.name}{levelBadge(c)}</b>}
                         <div className="class-plan-head">
-                          <b>{label}</b>
+                          <b>{label}{own.length === 1 && levelBadge(c)}</b>
                           <span className="muted small">{progress.plannedUntil ? `prévu jusqu'au ${shortDate(progress.plannedUntil)}` : 'rien de prévu'}</span>
                         </div>
                         <div
@@ -219,6 +230,9 @@ export function AgendaView({ agenda, onChange, onGoTo }: Props) {
               → {hover.req.target && trackName(agenda, hover.req.target)}
               {hover.result?.end ? ` · fin ${shortDay(hover.result.end)}` : ' · pas de cours'}
             </span>
+          )}
+          {hover?.req.target && levelMismatch(dragged.level, classes.get(hover.req.target.classId)?.level) && (
+            <span className="ghost-warning">Autre niveau : {classes.get(hover.req.target.classId)?.level}</span>
           )}
         </div>
       )}

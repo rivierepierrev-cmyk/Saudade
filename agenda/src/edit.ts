@@ -1,6 +1,7 @@
 import { minutes, type ISODate } from './dates.ts';
 import type { Agenda, Seance, SchoolClass, Sequence, TimetableSlot } from './model.ts';
 import { sameTrack, toTrack, type Track } from './tracks.ts';
+import { guessLevel } from './levels.ts';
 
 /**
  * Editing operations on the agenda. Each returns a new agenda and leaves the one it is given
@@ -22,7 +23,8 @@ function nextColor(used: (string | undefined)[]): string {
 
 export function addClass(agenda: Agenda, name: string): { agenda: Agenda; id: string } {
   const id = newId('class');
-  const cls: SchoolClass = { id, name: name.trim() || 'Nouvelle classe', color: nextColor(agenda.classes.map((c) => c.color)) };
+  const level = guessLevel(name);
+  const cls: SchoolClass = { id, name: name.trim() || 'Nouvelle classe', ...(level ? { level } : {}), color: nextColor(agenda.classes.map((c) => c.color)) };
   return { agenda: { ...agenda, classes: [...agenda.classes, cls] }, id };
 }
 

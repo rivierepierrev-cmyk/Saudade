@@ -7,3 +7,4 @@ export * from './timetableLayout.ts';
 export * from './closureRows.ts';
 export * from './placements.ts';
 export * from './tracks.ts';
+export * from './levels.ts';

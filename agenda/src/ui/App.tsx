@@ -5,6 +5,7 @@ import { TimetableView } from './TimetableView.tsx';
 import { SequencesView } from './SequencesView.tsx';
 import { AgendaView } from './AgendaView.tsx';
 import { loadAgenda, saveAgenda } from './storage.ts';
+import { LevelOptions } from './LevelFilter.tsx';
 
 type Tab = 'agenda' | 'timetable' | 'sequences';
 const TAB_KEY = 'agenda.tab';
@@ -52,6 +53,7 @@ export function App() {
         </button>
       </header>
 
+      <LevelOptions />
       <main>
         {tab === 'agenda' ? (
           <AgendaView agenda={agenda} onChange={setAgenda} onGoTo={setTab} />

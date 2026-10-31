@@ -143,7 +143,7 @@ export function TimetableView({ agenda, onChange }: Props) {
               <li key={c.id} className={isSelected ? 'selected' : undefined} style={{ '--class-color': c.color } as CSSProperties}>
                 <input type="color" className="swatch" aria-label={`Couleur de ${c.name}`} value={c.color ?? '#4f7cff'} onChange={(e) => onChange(updateClass(agenda, c.id, { color: e.target.value }))} />
                 <button type="button" className="class-pick" aria-pressed={isSelected} onClick={() => setSelected(c.id)}>
-                  <span className="class-name">{c.name}</span>
+                  <span className="class-name">{c.name}{c.level && !c.name.toLowerCase().startsWith(c.level.toLowerCase()) && <span className="level-badge">{c.level}</span>}</span>
                   <span className="muted small">{w.lessons ? `${plural(w.lessons, 'cours', 'cours')} / sem. · ${duration(w.minutes)}` : 'Aucun cours'}</span>
                 </button>
                 <button type="button" className="delete" aria-label={`Supprimer ${c.name}`} title="Supprimer" onClick={() => deleteClass(c.id, c.name)}>
@@ -155,10 +155,16 @@ export function TimetableView({ agenda, onChange }: Props) {
         </ul>
         {selectedClass && (
           <div className="class-settings">
-            <label className="rename">
-              <span className="muted small">Nom de la classe sélectionnée</span>
-              <input value={selectedClass.name} onChange={(e) => onChange(updateClass(agenda, selectedClass.id, { name: e.target.value }))} />
-            </label>
+            <div className="name-level">
+              <label className="rename">
+                <span className="muted small">Nom de la classe sélectionnée</span>
+                <input value={selectedClass.name} onChange={(e) => onChange(updateClass(agenda, selectedClass.id, { name: e.target.value }))} />
+              </label>
+              <label className="rename">
+                <span className="muted small">Niveau</span>
+                <input list="levels" aria-label="Niveau de la classe" value={selectedClass.level ?? ''} onChange={(e) => onChange(updateClass(agenda, selectedClass.id, { level: e.target.value }))} />
+              </label>
+            </div>
             <div className="groups" aria-label={`Groupes de ${selectedClass.name}`}>
               <span className="muted small">Groupes</span>
               {groups.length === 0 ? (

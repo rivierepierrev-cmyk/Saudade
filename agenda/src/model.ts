@@ -48,6 +48,8 @@ export interface Sequence {
   id: string;
   title: string;
   subject?: string;
+  /** School level it is meant for (« 6e », « 2nde »…). */
+  level?: string;
   color?: string;
   seances: Seance[];
 }
