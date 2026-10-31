@@ -1,0 +1,16 @@
+{
+  "name": "agenda",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Agenda for teachers: séquences built from séance blocks, placed on the timetable, automatically shifted past holidays.",
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "test": "node --test test/*.test.ts",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "typescript": "^5.8.3"
+  }
+}
