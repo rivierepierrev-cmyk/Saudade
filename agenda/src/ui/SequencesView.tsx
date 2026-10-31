@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import type { Agenda, Seance, Sequence } from '../model.ts';
 import {
   addSeance, addSequence, duplicateSeance, duplicateSequence, moveSeance, removeSeance, removeSequence,
@@ -126,10 +126,18 @@ function Builder({ agenda, sequence, onChange, onOpen, onDuplicated, onDeleted }
     .filter((x) => x.perWeek > 0 && lessons > 0)
     .map(({ c, perWeek }) => `${c.name} : ≈ ${plural(Math.ceil((lessons / perWeek) * 2) / 2, 'semaine')} (${number(perWeek)} cours/sem.)`);
 
+  // Moving a block in the page can take the focus off its handle: put it back as soon as the list is redrawn,
+  // before the next key press.
+  const focusHandle = useRef<number | undefined>(undefined);
+  useLayoutEffect(() => {
+    if (focusHandle.current === undefined) return;
+    list.current?.querySelectorAll<HTMLElement>('.handle')[focusHandle.current]?.focus();
+    focusHandle.current = undefined;
+  });
   const move = (from: number, to: number) => {
     if (to < 0 || to >= seances.length || from === to) return;
+    focusHandle.current = to;
     onChange(moveSeance(agenda, sequence.id, from, to));
-    requestAnimationFrame(() => list.current?.querySelectorAll<HTMLElement>('.handle')[to]?.focus());
   };
 
   // Reordering with the pointer (mouse, pen or finger) on the handle.

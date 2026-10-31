@@ -1,6 +1,6 @@
 import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import type { Agenda, TimetableSlot } from '../model.ts';
-import { fromDate, minutes, mondayOf, timeOf, type Weekday } from '../dates.ts';
+import { minutes, mondayOf, timeOf, today, type Weekday } from '../dates.ts';
 import { addClass, addSlot, removeClass, removeSlot, slotConflicts, updateClass, updateSlot, weeklyLessons } from '../edit.ts';
 import { weekType } from '../plan.ts';
 import { layoutDay } from '../timetableLayout.ts';
@@ -114,8 +114,8 @@ export function TimetableView({ agenda, onChange }: Props) {
   const ab = calendar.abWeeks;
   const setAB = (on: boolean) =>
     onChange({ ...agenda, calendar: { ...calendar, abWeeks: on ? { referenceMonday: mondayOf(calendar.start), skipHolidayWeeks: true } : undefined } });
-  const today = fromDate(new Date());
-  const thisWeek = ab ? weekType(calendar, today) : undefined;
+  const thisDay = today();
+  const thisWeek = ab ? weekType(calendar, thisDay) : undefined;
 
   return (
     <div className="timetable-page">

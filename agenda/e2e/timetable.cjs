@@ -19,6 +19,8 @@ module.exports = async (page, { shot }) => {
   const pick = (name) => page.locator('.class-pick', { hasText: name });
   const slotTexts = () => slots.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
 
+  await page.getByRole('button', { name: 'Emploi du temps', exact: true }).click();
+
   // Without a class, drawing explains what to do.
   await page.mouse.click((await yOf(1, '08:00')).x, (await yOf(1, '08:00')).y);
   assert.match(norm(await page.locator('.hint').textContent()), /Ajoutez d'abord une classe/);

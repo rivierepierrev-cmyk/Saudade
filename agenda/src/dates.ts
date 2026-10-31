@@ -49,3 +49,17 @@ export function timeOf(mins: number): string {
   const m = Math.max(0, Math.min(24 * 60 - 1, Math.round(mins)));
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 }
+
+/** Today on the device's clock (local date, not UTC). */
+export function today(now = new Date()): ISODate {
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+/** Same day of the month, `n` months later (clamped to the month's last day). */
+export function addMonths(d: ISODate, n: number): ISODate {
+  const [y, m, day] = d.split('-').map(Number);
+  const target = new Date(Date.UTC(y, m - 1 + n, 1));
+  const last = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  target.setUTCDate(Math.min(day, last));
+  return fromDate(target);
+}

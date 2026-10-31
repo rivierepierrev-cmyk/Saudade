@@ -10,6 +10,17 @@ Ce dossier est un projet autonome, prévu pour devenir son propre dépôt. Il ne
     npm run test:e2e  # test dans un navigateur (Playwright)
     npm run lint      # vérification des types
 
+## Agenda
+
+L'onglet principal : vos vrais cours, avec la séance prévue dans chacun.
+
+- **Vues Jour, Semaine, Mois**, avec ‹ › et « Aujourd'hui ». Les vacances et jours fériés sont hachurés et nommés. La semaine indique A ou B. La vue Jour montre tout ce qu'il y a à faire dans chaque cours (objectifs, déroulé, matériel, devoirs).
+- **Glisser une séquence** (panneau de gauche) **sur un cours** : elle commence à ce cours. **Sur une classe** : elle suit la dernière séquence de la classe (ou commence au prochain cours, si la classe n'en a pas). Pendant le glisser, les cours qui recevraient ses séances sont surlignés et l'étiquette indique la date de fin.
+- **Au dépôt, une fenêtre montre ce que cela donne avant de valider** : chaque séance avec son jour et son heure, la date de fin, les vacances sautées, les séquences suivantes décalées, et les avertissements (séance coupée par des vacances, séquence qui déborde de l'année). On peut y changer la classe ou la date de début. « Placer… » ouvre la même fenêtre sans glisser (clavier, téléphone).
+- **Déplacer une séquence** : glisser l'un de ses cours vers un autre cours, ou cliquer sur la séquence dans le panneau de la classe. Une séquence qui suivait celle qu'on déplace (ou qu'on retire) garde ses dates.
+- **Cliquer sur un cours** : la séance prévue, « Modifier la séance », « Déplacer la séquence… », « Retirer la séquence », et « Annuler ce cours » (sortie, grève…) : les séances passent au cours suivant et tout ce qui suit se décale. Un cours annulé reste visible, barré, et peut être rétabli.
+- **Par classe** : barre de progression (cours prévus sur l'année, trait = aujourd'hui), date jusqu'à laquelle c'est prévu, prochaine séance, et la liste de ses séquences avec leurs dates.
+
 ## Emploi du temps
 
 - **Classes** (à gauche) : ajouter, renommer, changer la couleur, supprimer (avec ses cours ; les séquences restent). Chaque classe affiche son nombre de cours par semaine et ses heures.
@@ -44,10 +55,10 @@ Le bouton « Vacances » ouvre l'année scolaire (premier et dernier jour de cou
   - Avertissements, jamais d'erreurs : séquence qui déborde de l'année, date de début repoussée parce que la séquence précédente n'est pas finie, séquence vide ou introuvable.
   - Une séance sur plusieurs cours séparés par des vacances est signalée (`interrupted`).
 - **`previewPlacement(agenda, placement, index)`** : ce que donnerait le glisser-déposer d'une séquence sur une classe, sans rien modifier. Elle renvoie les dates des séances, la date de fin, et les séquences suivantes qui seraient décalées.
+- **Placements** (`src/placements.ts`) : où insérer une séquence déposée dans l'enchaînement d'une classe, annuler / rétablir un cours, progression d'une classe.
 - **`dayEntries` / `weekEntries`** : les cours d'un jour ou d'une semaine, avec la séance prévue ou libres.
 - **Vacances** (`src/holidays.ts`) : jours fériés calculés à partir de Pâques (avec l'option Alsace-Moselle), et import des vacances scolaires par zone depuis le jeu de données officiel « Calendrier scolaire » de data.education.gouv.fr. Le jour de reprise est exclu, et les dates sont prises à l'heure de Paris.
 
 ## Suite
 
-1. Vues jour / semaine / mois et glisser-déposer des séquences sur les classes, avec l'aperçu de `previewPlacement` (P3).
-2. Annuler/rétablir, vue « Aujourd'hui », séances faites ou non faites, export PDF/iCal, synchronisation (P4).
+1. Annuler/rétablir, vue « Aujourd'hui », séances faites ou non faites, export PDF/iCal, synchronisation (P4).

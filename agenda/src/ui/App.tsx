@@ -3,16 +3,18 @@ import type { Agenda } from '../model.ts';
 import { HolidaysWindow } from './HolidaysWindow.tsx';
 import { TimetableView } from './TimetableView.tsx';
 import { SequencesView } from './SequencesView.tsx';
+import { AgendaView } from './AgendaView.tsx';
 import { loadAgenda, saveAgenda } from './storage.ts';
 
-type Tab = 'timetable' | 'sequences';
+type Tab = 'agenda' | 'timetable' | 'sequences';
 const TAB_KEY = 'agenda.tab';
 
 function initialTab(): Tab {
   try {
-    return localStorage.getItem(TAB_KEY) === 'sequences' ? 'sequences' : 'timetable';
+    const t = localStorage.getItem(TAB_KEY);
+    return t === 'timetable' || t === 'sequences' ? t : 'agenda';
   } catch {
-    return 'timetable';
+    return 'agenda';
   }
 }
 
@@ -41,6 +43,7 @@ export function App() {
           <p className="muted">Année scolaire {yearLabel}</p>
         </div>
         <nav className="tabs" aria-label="Sections">
+          <button type="button" aria-current={tab === 'agenda' ? 'page' : undefined} onClick={() => setTab('agenda')}>Agenda</button>
           <button type="button" aria-current={tab === 'timetable' ? 'page' : undefined} onClick={() => setTab('timetable')}>Emploi du temps</button>
           <button type="button" aria-current={tab === 'sequences' ? 'page' : undefined} onClick={() => setTab('sequences')}>Séquences</button>
         </nav>
@@ -50,7 +53,13 @@ export function App() {
       </header>
 
       <main>
-        {tab === 'timetable' ? <TimetableView agenda={agenda} onChange={setAgenda} /> : <SequencesView agenda={agenda} onChange={setAgenda} />}
+        {tab === 'agenda' ? (
+          <AgendaView agenda={agenda} onChange={setAgenda} onGoTo={setTab} />
+        ) : tab === 'timetable' ? (
+          <TimetableView agenda={agenda} onChange={setAgenda} />
+        ) : (
+          <SequencesView agenda={agenda} onChange={setAgenda} />
+        )}
       </main>
 
       {holidaysOpen && (

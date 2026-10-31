@@ -228,15 +228,42 @@ export function plan(agenda: Agenda): PlanResult {
 }
 
 /**
+ * When a séquence leaves the front of a class's chain (moved or removed), the one that followed it
+ * would otherwise jump back to the start of the year: it keeps the start it had instead.
+ */
+function keepFollowers(placements: Placement[], before: PlanResult, classIds: (string | undefined)[]): Placement[] {
+  return placements.map((p, i) => {
+    if (p.start || !classIds.includes(p.classId)) return p;
+    if (placements.findIndex((q) => q.classId === p.classId) !== i) return p;
+    const was = before.sequences.find((s) => s.placement.id === p.id);
+    const wasFirst = before.sequences.find((s) => s.placement.classId === p.classId)?.placement.id === p.id;
+    return was?.start && !wasFirst ? { ...p, start: was.start } : p;
+  });
+}
+
+/** The agenda with `placement` added or moved to `index` (in the list without it). */
+export function withPlacement(agenda: Agenda, placement: Placement, index: number, before: PlanResult = plan(agenda)): Agenda {
+  const old = agenda.placements.find((p) => p.id === placement.id);
+  const placements = agenda.placements.filter((p) => p.id !== placement.id);
+  placements.splice(Math.max(0, Math.min(index, placements.length)), 0, placement);
+  return { ...agenda, placements: keepFollowers(placements, before, [placement.classId, old?.classId]) };
+}
+
+/** The agenda without a placement; the séquence that followed it stays where it was. */
+export function withoutPlacement(agenda: Agenda, id: string, before: PlanResult = plan(agenda)): Agenda {
+  const old = agenda.placements.find((p) => p.id === id);
+  return { ...agenda, placements: keepFollowers(agenda.placements.filter((p) => p.id !== id), before, [old?.classId]) };
+}
+
+/**
  * What dropping a séquence on a class would give, without changing the agenda: its séances with
  * their dates, its end date, and how the séquences after it would move. `index` places it in the
- * class's chain (default: at the end).
+ * list of placements (default: at the end).
  */
 export function previewPlacement(agenda: Agenda, placement: Placement, index = agenda.placements.length) {
-  const placements = agenda.placements.filter((p) => p.id !== placement.id);
-  placements.splice(Math.min(index, placements.length), 0, placement);
   const before = plan(agenda);
-  const after = plan({ ...agenda, placements });
+  const next = withPlacement(agenda, placement, index, before);
+  const after = plan(next);
   const endOf = (r: PlanResult, id: string) => r.sequences.find((s) => s.placement.id === id)?.end;
   const shifted = after.sequences
     .filter((s) => s.placement.id !== placement.id && s.placement.classId === placement.classId)
@@ -247,6 +274,7 @@ export function previewPlacement(agenda: Agenda, placement: Placement, index = a
     shifted,
     warnings: after.warnings.filter((w) => w.placementId === placement.id),
     plan: after,
+    agenda: next,
   };
 }
 

@@ -8,6 +8,8 @@ module.exports = async (page, { shot }) => {
   const blocks = page.locator('.blocks > li');
   const titles = () => page.locator('.block-title').evaluateAll((els) => els.map((e) => e.firstChild.textContent));
 
+  await page.getByRole('button', { name: 'Emploi du temps', exact: true }).click();
+
   // A class with 1.5 lessons a week (one every week, one on A weeks), for the duration estimate.
   const newClass = page.getByLabel('Nouvelle classe');
   await newClass.fill('6e B');
