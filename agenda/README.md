@@ -5,12 +5,23 @@ Agenda pour enseignants : des séquences construites avec des blocs de séances,
 Ce dossier est un projet autonome, prévu pour devenir son propre dépôt. Il ne dépend de rien d'autre dans ce dépôt.
 
     npm install
-    npm test       # tests (Node ≥ 22.18, qui exécute le TypeScript directement)
-    npm run lint   # vérification des types
+    npm run dev       # interface : http://127.0.0.1:5173
+    npm test          # tests (Node ≥ 22.18, qui exécute le TypeScript directement)
+    npm run test:e2e  # test dans un navigateur (Playwright)
+    npm run lint      # vérification des types
+
+## Fenêtre « Vacances »
+
+Le bouton « Vacances » ouvre la liste des jours sans cours. Une ligne par période, avec un nom (facultatif) et :
+
+- **Un jour** : une seule date (jour férié, pont, journée banalisée) ;
+- **Période** : du … au …, les deux dates comprises. Si la date de début passe après la date de fin, la fin suit.
+
+« + Ajouter une ligne » ajoute une ligne vide, la corbeille la supprime. « Ajouter les jours fériés » ajoute ceux de l'année scolaire qui manquent. Une ligne incomplète est signalée en rouge et empêche d'enregistrer. « Annuler » ou Échap ferment sans rien changer. Pour l'instant, la liste est gardée dans le navigateur (`localStorage`).
 
 ## État : le moteur de planification (P0) et les vacances (P1)
 
-Il n'y a pas encore d'interface. Ce qui existe :
+Interface : seulement la fenêtre « Vacances » pour l'instant. Le moteur :
 
 - **Modèle** (`src/model.ts`) : classes, créneaux de l'emploi du temps (semaines A/B, changement d'emploi du temps en cours d'année), séances (une séance peut durer plusieurs cours), séquences, placements, calendrier (vacances, jours fériés, fermetures pour une classe), cours annulés, cours exceptionnels.
 - **`plan(agenda)`** (`src/plan.ts`) : donne à chaque séance ses cours réels, dans l'ordre. Elle saute les vacances, les jours fériés, les fermetures et les cours annulés, et calcule la date de fin de chaque séquence. Les séquences d'une classe s'enchaînent : sans date de début, une séquence commence au cours qui suit la fin de la précédente.

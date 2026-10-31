@@ -1,0 +1,109 @@
+:root {
+  --bg: #f6f5f2;
+  --surface: #ffffff;
+  --text: #1d1d1b;
+  --muted: #6b6a66;
+  --line: #e2e0da;
+  --accent: #2f5fd0;
+  --accent-text: #ffffff;
+  --accent-soft: #e7eefc;
+  --error: #b42318;
+  --error-soft: #fdecea;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161615;
+    --surface: #222220;
+    --text: #ecebe7;
+    --muted: #a3a29c;
+    --line: #3a3936;
+    --accent: #7ea2ff;
+    --accent-text: #10172b;
+    --accent-soft: #263457;
+    --error: #ff8a80;
+    --error-soft: #3d1f1d;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+h1, h2 { margin: 0; line-height: 1.2; }
+h1 { font-size: 24px; }
+h2 { font-size: 17px; }
+.muted { color: var(--muted); margin: 0; }
+button, input { font: inherit; color: inherit; }
+
+.app { max-width: 880px; margin: 0 auto; padding: 24px 16px; display: grid; gap: 20px; }
+.app-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 12px; }
+.closures { list-style: none; margin: 0; padding: 0; display: grid; }
+.closures li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.closures li:first-child { border-top: 0; }
+
+button { cursor: pointer; border-radius: 8px; border: 1px solid transparent; padding: 8px 14px; background: none; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.primary { background: var(--accent); color: var(--accent-text); font-weight: 600; }
+.ghost { border-color: var(--line); background: var(--surface); }
+.ghost:hover { background: var(--accent-soft); }
+
+/* Window */
+.window {
+  width: min(940px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 0.25);
+}
+.window[open] { display: flex; flex-direction: column; }
+.window::backdrop { background: rgb(0 0 0 / 0.4); }
+.window-head { padding: 20px 20px 12px; display: grid; gap: 4px; }
+.window-head p { margin: 0; color: var(--muted); }
+/* Lines share the columns of .rows (subgrid), so names, buttons and dates line up from one line to the next. */
+.rows { padding: 0 20px; overflow-y: auto; display: grid; grid-template-columns: minmax(130px, 1fr) auto auto 72px 36px; column-gap: 10px; row-gap: 8px; align-content: start; }
+.empty { grid-column: 1 / -1; color: var(--muted); margin: 8px 0; }
+.add-bar { padding: 12px 20px; display: flex; gap: 8px; flex-wrap: wrap; }
+.window-foot { padding: 14px 20px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex-wrap: wrap; }
+.window-foot .error { margin-right: auto; }
+
+.row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  row-gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.row.has-error { border-color: var(--error); background: var(--error-soft); }
+.row input { border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; background: var(--surface); min-width: 0; }
+.row .label { width: 100%; }
+.mode { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.mode button { border-radius: 0; padding: 6px 10px; white-space: nowrap; }
+.mode button[aria-checked='true'] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.dates { display: flex; align-items: center; gap: 6px; }
+.dates .word { min-width: 1.2em; }
+.word { color: var(--muted); }
+.note { color: var(--muted); font-size: 13px; }
+.error { color: var(--error); }
+.delete { padding: 6px; color: var(--muted); display: grid; place-items: center; }
+.delete:hover { color: var(--error); background: var(--error-soft); }
+
+@media (max-width: 720px) {
+  .rows { grid-template-columns: 1fr 36px; }
+  .row .label { grid-column: 1; }
+  .row .delete { grid-column: 2; grid-row: 1; }
+  .mode, .dates, .note { grid-column: 1 / -1; }
+  .dates { flex-wrap: wrap; }
+  .mode button { flex: 1; }
+}
