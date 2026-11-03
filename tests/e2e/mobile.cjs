@@ -92,7 +92,7 @@ fs.writeFileSync(path.join(dataDir, 'media', IMG), png(120, 80, (x) => (x < 60 ?
 const base = { tags: [], createdAt: '', updatedAt: '', folder: 'Général', readingProgress: 0, lastReadOffset: 0, format: 'article', state: 'review' };
 const due = { stability: 3, difficulty: 5, reps: 2, lapses: 0, interval: 3, lastReview: new Date(now - 3 * DAY).toISOString(), nextReviewDate: new Date(now - 1000).toISOString(), phase: 'review' };
 const data = {
-  documents: [{ ...base, id: 'd', title: 'Géographie', content: `# Géographie\n\nLe Rhône se jette dans la mer.\n\n![Carte](/media/${IMG})`, priority: 70, fsrs: { ...due, nextReviewDate: new Date(now + 5 * DAY).toISOString() } }],
+  documents: [{ ...base, id: 'd', title: 'Géographie', content: `# Géographie\n\nLe Rhône se jette dans la mer.\n\n![Carte](/media/${IMG})\n\nSource : https://www.example.org/un/tres/long/chemin/sans/espace/programme_de_geographie_physique_et_humaine_session_2027.pdf\n\n| Fleuve | Longueur (km) | Débit moyen (m³/s) | Embouchure | Pays traversés |\n|---|---|---|---|---|\n| Rhône | 812 | 1 700 | Méditerranée | Suisse, France |\n\n$$Q_{\\text{moyen}} = \\frac{1}{T}\\int_0^T Q(t)\\,\\mathrm{d}t \\approx 1{,}7\\times10^{3}\\ \\text{m}^3\\cdot\\text{s}^{-1}\\ \\text{à Beaucaire}$$`, priority: 70, fsrs: { ...due, nextReviewDate: new Date(now + 5 * DAY).toISOString() } }],
   extracts: [],
   clozes: [{ ...base, id: 'c', documentId: 'd', documentTitle: 'Géographie', text: 'Le {{c1::Rhône}} se jette dans la mer.', clozeNumber: 1, priority: 80, fsrs: due }],
   reviewLogs: [], settings: {}, folders: ['Général'],
@@ -146,6 +146,8 @@ server.listen(0, '127.0.0.1', async () => {
     await phone.locator('article h1', { hasText: 'Géographie' }).waitFor();
     await phone.waitForFunction(() => { const img = document.querySelector('article img'); return img && img.complete && img.naturalWidth === 120; }, null, { timeout: 15000 });
     assert.match(await phone.locator('article img').getAttribute('src'), /^blob:/);
+    // a long link, a wide table and formula stay within the screen (they scroll in their own box)
+    assert.deepEqual(await phone.evaluate(() => [document.documentElement.scrollWidth, innerWidth]), [390, 390], 'page as wide as the screen');
     await phone.screenshot({ path: path.join(OUT, 'phone-reader.png') });
 
     // 3. A review on the phone reaches the desktop

@@ -197,7 +197,14 @@ article p > em:only-child {
 .prose {
   line-height: 1.75;
   color: var(--text-primary);
-  overflow-wrap: break-word;
+  /* Long links and words wrap instead of widening the page. */
+  overflow-wrap: anywhere;
+}
+/* The reader's text takes the width of the screen, never that of its content: a wide
+   table, formula or code block scrolls in its own box instead of widening the page
+   (on a phone, the whole page would otherwise be zoomed out). */
+.reader-text {
+  contain: inline-size;
 }
 .prose > :first-child {
   margin-top: 0;
@@ -298,6 +305,8 @@ article p > em:only-child {
 }
 .prose th,
 .prose td {
+  /* Whole words in cells: a table too wide scrolls sideways (see .prose table). */
+  overflow-wrap: break-word;
   border: 1px solid var(--border-beige);
   padding: 0.45em 0.7em;
   text-align: left;

@@ -766,7 +766,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
               const r = img.getBoundingClientRect();
               setImageAction({ src, x: Math.max(8, r.right - 190), y: Math.max(72, r.top + 8) });
             }}
-            className={`prose max-w-none ${fontClass} leading-relaxed select-text text-[var(--fg-28231d)]`}
+            className={`prose reader-text max-w-none ${fontClass} leading-relaxed select-text text-[var(--fg-28231d)]`}
             style={{ fontSize: `${fontSize}px` }}
             dangerouslySetInnerHTML={{ __html: renderedHtml }}
           />
