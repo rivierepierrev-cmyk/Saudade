@@ -1293,6 +1293,7 @@ export default function App() {
 
           return (
             <ReaderView
+              onDeleteExtract={handleDeleteExtract}
               currentDocument={currentDocument}
               allDocuments={activeDocs}
               extracts={extracts}

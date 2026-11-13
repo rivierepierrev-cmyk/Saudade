@@ -54,6 +54,15 @@ const toLibraryGrid = async (page, objects) => {
   assert.deepEqual((await marks(page)).extracts, [], 'extract highlight removed');
   await page.getByTitle('Annuler (Ctrl+Z)').click(); await page.waitForTimeout(300);
   assert.equal((await marks(page)).extracts.length, 1, 'undo restores the highlight');
+  // ...and from the reader's panel, with the bin
+  await page.getByRole('button', { name: /Extraits \(1\)/ }).first().click();
+  await page.getByRole('button', { name: 'Supprimer l’extrait #1' }).click(); await page.waitForTimeout(300);
+  assert.deepEqual((await marks(page)).extracts, [], 'deleted from the reader');
+  assert.equal(read('extracts').length, 0);
+  await page.getByText('Sélectionnez du texte dans le lecteur et cliquez sur « Extraire ».', { exact: false }).waitFor();
+  await page.getByTitle('Annuler (Ctrl+Z)').click(); await page.waitForTimeout(300);
+  assert.equal((await marks(page)).extracts.length, 1, 'undo after deleting from the reader');
+  await page.getByRole('button', { name: /Extraits \(1\)/ }).first().click();
 
   // 3. Deleting a card removes its underline
   await toLibraryGrid(page, /^(Cartes|Clozes|Cloze)/);

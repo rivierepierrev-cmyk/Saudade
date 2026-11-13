@@ -15,6 +15,7 @@ import {
   HelpCircle,
   Image as ImageIcon,
   Folder,
+  Trash2,
 } from 'lucide-react';
 import { EditDocumentModal } from './EditDocumentModal';
 import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
@@ -50,6 +51,8 @@ interface ReaderViewProps {
   onEditItem: (type: 'extract' | 'cloze', id: string) => void;
   /** Opens the card viewer. */
   onViewItem: (type: 'extract' | 'cloze', id: string) => void;
+  /** Deletes an extract (undo is offered). */
+  onDeleteExtract: (extractId: string) => void;
   /** "Pas fini": back tomorrow, at the same place, without counting as a reading. */
   onNotFinished: (docId: string) => void;
   /** "Moins important": lower priority, so the text comes back less often. */
@@ -85,6 +88,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   onOpenOcclusionEditor,
   onEditItem,
   onViewItem,
+  onDeleteExtract,
   onNotFinished,
   onLowerPriority,
   onWriteSummary,
@@ -995,7 +999,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                     <div
                       key={ext.id}
                       data-panel-item={ext.id}
-                      className={`text-xs rounded-xl border transition-colors ${
+                      className={`relative text-xs rounded-xl border transition-colors ${
                         open
                           ? 'bg-[var(--bg-ffffff)] border-[var(--bd-8c5e32)]'
                           : 'bg-[var(--bg-faf7f2)] border-[var(--bd-e8e2d5)] hover:border-[var(--bd-ddd6c8)]'
@@ -1008,7 +1012,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                         className="block w-full text-left p-3 cursor-pointer"
                         title={open ? 'Refermer' : 'Lire cet extrait et le situer dans le texte'}
                       >
-                        <span className="flex items-center justify-between text-[10px] text-[var(--fg-8c8072)] mb-1">
+                        <span className="flex items-center justify-between pr-6 text-[10px] text-[var(--fg-8c8072)] mb-1">
                           <span>
                             {ext.parentExtractId ? 'Sous-extrait' : 'Passage'} #{idx + 1}
                           </span>
@@ -1018,6 +1022,15 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                           className={`block text-[var(--fg-28231d)] ${open ? 'text-sm font-serif-reading leading-relaxed' : 'italic line-clamp-3'}`}
                           dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(ext.text)) }}
                         />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDeleteExtract(ext.id)}
+                        aria-label={`Supprimer l’extrait #${idx + 1}`}
+                        title="Supprimer cet extrait (Annuler reste possible)"
+                        className="absolute top-2 right-2 p-1 rounded-md text-[var(--fg-8c8072)] hover:text-[var(--fg-a84236)] hover:bg-[var(--bg-f3efe8)] cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                       {open && (
                         <div className="flex items-center justify-between gap-2 px-3 pb-3">
