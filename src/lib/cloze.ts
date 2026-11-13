@@ -3,6 +3,8 @@
  * selected words as context and hides only the selection.
  */
 
+import { parseClozes } from './math';
+
 export type ClozeBuildResult =
   | { ok: true; text: string }
   | { ok: false; reason: 'empty' | 'syntax'; error: string }
@@ -44,7 +46,7 @@ export function buildCloze(context: string, start: number, end: number): ClozeBu
   while (end > start && /\s/.test(context[end - 1])) end--;
   const answer = context.slice(start, end);
   if (!answer) return { ok: false, reason: 'empty', error: 'Sélectionnez le mot ou l’expression à masquer.' };
-  if (CLOZE_PATTERN.test(context) || answer.includes('}}') || answer.includes('::')) {
+  if (CLOZE_PATTERN.test(context)) {
     return { ok: false, reason: 'syntax', error: 'Ce texte contient déjà une syntaxe de carte à trou.' };
   }
 
@@ -64,9 +66,14 @@ export function buildCloze(context: string, start: number, end: number): ClozeBu
     };
   }
 
-  const text =
-    context.slice(ctxStart, start) + `{{c1::${answer}}}` + context.slice(end, ctxEnd);
-  return { ok: true, text: text.replace(/\s+/g, ' ').trim() };
+  const text = (context.slice(ctxStart, start) + `{{c1::${answer}}}` + context.slice(end, ctxEnd)).replace(/\s+/g, ' ').trim();
+  // The answer may hold LaTeX braces (\frac{a}{b}): fine as long as the card reads back
+  // with exactly this answer hidden (unbalanced braces or "::" would cut it).
+  const clozes = parseClozes(text).filter((p) => p.type === 'cloze');
+  if (clozes.length !== 1 || clozes[0].hint !== undefined || clozes[0].value !== answer.replace(/\s+/g, ' ')) {
+    return { ok: false, reason: 'syntax', error: 'Cette sélection ne peut pas être masquée telle quelle (accolades ou « :: ») : ouvrez l’éditeur de carte.' };
+  }
+  return { ok: true, text };
 }
 
 /** Selection described relative to the plain text of its enclosing block. */

@@ -42,3 +42,18 @@ assert.equal(c.phase, 'review'); assert.ok(c.interval >= 10, 'good on legacy rev
 c = applyCardReview(legacy, 1, now, 0.9);
 assert.equal(c.phase, 'relearning'); assert.equal(c.lapses, 1);
 console.log('cloze/scheduling tests OK', hi, lo);
+
+// LaTeX braces in the selection (\frac{…}{…} ends with "}}"): the card is made
+{
+  const tampon = 'Pouvoir tampon $\\beta$ : quantité de base forte (en mol·L⁻¹) à ajouter pour augmenter le pH d’une unité, $\\beta=\\frac{dC_b}{d\\mathrm{pH}}$ ; maximal à $\\mathrm{pH}=\\mathrm{p}K_a$.';
+  const pick = (s: string) => { const i = tampon.indexOf(s); return buildCloze(tampon, i, i + s.length); };
+  const formula = pick('$\\beta=\\frac{dC_b}{d\\mathrm{pH}}$');
+  assert.ok(formula.ok, JSON.stringify(formula));
+  assert.ok(formula.ok && formula.text.includes('{{c1::$\\beta=\\frac{dC_b}{d\\mathrm{pH}}$}}'));
+  const part = pick('\\frac{dC_b}{d\\mathrm{pH}}');
+  assert.ok(part.ok && part.text.includes('$\\beta={{c1::\\frac{dC_b}{d\\mathrm{pH}}}}$'), JSON.stringify(part));
+  assert.ok(pick('$\\mathrm{pH}=\\mathrm{p}K_a$').ok);
+  // half a formula with unbalanced braces can't be hidden as is
+  const half = pick('\\frac{dC_b}{d\\mathrm');
+  assert.equal(half.ok, false);
+}
