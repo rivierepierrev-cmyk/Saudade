@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="disc" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#DCEBC9"/>
+      <stop offset="1" stop-color="#BFD9A3"/>
+    </linearGradient>
+    <linearGradient id="bud" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9BC653"/>
+      <stop offset="1" stop-color="#3E8A3A"/>
+    </linearGradient>
+    <linearGradient id="leafL" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2E7A3B"/>
+      <stop offset="1" stop-color="#16543A"/>
+    </linearGradient>
+    <linearGradient id="leafR" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5A9E3E"/>
+      <stop offset="1" stop-color="#1F633A"/>
+    </linearGradient>
+    <linearGradient id="sheetL" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2E7A3B"/>
+      <stop offset="1" stop-color="#8CC05A"/>
+    </linearGradient>
+    <linearGradient id="sheetR" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#2E7A3B"/>
+      <stop offset="1" stop-color="#8CC05A"/>
+    </linearGradient>
+  </defs>
+  <!-- disc -->
+  <circle cx="50" cy="46" r="37" fill="url(#disc)"/>
+  <!-- side leaves -->
+  <path d="M48.5 70 C 46 56, 38 45, 22 40 C 24 54, 33 62, 48.5 70 Z" fill="url(#leafL)"/>
+  <path d="M51.5 70 C 54 56, 62 45, 78 40 C 76 54, 67 62, 51.5 70 Z" fill="url(#leafR)"/>
+  <!-- stem -->
+  <path d="M50 74 C 49 62, 48 54, 50 44" fill="none" stroke="#16543A" stroke-width="3.2" stroke-linecap="round"/>
+  <!-- bud -->
+  <path d="M50 46 C 40 40, 39 26, 52 10 C 62 24, 60 40, 50 46 Z" fill="url(#bud)"/>
+  <path d="M50 46 C 54 36, 55 24, 52 10 C 62 24, 60 40, 50 46 Z" fill="#2F7A3A" opacity="0.55"/>
+  <!-- book: light sheets -->
+  <path d="M50 74 C 41 64, 29 59, 14 58.5 L 11.5 63 C 27 63.5, 40 67.5, 50 76 Z" fill="url(#sheetL)"/>
+  <path d="M50 74 C 59 64, 71 59, 86 58.5 L 88.5 63 C 73 63.5, 60 67.5, 50 76 Z" fill="url(#sheetR)"/>
+  <!-- book: covers -->
+  <path d="M50 77 C 39 69, 25 66, 8 66 L 15 79 C 30 79, 42 82, 50 89 Z" fill="#0F4A32" stroke="#0F4A32" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M50 77 C 61 69, 75 66, 92 66 L 85 79 C 70 79, 58 82, 50 89 Z" fill="#17603E" stroke="#17603E" stroke-width="2" stroke-linejoin="round"/>
+</svg>

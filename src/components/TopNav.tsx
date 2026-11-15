@@ -1,4 +1,5 @@
 import React from 'react';
+import { Logo } from './Logo';
 import { ActiveTab } from '../types/saudade';
 import { Plus, BookOpen, Layers, Sparkles, FolderArchive, BarChart2, Sun, Moon, Monitor, Settings } from 'lucide-react';
 import { ThemePreference, NEXT_THEME, THEME_LABEL } from '../lib/theme';
@@ -36,9 +37,7 @@ export const TopNav: React.FC<TopNavProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-8 h-16">
         {/* Zone 1: Single text element wordmark */}
         <div className="flex items-center gap-3 shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-[var(--bg-3b3026)] text-[var(--fg-faf7f2)] flex items-center justify-center font-bold text-base shadow-xs">
-            S
-          </div>
+          <Logo className="w-9 h-9 shrink-0" />
           <span className="text-xl font-bold tracking-tight text-[var(--fg-28231d)] whitespace-nowrap shrink-0">
             Saudade
           </span>

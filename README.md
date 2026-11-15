@@ -1,3 +1,5 @@
+<p align="center"><img src="build/logo.svg" width="120" alt=""></p>
+
 # Saudade
 
 Lecture incrémentale + répétition espacée FSRS. 100 % local, **aucune IA, aucune clé API**.
@@ -132,6 +134,10 @@ La CI signe les installateurs Windows dès que deux secrets existent dans le dé
 
 Les données (Linux : `~/.config/Saudade/data/`, Windows : `%APPDATA%\Saudade\data\`) sont conservées lors d'une mise à jour ou d'une désinstallation.
 Sauvegarde / restauration : Réglages (icône ⚙ en haut) → « Exporter une sauvegarde » et « Restaurer une sauvegarde… » (accepte aussi les fichiers de `data/backups/`).
+
+## Logo et icônes
+
+Le logo est dessiné en vectoriel dans `build/logo.svg` (repris dans l'en-tête par `src/components/Logo.tsx`). Après une modification, `node scripts/gen-icons.cjs` régénère l'icône Windows/Linux (`build/icon.png`) et les icônes et l'écran de démarrage Android.
 
 ## Construire les installateurs
     npm run dist:linux     # release/*.deb et *.AppImage
