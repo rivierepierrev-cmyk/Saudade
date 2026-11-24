@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DocumentItem } from '../types/saudade';
-import { renderMarkdown } from '../lib/markdown';
+import { normalizeSource, renderMarkdown } from '../lib/markdown';
+import { MarkdownTextarea } from './MarkdownTextarea';
 import {
   X,
   Check,
@@ -25,6 +26,8 @@ interface EditDocumentModalProps {
   allAvailableTags?: string[];
   onClose: () => void;
   onSave: (updatedDocument: DocumentItem) => void;
+  /** Only this part of the text (offsets in normalizeSource(content)) is edited. */
+  passage?: { start: number; end: number } | null;
 }
 
 export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
@@ -33,6 +36,7 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
   allAvailableTags = [],
   onClose,
   onSave,
+  passage,
 }) => {
   if (!isOpen || !document) return null;
 
@@ -44,7 +48,14 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
   const [priority, setPriority] = useState<number>(document.priority);
   const [tags, setTags] = useState<string[]>([...document.tags]);
   const [newTagInput, setNewTagInput] = useState('');
-  const [content, setContent] = useState(document.content);
+  // Editing a passage: the text before and after it stays as it is.
+  const [around, setAround] = useState(() => {
+    if (!passage) return null;
+    const source = normalizeSource(document.content);
+    return { before: source.slice(0, passage.start), after: source.slice(passage.end) };
+  });
+  const [content, setContent] = useState(() => (passage ? normalizeSource(document.content).slice(passage.start, passage.end) : document.content));
+  const [findRequest, setFindRequest] = useState(0);
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
 
   const handleAddTag = (tagToAdd?: string) => {
@@ -99,7 +110,8 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !content.trim()) return;
+    const fullText = around ? around.before + content + around.after : content;
+    if (!title.trim() || !fullText.trim()) return;
 
     const updated: DocumentItem = {
       ...document,
@@ -110,7 +122,7 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
       format,
       priority,
       tags: tags.length > 0 ? tags : ['Notes'],
-      content,
+      content: fullText,
       updatedAt: new Date().toISOString(),
     };
 
@@ -123,7 +135,16 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
   const previewHtml = renderMarkdown(content || '*Aucun contenu*');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
+      onKeyDown={(e) => {
+        if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'f') {
+          e.preventDefault();
+          setActiveTab('edit');
+          setFindRequest((n) => n + 1);
+        }
+      }}
+    >
       <div className="bg-[var(--bg-ffffff)] border border-[var(--bd-e8e2d5)] rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden">
         {/* En-tête */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--bd-e8e2d5)] bg-[var(--bg-faf7f2)]">
@@ -133,10 +154,12 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-[var(--fg-28231d)]">
-                Modifier l'article & ses métadonnées
+                {around ? 'Modifier le passage sélectionné' : "Modifier l'article & ses métadonnées"}
               </h2>
               <p className="text-xs text-[var(--fg-695f54)]">
-                Ajustez le texte, les tags, l'auteur, le dossier et la priorité de ce document de lecture.
+                {around
+                  ? `Seul ce passage de « ${document.title} » est modifiable ; le reste du texte ne change pas.`
+                  : 'Ajustez le texte, les tags, l’auteur, le dossier et la priorité de ce document de lecture.'}
               </p>
             </div>
           </div>
@@ -151,6 +174,8 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
 
         {/* Corps formulaire à défilement */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+          {!around && (
+          <>
           {/* Grille des métadonnées principales */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Titre */}
@@ -333,6 +358,9 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
             )}
           </div>
 
+          </>
+          )}
+
           {/* Édition du contenu texte et images (Markdown) */}
           <div className="border border-[var(--bd-d5cbbf)] rounded-xl overflow-hidden bg-[var(--bg-ffffff)]">
             {/* Barre d'onglets et outils d'insertion */}
@@ -421,16 +449,42 @@ export const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
             {/* Zone de texte ou aperçu */}
             {activeTab === 'edit' ? (
               <div className="relative">
-                <textarea
+                {around && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-xs border-b border-[var(--bd-f3efe8)] bg-[var(--bg-faf7f2)] text-[var(--fg-695f54)]">
+                    <span>Seul le passage sélectionné est modifiable.</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setContent(around.before + content + around.after);
+                        setAround(null);
+                      }}
+                      className="px-2 py-1 rounded-md font-medium text-[var(--fg-8c5e32)] hover:bg-[var(--bg-f3efe8)] cursor-pointer"
+                    >
+                      Modifier tout le texte
+                    </button>
+                  </div>
+                )}
+                {around?.before.trim() && (
+                  <p data-testid="context-before" className="px-4 pt-3 text-xs font-mono leading-relaxed whitespace-pre-wrap break-words text-[var(--fg-8c8072)]">
+                    …{around.before.slice(-240).split('\n').slice(-3).join('\n').trimStart()}
+                  </p>
+                )}
+                <MarkdownTextarea
                   id="edit-doc-content-textarea"
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  rows={16}
+                  onChange={setContent}
+                  rows={around ? Math.min(16, Math.max(4, content.split('\n').length + 2)) : 16}
+                  aria-label={around ? 'Passage sélectionné' : 'Texte de l’article'}
                   placeholder="Contenu complet du texte ou de l'article en Markdown..."
-                  className="w-full p-4 text-sm font-mono text-[var(--fg-28231d)] bg-[var(--bg-ffffff)] leading-relaxed focus:outline-none resize-y"
+                  findRequest={findRequest}
                 />
+                {around?.after.trim() && (
+                  <p data-testid="context-after" className="px-4 pb-3 text-xs font-mono leading-relaxed whitespace-pre-wrap break-words text-[var(--fg-8c8072)]">
+                    {around.after.slice(0, 240).split('\n').slice(0, 3).join('\n').trimEnd()}…
+                  </p>
+                )}
                 <div className="flex items-center justify-between px-4 py-2 border-t border-[var(--bd-f3efe8)] text-[11px] font-mono text-[var(--fg-8c8072)] bg-[var(--bg-faf7f2)]">
-                  <span>Markdown (titres, images, listes) · formules LaTeX : $x^2$ dans le texte, $$…$$ en bloc</span>
+                  <span>Markdown (titres, images, listes) · formules LaTeX : $x^2$ dans le texte, $$…$$ en bloc · Ctrl+F : rechercher</span>
                   <span>{wordCount} mots · {charCount} caractères</span>
                 </div>
               </div>

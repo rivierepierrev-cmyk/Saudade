@@ -36,6 +36,8 @@ interface ItemViewerProps {
   /** Cards: forgotten again and again (see lib/leech.ts). */
   leech?: boolean;
   onClearLeech?: () => void;
+  /** Extracts: open it like a document in the reader. */
+  onOpenReader?: () => void;
   onClose: () => void;
 }
 
@@ -67,6 +69,7 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
   onResetCard,
   leech,
   onClearLeech,
+  onOpenReader,
   writingTexts = [],
   onAddToWriting,
   onClose,
@@ -338,6 +341,17 @@ export const ItemViewer: React.FC<ItemViewerProps> = ({
             )
           )}
           {!isCloze && onAddToWriting && <AddToWriting texts={writingTexts} onAdd={onAddToWriting} className="mr-auto" />}
+          {!isCloze && onOpenReader && (
+            <button
+              type="button"
+              onClick={onOpenReader}
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-[var(--fg-3b3026)] bg-[var(--bg-ffffff)] hover:bg-[var(--bg-f3efe8)] border border-[var(--bd-e8e2d5)] rounded-lg cursor-pointer"
+              title="Lire l'extrait comme dans le lecteur, pour en tirer des sous-extraits et des cartes"
+            >
+              <Scissors className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
+              Lire et extraire
+            </button>
+          )}
           {onOpenInDocument && (
             <button
               type="button"

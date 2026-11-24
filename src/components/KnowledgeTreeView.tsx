@@ -28,6 +28,7 @@ import {
   CornerDownRight,
   Pencil,
 } from 'lucide-react';
+import { clickOrDouble } from '../lib/clicks';
 
 interface KnowledgeTreeViewProps {
   documents: DocumentItem[];
@@ -40,6 +41,8 @@ interface KnowledgeTreeViewProps {
   onDeleteCloze: (clozeId: string) => void;
   onEditItem?: (type: 'extract' | 'cloze', id: string) => void;
   onViewItem?: (type: 'extract' | 'cloze', id: string) => void;
+  /** Opens an extract like a document in the reader (double click), to take extracts and cards from it. */
+  onOpenExtract?: (id: string) => void;
   onStartReviewWithFolder?: (folderPath: string) => void;
   onOpenEditModal: (doc: DocumentItem) => void;
   onOpenImport?: () => void;
@@ -68,6 +71,7 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
   onDeleteCloze,
   onEditItem,
   onViewItem,
+  onOpenExtract,
   onStartReviewWithFolder,
   onOpenEditModal,
   onOpenImport,
@@ -1194,8 +1198,8 @@ export const KnowledgeTreeView: React.FC<KnowledgeTreeViewProps> = ({
                                     <div className="flex-1 min-w-0">
                                       <button
                                         type="button"
-                                        onClick={() => onViewItem?.('extract', ext.id)}
-                                        title="Lire l'extrait"
+                                        onClick={clickOrDouble(() => onViewItem?.('extract', ext.id), () => onOpenExtract?.(ext.id))}
+                                        title="Lire l'extrait (double-clic : l'ouvrir comme dans le lecteur pour en tirer extraits et cartes)"
                                         className="block w-full text-left text-[var(--fg-28231d)] leading-relaxed line-clamp-2 rounded hover:bg-[var(--bg-faf7f2)] cursor-pointer"
                                       >
                                         « <span dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(ext.text)) }} /> »

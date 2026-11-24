@@ -32,7 +32,8 @@
   background-color: var(--extract-mark);
 }
 /* Sentences turned into cards */
-::highlight(saudade-cards) {
+::highlight(saudade-cards),
+::highlight(saudade-subcards) {
   background-color: var(--card-mark);
 }
 .legend-extract {
@@ -393,4 +394,17 @@ article p > em:only-child {
   padding: 0.05em 0.15em;
   border: 0;
   box-shadow: 0 0 0 1px var(--cloze-border);
+}
+
+/* Search in the Markdown editor (MarkdownTextarea): matches drawn behind the text */
+.find-hit,
+.find-current {
+  color: transparent;
+  border-radius: 2px;
+}
+.find-hit {
+  background: rgba(230, 180, 60, 0.35);
+}
+.find-current {
+  background: rgba(232, 140, 30, 0.75);
 }

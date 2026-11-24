@@ -36,6 +36,7 @@ import { QueueView } from './components/QueueView';
 import { ReaderView } from './components/ReaderView';
 import { ReviewModal } from './components/ReviewModal';
 import { LibraryView } from './components/LibraryView';
+import { ExtractReader } from './components/ExtractReader';
 import { StatsView } from './components/StatsView';
 import { SettingsView } from './components/SettingsView';
 import { onLibraryChanged, syncNow, getStatus as getSyncStatus } from './lib/sync/client';
@@ -540,6 +541,30 @@ export default function App() {
 
   const handleViewItem = (type: 'extract' | 'cloze', id: string) => setViewRequest({ type, id });
 
+  // An extract read like a document (double click): new extracts and cards from it.
+  const [readingExtractId, setReadingExtractId] = useState<string | null>(null);
+  const openExtractReader = (id: string) => {
+    setViewRequest(null);
+    setReadingExtractId(id);
+  };
+  const renderExtractReader = () => {
+    const ext = readingExtractId ? extracts.find((e) => e.id === readingExtractId) : undefined;
+    if (!ext) return null;
+    return (
+      <ExtractReader
+        key={ext.id}
+        extract={ext}
+        childExtracts={extracts.filter((e) => e.parentExtractId === ext.id)}
+        childCards={clozes.filter((c) => c.extractId === ext.id)}
+        showHighlights={settings.showExtractHighlights}
+        onCreateExtract={(text) => handleCreateExtract({ documentId: ext.documentId, parentExtractId: ext.id }, text)}
+        onOpenClozeEditor={(text) => openClozeEditor({ extractId: ext.id }, text)}
+        onOpenQAEditor={(passage) => openQAEditor({ extractId: ext.id }, passage)}
+        onClose={() => setReadingExtractId(null)}
+      />
+    );
+  };
+
   const openInDocument = (type: 'extract' | 'cloze', id: string) => {
     const ext = type === 'extract' ? extracts.find((e) => e.id === id) : undefined;
     const card = type === 'cloze' ? clozes.find((c) => c.id === id) : undefined;
@@ -589,6 +614,7 @@ export default function App() {
         writingTexts={viewRequest.type === 'extract' ? writingTexts : []}
         onAddToWriting={(docId) => handleAddToWriting(docId, viewRequest.id)}
         onClearLeech={() => clearLeech(viewRequest.id)}
+        onOpenReader={viewRequest.type === 'extract' ? () => openExtractReader(viewRequest.id) : undefined}
         onClose={() => setViewRequest(null)}
       />
     );
@@ -1294,6 +1320,7 @@ export default function App() {
           return (
             <ReaderView
               onDeleteExtract={handleDeleteExtract}
+              onOpenExtract={openExtractReader}
               currentDocument={currentDocument}
               allDocuments={activeDocs}
               extracts={extracts}
@@ -1415,6 +1442,7 @@ export default function App() {
             onExportMarkdown={handleExportMarkdownMirror}
             onEditItem={handleEditItem}
             onViewItem={handleViewItem}
+            onOpenExtract={openExtractReader}
             leechThreshold={settings.leechThreshold}
             onNewImageCard={isMobileApp ? undefined : () => void openOcclusionEditor({})}
           />
@@ -1545,6 +1573,7 @@ export default function App() {
         );
       })()}
 
+      {renderExtractReader()}
       {renderViewer()}
       {renderEditor()}
 

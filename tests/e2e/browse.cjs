@@ -90,7 +90,7 @@ const highlightState = (page) => page.evaluate(() => {
   assert.deepEqual(h.active, ['la plus célèbre de la physique']);
   assert.ok(h.scrollY > 600, 'scrolled again: ' + h.scrollY);
   await page.getByText('Surligné dans le texte').waitFor();
-  await sub.click(); await page.waitForTimeout(200);
+  await sub.click(); await page.waitForTimeout(500); // a click waits for a possible double click
   assert.deepEqual((await highlightState(page)).active, []);
 
   // 5. A new extract is highlighted too

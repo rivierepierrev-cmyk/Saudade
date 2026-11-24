@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { DocumentItem, ExtractItem, ClozeItem } from '../types/saudade';
-import { renderMarkdown } from '../lib/markdown';
+import { editableRange, normalizeSource, renderMarkdownMapped } from '../lib/markdown';
 import {
   Scissors,
   Sparkles,
@@ -18,6 +18,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { EditDocumentModal } from './EditDocumentModal';
+import { clickOrDouble } from '../lib/clicks';
 import { buildCloze, getBlockSelection, BlockSelection } from '../lib/cloze';
 import { cardPassages } from '../lib/clozeNotes';
 import { FORMAT_LABEL, isWriting } from '../lib/formats';
@@ -53,6 +54,8 @@ interface ReaderViewProps {
   onViewItem: (type: 'extract' | 'cloze', id: string) => void;
   /** Deletes an extract (undo is offered). */
   onDeleteExtract: (extractId: string) => void;
+  /** Opens an extract like a document (double click in the panel), to take extracts and cards from it. */
+  onOpenExtract?: (extractId: string) => void;
   /** "Pas fini": back tomorrow, at the same place, without counting as a reading. */
   onNotFinished: (docId: string) => void;
   /** "Moins important": lower priority, so the text comes back less often. */
@@ -89,6 +92,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
   onEditItem,
   onViewItem,
   onDeleteExtract,
+  onOpenExtract,
   onNotFinished,
   onLowerPriority,
   onWriteSummary,
@@ -193,12 +197,40 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
 
   const documentExtracts = extracts.filter((e) => e.documentId === currentDocument.id);
   // Parsed once per content change (the reader re-renders while scrolling).
-  const renderedHtml = useMemo(() => renderMarkdown(currentDocument.content), [currentDocument.content]);
+  // Each block carries its place in the text (data-src), to edit just a selected passage.
+  const renderedHtml = useMemo(() => renderMarkdownMapped(currentDocument.content), [currentDocument.content]);
+  // The Markdown behind the current selection (offsets in normalizeSource(content)).
+  const [selectionSource, setSelectionSource] = useState<{ start: number; end: number } | null>(null);
+  // Passage being edited (null: the whole document).
+  const [editPassage, setEditPassage] = useState<{ start: number; end: number } | null>(null);
+  const openEditor = (passage: { start: number; end: number } | null) => {
+    setEditPassage(passage);
+    setIsEditModalOpen(true);
+    setToolbarPos(null);
+  };
 
   const clearSelection = () => {
     window.getSelection()?.removeAllRanges();
     setToolbarPos(null);
     setBlockSelection(null);
+    setSelectionSource(null);
+  };
+
+  /** The Markdown blocks (data-src) the selection covers, narrowed to its words when possible. */
+  const sourceOfSelection = (selected: string): { start: number; end: number } | null => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || sel.rangeCount === 0) return null;
+    const range = sel.getRangeAt(0);
+    const blockOf = (node: Node) => (node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement)?.closest('[data-src]') ?? null;
+    const first = blockOf(range.startContainer);
+    let last = blockOf(range.endContainer);
+    // A selection that ends at the very start of the next block (triple-click) stops before it.
+    if (last && last !== first && range.endOffset === 0 && last.previousElementSibling?.hasAttribute('data-src')) last = last.previousElementSibling;
+    if (!first || !last || !articleRef.current?.contains(first)) return null;
+    const start = Number(first.getAttribute('data-src')!.split('-')[0]);
+    const end = Number(last.getAttribute('data-src')!.split('-')[1]);
+    if (!(end > start)) return null;
+    return editableRange(normalizeSource(currentDocument.content), start, end, selected);
   };
 
   const handleMouseUp = () => {
@@ -206,13 +238,15 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
     if (!sel || sel.text.trim().length < 2) {
       setToolbarPos(null);
       setBlockSelection(null);
+      setSelectionSource(null);
       return;
     }
     const rect = window.getSelection()!.getRangeAt(0).getBoundingClientRect();
     setBlockSelection(sel);
+    setSelectionSource(sourceOfSelection(sel.text));
     // The toolbar is position: fixed, so viewport coordinates are used as-is.
     setToolbarPos({
-      x: Math.min(window.innerWidth - 260, Math.max(20, rect.left + rect.width / 2 - 120)),
+      x: Math.min(window.innerWidth - 400, Math.max(20, rect.left + rect.width / 2 - 190)),
       y: rect.top > 60 ? rect.top - 48 : rect.bottom + 8,
     });
   };
@@ -593,9 +627,9 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
             {/* Bouton Modifier l'article */}
             {onUpdateDocument && (
               <button
-                onClick={() => setIsEditModalOpen(true)}
+                onClick={() => openEditor(selectionSource)}
                 className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-[var(--bd-e8e2d5)] bg-[var(--bg-ffffff)] text-[var(--fg-695f54)] hover:text-[var(--fg-28231d)] hover:bg-[var(--bg-f3efe8)] transition-colors cursor-pointer"
-                title="Modifier le texte, les tags, l'auteur ou la priorité de cet article"
+                title="Modifier cet article (avec une sélection : seulement le passage sélectionné)"
               >
                 <Edit3 className="w-3.5 h-3.5 text-[var(--fg-8c5e32)]" />
                 <span className="hidden sm:inline">Modifier</span>
@@ -701,7 +735,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
               </h1>
               {onUpdateDocument && (
                 <button
-                  onClick={() => setIsEditModalOpen(true)}
+                  onClick={() => openEditor(selectionSource)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[var(--fg-8c5e32)] hover:text-[var(--fg-6e4723)] bg-[var(--bg-f3efe8)] hover:bg-[var(--bg-eae4d9)] border border-[var(--bd-e8e2d5)] rounded-xl transition-colors cursor-pointer shrink-0 mt-1"
                   title="Modifier le contenu ou les métadonnées de cet article"
                 >
@@ -1007,10 +1041,10 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                     >
                       <button
                         type="button"
-                        onClick={() => openExtract(ext)}
+                        onClick={clickOrDouble(() => openExtract(ext), () => onOpenExtract?.(ext.id))}
                         aria-expanded={open}
                         className="block w-full text-left p-3 cursor-pointer"
-                        title={open ? 'Refermer' : 'Lire cet extrait et le situer dans le texte'}
+                        title={open ? 'Refermer' : 'Lire cet extrait et le situer dans le texte (double-clic : l’ouvrir pour en tirer extraits et cartes)'}
                       >
                         <span className="flex items-center justify-between pr-6 text-[10px] text-[var(--fg-8c8072)] mb-1">
                           <span>
@@ -1106,6 +1140,17 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
             <span>Question</span>
           </button>
 
+          {onUpdateDocument && selectionSource && (
+            <button
+              onClick={() => openEditor(selectionSource)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium hover:bg-[var(--bg-3e3831)] rounded-lg transition-colors whitespace-nowrap cursor-pointer text-[var(--fg-faf7f2)]"
+              title="Modifier seulement le passage sélectionné"
+            >
+              <Edit3 className="w-3.5 h-3.5 text-[var(--fg-e6c280)]" />
+              <span>Modifier</span>
+            </button>
+          )}
+
         </div>
       )}
 
@@ -1129,15 +1174,21 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
       )}
 
       {/* Modal d'édition complète de l'article */}
-      {onUpdateDocument && (
+      {onUpdateDocument && isEditModalOpen && (
         <EditDocumentModal
-          isOpen={isEditModalOpen}
+          key={`${currentDocument.id}:${editPassage?.start ?? ''}`}
+          isOpen
+          passage={editPassage}
           document={currentDocument}
           allAvailableTags={Array.from(new Set(allDocuments.flatMap((d) => d.tags)))}
-          onClose={() => setIsEditModalOpen(false)}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            clearSelection();
+          }}
           onSave={(updated) => {
             onUpdateDocument(updated);
-            showToast('Article et métadonnées enregistrés avec succès !');
+            showToast(editPassage ? 'Passage modifié' : 'Article et métadonnées enregistrés avec succès !');
+            clearSelection();
           }}
         />
       )}

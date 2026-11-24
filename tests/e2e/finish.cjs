@@ -45,6 +45,7 @@ const h1 = (page) => page.locator('h1').first().innerText();
   // 2. Editing an extract: the document changes and the highlight follows
   await page.getByRole('button', { name: /Extraits \(/ }).first().click();
   await page.getByRole('button', { name: /^Passage #/ }).first().click();
+  await page.getByText(/Surligné dans le texte|Passage introuvable/).first().waitFor(); // opened (a click waits for a possible double click)
   await page.getByRole('button', { name: 'Modifier' }).last().click();
   await page.getByRole('dialog').locator('textarea').fill('Le passage choisi contient une idée importante à bien retenir.');
   await page.getByRole('dialog').getByRole('button', { name: 'Enregistrer' }).click(); await page.waitForTimeout(500);

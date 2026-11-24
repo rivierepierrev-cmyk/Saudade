@@ -21,6 +21,7 @@ import {
   Pencil,
   ImagePlus,
 } from 'lucide-react';
+import { clickOrDouble } from '../lib/clicks';
 import { EditDocumentModal } from './EditDocumentModal';
 import { KnowledgeTreeView } from './KnowledgeTreeView';
 
@@ -38,6 +39,8 @@ interface LibraryViewProps {
   onExportMarkdown?: () => void;
   onEditItem?: (type: 'extract' | 'cloze', id: string) => void;
   onViewItem?: (type: 'extract' | 'cloze', id: string) => void;
+  /** Opens an extract like a document in the reader (double click), to take extracts and cards from it. */
+  onOpenExtract?: (id: string) => void;
   /** Lapses that make a card a leech. */
   leechThreshold: number;
   /** A new image card (masked zones) from an image file. */
@@ -55,6 +58,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   onDeleteCloze,
   onEditItem,
   onViewItem,
+  onOpenExtract,
   onStartReviewWithFolder,
   onOpenImport,
   leechThreshold,
@@ -167,6 +171,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           onDeleteCloze={onDeleteCloze}
           onEditItem={onEditItem}
           onViewItem={onViewItem}
+          onOpenExtract={onOpenExtract}
           onStartReviewWithFolder={onStartReviewWithFolder}
           onOpenEditModal={(doc) => setDocumentToEdit(doc)}
           onOpenImport={onOpenImport}
@@ -423,8 +428,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
                       <button
                         type="button"
-                        onClick={() => onViewItem?.('extract', ext.id)}
-                        title="Lire l'extrait"
+                        onClick={clickOrDouble(() => onViewItem?.('extract', ext.id), () => onOpenExtract?.(ext.id))}
+                        title="Lire l'extrait (double-clic : l'ouvrir comme dans le lecteur pour en tirer extraits et cartes)"
                         className="block w-full text-left text-xs sm:text-sm text-[var(--fg-28231d)] italic leading-relaxed line-clamp-4 font-serif-reading rounded-md hover:bg-[var(--bg-faf7f2)] cursor-pointer"
                       >
                         « <span dangerouslySetInnerHTML={{ __html: safeHtml(renderTextWithMath(ext.text)) }} /> »
