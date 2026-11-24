@@ -39,7 +39,7 @@ async function selectRange(page, root, startNeedle, endFormulaTex) {
   await page.getByRole('button', { name: /Ajouter une source/ }).click();
   await page.getByRole('button', { name: 'Coller du texte' }).click();
   await page.getByPlaceholder(/Charge Cognitive/).fill('Formules');
-  await page.locator('textarea').fill('Selon Einstein, l\'énergie vaut $E=mc^2$ pour une masse au repos.\n\nLa somme $a_1 + a_2$ reste en *italique* normal.\n\n$$\\int_0^1 x^2\\,dx = \\frac{1}{3}$$\n\nPrix : 5 $ et 10 $.\n\nErreur : $\\frac{1}{$ ici.');
+  await page.locator('textarea').fill('Selon Einstein, l\'énergie vaut $E=mc^2$ pour une masse au repos.\n\nLa somme $a_1 + a_2$ reste en *italique* normal.\n\n$$\\int_0^1 x^2\\,dx = \\frac{1}{3}$$\n\nPrix : 5 $ et 10 $.\n\nErreur : $\\frac{1}{$ ici.\n\n```latex\n\\mathrm{pH} = \\mathrm{p}K_a + \\log \\frac{[\\mathrm{A^-}]}{[\\mathrm{HA}]}\n```\n\n```\nprix = 5\n```');
   await page.locator('form button[type=submit]').click();
   await page.waitForSelector('article .katex');
   const info = await page.evaluate(() => ({
@@ -48,8 +48,12 @@ async function selectRange(page, root, startNeedle, endFormulaTex) {
     em: [...document.querySelectorAll('article em')].map((e) => e.textContent),
     prices: [...document.querySelectorAll('article p')].some((p) => p.textContent === 'Prix : 5 $ et 10 $.'),
     errors: document.querySelectorAll('article .katex-error').length,
+    code: [...document.querySelectorAll('article pre')].map((e) => e.textContent.trim()),
+    fenced: document.querySelectorAll('article .math-block')[1]?.querySelector('annotation')?.textContent,
   }));
-  assert.equal(info.display, 1); assert.equal(info.inline, 3, JSON.stringify(info)); // 2 inline + 1 display (errors are not .katex)
+  assert.equal(info.display, 2); assert.equal(info.inline, 4, JSON.stringify(info)); // 2 inline + 2 display (errors are not .katex)
+  assert.equal(info.fenced, '\\mathrm{pH} = \\mathrm{p}K_a + \\log \\frac{[\\mathrm{A^-}]}{[\\mathrm{HA}]}', '```latex block shown as a formula');
+  assert.deepEqual(info.code, ['prix = 5'], 'other code blocks stay code');
   assert.deepEqual(info.em, ['italique'], 'underscores in formulas are not emphasis');
   assert.ok(info.prices, 'prices are not formulas');
   assert.equal(info.errors, 1, 'invalid formula shown as an error, page still works');

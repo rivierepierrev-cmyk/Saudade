@@ -24,6 +24,18 @@ const blockMath: TokenizerAndRendererExtension = {
   renderer: (token) => `<div class="math-block">${renderTex(token.text, true)}</div>\n`,
 };
 
+// A fenced block marked as LaTeX (```latex, ```tex, ```math, ```katex), as ChatGPT and
+// others write formulas: shown as a formula, not as code.
+const fencedMath: TokenizerAndRendererExtension = {
+  name: 'fencedMath',
+  level: 'block',
+  start: (src) => src.match(/^ {0,3}(`{3,}|~{3,}) *(?:latex|tex|math|katex)\b/im)?.index,
+  tokenizer(src) {
+    const m = /^ {0,3}(`{3,}|~{3,}) *(?:latex|tex|math|katex)[^\n`]*\n([\s\S]*?)\n {0,3}\1[`~]* *(?:\n+|$)/i.exec(src);
+    if (m && m[2].trim()) return { type: 'blockMath', raw: m[0], text: m[2].trim() };
+  },
+};
+
 const inlineMath: TokenizerAndRendererExtension = {
   name: 'inlineMath',
   level: 'inline',
@@ -43,7 +55,7 @@ const inlineMath: TokenizerAndRendererExtension = {
   renderer: (token) => renderTex(token.text, token.display),
 };
 
-marked.use({ extensions: [blockMath, inlineMath] });
+marked.use({ extensions: [fencedMath, blockMath, inlineMath] });
 
 const SANITIZE = {
   FORBID_TAGS: ['style', 'form', 'input', 'button', 'iframe', 'object', 'embed'],

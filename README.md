@@ -82,7 +82,7 @@ La question n'est pas « m'en souviendrai-je ? » (ce sont les cartes qui serven
 - La lecture reprend là où elle s'était arrêtée.
 
 ## Formules mathématiques (LaTeX)
-- `$E=mc^2$` dans le texte, `$$\int_0^1 f(x)\,dx$$` sur sa propre ligne (aussi `\(…\)` et `\[…\]`). Pour écrire un symbole dollar : `\$`.
+- `$E=mc^2$` dans le texte, `$$\int_0^1 f(x)\,dx$$` sur sa propre ligne (aussi `\(…\)` et `\[…\]`, ou un bloc de code ` ```latex ` / ` ```math `, comme l'écrivent ChatGPT et d'autres). Pour écrire un symbole dollar : `\$`.
 - Fonctionne dans le lecteur, l'éditeur, les extraits et les cartes à trou. Une carte peut masquer une formule entière (`{{c1::$E=mc^2$}}`) ou une partie (`$E={{c1::mc^2}}$`).
 - En sélectionnant une formule dans le lecteur, l'extrait ou la carte garde son code LaTeX.
 - Les formules des pages web (Wikipédia…) et des EPUB sont importées en LaTeX. Celles des PDF ne peuvent pas être récupérées.
